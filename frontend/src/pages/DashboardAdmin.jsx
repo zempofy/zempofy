@@ -262,7 +262,11 @@ function PaginaEquipe({ usuario, equipe, recarregar }) {
   )
 }
 
-const PRIORIDADES = {
+const ETIQUETAS_OPCOES = [
+  { label: 'Em andamento', cor: '#2196F3' },
+  { label: 'Reunião', cor: '#8B5CF6' },
+  { label: 'Revisão', cor: '#EC4899' },
+]
   alta:  { label: 'Alta',  cor: '#EF4444', bg: 'rgba(239,68,68,0.12)' },
   media: { label: 'Média', cor: '#F59E0B', bg: 'rgba(245,158,11,0.12)' },
   baixa: { label: 'Baixa', cor: '#22C55E', bg: 'rgba(34,197,94,0.12)' },
