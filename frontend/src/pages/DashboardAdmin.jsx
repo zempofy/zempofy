@@ -267,6 +267,8 @@ const ETIQUETAS_OPCOES = [
   { label: 'Reunião', cor: '#8B5CF6' },
   { label: 'Revisão', cor: '#EC4899' },
 ]
+
+const PRIORIDADES = {
   alta:  { label: 'Alta',  cor: '#EF4444', bg: 'rgba(239,68,68,0.12)' },
   media: { label: 'Média', cor: '#F59E0B', bg: 'rgba(245,158,11,0.12)' },
   baixa: { label: 'Baixa', cor: '#22C55E', bg: 'rgba(34,197,94,0.12)' },
