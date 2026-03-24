@@ -618,14 +618,16 @@ const styles = {
   conteudo: {
     flex: 1,
     transition: 'margin-left 0.25s ease, margin-top 0.25s ease',
-    minHeight: 'calc(100vh - 52px)',
-    overflow: 'hidden',
+    height: 'calc(100vh - 52px)',
+    overflowY: 'auto',
+    overflowX: 'hidden',
     minWidth: 0,
   },
   conteudoInner: {
     padding: '32px',
     width: '100%',
     boxSizing: 'border-box',
+    minHeight: '100%',
   },
 
   // Painel de perfil

@@ -102,6 +102,8 @@ html, body {
 #root {
   height: 100vh;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 h1, h2, h3, h4 {
