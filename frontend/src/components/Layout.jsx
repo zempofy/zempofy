@@ -391,6 +391,7 @@ function NavItens({ menuItens, paginaAtual, setPagina, sidebarAberta }) {
             <div key={item.id}>
               {/* Botão do grupo */}
               <button
+                className="nav-btn"
                 style={{
                   ...styles.navBtn,
                   ...(subAtivo && !aberto ? styles.navBtnAtivo : {}),
@@ -416,6 +417,7 @@ function NavItens({ menuItens, paginaAtual, setPagina, sidebarAberta }) {
                   {item.subItens.map(sub => (
                     <button
                       key={sub.id}
+                      className="nav-btn"
                       style={{
                         ...styles.navBtn,
                         ...(paginaAtual === sub.id ? styles.navBtnAtivo : {}),
@@ -437,6 +439,7 @@ function NavItens({ menuItens, paginaAtual, setPagina, sidebarAberta }) {
         return (
           <button
             key={item.id}
+            className="nav-btn"
             style={{
               ...styles.navBtn,
               ...(paginaAtual === item.id ? styles.navBtnAtivo : {}),
@@ -479,6 +482,15 @@ export default function Layout({ children, menuItens, paginaAtual, setPagina }) 
 
   return (
     <div style={styles.app}>
+      <style>{`
+        .nav-btn:hover {
+          background: rgba(255,255,255,0.06) !important;
+          color: #fff !important;
+        }
+        .nav-btn:hover .nav-icone {
+          opacity: 1;
+        }
+      `}</style>
 
       {/* ===== BARRA SUPERIOR ===== */}
       <header style={styles.topbar}>
@@ -683,7 +695,7 @@ const styles = {
   navBtn: {
     display: 'flex', alignItems: 'center', gap: '10px',
     padding: '8px 10px', borderRadius: '8px',
-    background: 'none', border: 'none', color: 'var(--texto-apagado)',
+    background: 'none', border: 'none', color: 'var(--texto)',
     cursor: 'pointer', fontSize: '0.875rem', fontFamily: 'Inter, sans-serif',
     transition: 'all 0.15s', width: '100%', whiteSpace: 'nowrap',
     fontWeight: '500',
