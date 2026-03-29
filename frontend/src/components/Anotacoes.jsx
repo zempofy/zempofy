@@ -304,13 +304,13 @@ const s = {
   grade: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '16px' },
 
   // Card
-  card: { borderRadius: '12px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px', border: '1px solid var(--borda)', transition: 'transform 0.15s', cursor: 'default' },
+  card: { borderRadius: '12px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px', border: '1px solid var(--borda)', transition: 'transform 0.15s', cursor: 'default', overflow: 'hidden', minWidth: 0 },
   cardTopo: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' },
-  cardTitulo: { fontFamily: 'Inter, sans-serif', fontWeight: '700', fontSize: '0.95rem', color: 'var(--texto)', margin: 0, flex: 1, lineHeight: '1.3' },
+  cardTitulo: { fontFamily: 'Inter, sans-serif', fontWeight: '700', fontSize: '0.95rem', color: 'var(--texto)', margin: 0, flex: 1, lineHeight: '1.3', wordBreak: 'break-word', overflowWrap: 'break-word' },
   cardAcoes: { display: 'flex', gap: '2px', flexShrink: 0 },
   btnIcone: { background: 'none', border: 'none', color: 'var(--texto-apagado)', cursor: 'pointer', padding: '4px', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'color 0.15s' },
-  cardTexto: { flex: 1 },
-  cardTextoP: { fontSize: '0.85rem', color: 'var(--texto-card)', lineHeight: '1.5', margin: 0, whiteSpace: 'pre-wrap' },
+  cardTexto: { flex: 1, minWidth: 0, overflow: 'hidden' },
+  cardTextoP: { fontSize: '0.85rem', color: 'var(--texto-card)', lineHeight: '1.5', margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflowWrap: 'break-word' },
   btnVerMais: { background: 'none', border: 'none', color: 'var(--verde)', fontSize: '0.75rem', cursor: 'pointer', padding: '4px 0', fontFamily: 'Inter, sans-serif' },
   cardData: { fontSize: '0.7rem', color: 'var(--texto-apagado)', margin: 0 },
 
