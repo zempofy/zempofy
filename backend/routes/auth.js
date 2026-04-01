@@ -17,9 +17,9 @@ function gerarToken(usuario) {
 
 // POST /api/auth/cadastro - Cadastrar nova empresa + admin
 router.post('/cadastro', async (req, res) => {
-  const { nomeEmpresa, nomeAdmin, email, senha } = req.body;
+  const { nomeEmpresa, cnpj, nomeAdmin, email, senha } = req.body;
 
-  if (!nomeEmpresa || !nomeAdmin || !email || !senha) {
+  if (!nomeEmpresa || !cnpj || !nomeAdmin || !email || !senha) {
     return res.status(400).json({ erro: 'Preencha todos os campos.' });
   }
 
@@ -41,7 +41,7 @@ router.post('/cadastro', async (req, res) => {
     if (slugExiste) slug = `${slug}-${Date.now()}`;
 
     // Criar empresa
-    const empresa = await Empresa.create({ nome: nomeEmpresa, slug });
+    const empresa = await Empresa.create({ nome: nomeEmpresa, slug, cnpj });
 
     // Criar usuário admin
     const admin = await Usuario.create({

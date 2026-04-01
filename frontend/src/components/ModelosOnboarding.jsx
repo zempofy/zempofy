@@ -69,12 +69,12 @@ function FormModelo({ modelo, fechar, onSalvo }) {
   useEffect(() => {
     const carregar = async () => {
       try {
-        const [resSetores, resTarefas] = await Promise.all([
+        const [resSetores, resChecklist] = await Promise.all([
           api.get('/setores'),
-          api.get('/tarefas')
+          api.get('/checklist')
         ])
         setSetoresDisponiveis(resSetores.data)
-        setTodasTarefas(resTarefas.data)
+        setTodasTarefas(resChecklist.data)
 
         // Se editando, pré-preenche
         if (modelo) {

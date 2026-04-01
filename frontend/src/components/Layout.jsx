@@ -602,10 +602,8 @@ const styles = {
     position: 'fixed',
     top: 0, left: 0, right: 0,
     height: '52px',
-    background: 'var(--topbar-bg)',
-    borderBottom: '1px solid var(--borda)',
-    backdropFilter: 'blur(12px)',
-    WebkitBackdropFilter: 'blur(12px)',
+    background: 'var(--sidebar)',
+    borderBottom: '1px solid #2A3830',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -627,7 +625,7 @@ const styles = {
   },
   logoNome: {
     fontFamily: 'Inter, sans-serif', fontWeight: '700',
-    fontSize: '16px', color: 'var(--texto)', whiteSpace: 'nowrap',
+    fontSize: '16px', color: '#ffffff', whiteSpace: 'nowrap',
     letterSpacing: '-0.02em',
   },
   topbarDireita: {
@@ -636,34 +634,33 @@ const styles = {
   },
   btnTopbar: {
     background: 'none', border: 'none', borderRadius: '8px',
-    color: 'var(--texto-apagado)', width: '36px', height: '36px',
+    color: 'rgba(255,255,255,0.85)', width: '36px', height: '36px',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
     cursor: 'pointer', transition: 'all 0.15s',
   },
   btnTopbarAtivo: {
-    background: 'var(--verde-glow)',
-    color: 'var(--verde)',
+    background: 'rgba(255,255,255,0.15)',
+    color: '#ffffff',
   },
   chatBadge: {
     position: 'absolute', top: '4px', right: '4px',
-    background: 'var(--gradiente-verde)', color: '#fff',
-    fontSize: '0.5rem', fontWeight: '700',
+    background: '#ffffff', color: '#00b141',
+    fontSize: '0.5rem', fontWeight: '800',
     borderRadius: '50%', width: '13px', height: '13px',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
-    boxShadow: '0 0 6px rgba(0,177,65,0.5)',
   },
   topbarDivisor: {
-    width: '1px', height: '20px', background: 'var(--borda)', margin: '0 8px',
+    width: '1px', height: '20px', background: 'rgba(255,255,255,0.25)', margin: '0 8px',
   },
   avatarBtn: {
     display: 'flex', alignItems: 'center', gap: '8px',
-    background: 'none', border: 'none', cursor: 'pointer',
-    padding: '4px 8px', borderRadius: '8px',
+    background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', cursor: 'pointer',
+    padding: '4px 10px 4px 6px', borderRadius: '99px',
     transition: 'background 0.15s',
   },
   avatarInfo: { display: 'flex', flexDirection: 'column', textAlign: 'left' },
-  avatarNome: { fontSize: '0.8rem', fontWeight: '600', color: 'var(--texto)', whiteSpace: 'nowrap', letterSpacing: '-0.01em' },
-  avatarCargo: { fontSize: '0.65rem', color: 'var(--texto-apagado)' },
+  avatarNome: { fontSize: '0.8rem', fontWeight: '600', color: '#ffffff', whiteSpace: 'nowrap', letterSpacing: '-0.01em' },
+  avatarCargo: { fontSize: '0.65rem', color: 'rgba(255,255,255,0.7)' },
 
   // Sidebar
   sidebar: {

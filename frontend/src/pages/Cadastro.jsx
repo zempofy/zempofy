@@ -5,29 +5,30 @@ import { useAuth } from '../contexts/AuthContext'
 export default function Cadastro() {
   const { cadastrar } = useAuth()
   const navigate = useNavigate()
-  const [form, setForm] = useState({ nomeEmpresa: '', nomeAdmin: '', email: '', senha: '', confirmarSenha: '' })
+  const [form, setForm] = useState({ nomeEmpresa: '', cnpj: '', nomeAdmin: '', email: '', senha: '', confirmarSenha: '' })
   const [erro, setErro] = useState('')
   const [carregando, setCarregando] = useState(false)
+  const [verSenha, setVerSenha] = useState(false)
+  const [verConfirmar, setVerConfirmar] = useState(false)
+  const [aceitouTermos, setAceitouTermos] = useState(false)
+  const [modalTermos, setModalTermos] = useState(false)
+
+  const mascaraCNPJ = (valor) => valor
+    .replace(/\D/g, '').slice(0, 14)
+    .replace(/^(\d{2})(\d)/, '$1.$2')
+    .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
+    .replace(/\.(\d{3})(\d)/, '.$1/$2')
+    .replace(/(\d{4})(\d)/, '$1-$2')
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setErro('')
-
-    if (form.senha !== form.confirmarSenha) {
-      return setErro('As senhas não coincidem.')
-    }
-    if (form.senha.length < 6) {
-      return setErro('A senha precisa ter pelo menos 6 caracteres.')
-    }
-
+    if (!aceitouTermos) return setErro('Você precisa aceitar os Termos de Uso para continuar.')
+    if (form.senha !== form.confirmarSenha) return setErro('As senhas não coincidem.')
+    if (form.senha.length < 6) return setErro('A senha precisa ter pelo menos 6 caracteres.')
     setCarregando(true)
     try {
-      await cadastrar({
-        nomeEmpresa: form.nomeEmpresa,
-        nomeAdmin: form.nomeAdmin,
-        email: form.email,
-        senha: form.senha
-      })
+      await cadastrar({ nomeEmpresa: form.nomeEmpresa, cnpj: form.cnpj, nomeAdmin: form.nomeAdmin, email: form.email, senha: form.senha })
       navigate('/admin')
     } catch (err) {
       setErro(err.response?.data?.erro || 'Erro ao criar conta.')
@@ -64,10 +65,22 @@ export default function Cadastro() {
               <label style={styles.label}>Nome da empresa</label>
               <input
                 type="text"
-                placeholder="Ex: Padaria do João"
+                placeholder="Ex: Escritório Contábil Silva"
                 value={form.nomeEmpresa}
                 onChange={e => atualizar('nomeEmpresa', e.target.value)}
                 style={styles.input}
+                required
+              />
+            </div>
+            <div style={styles.campo}>
+              <label style={styles.label}>CNPJ</label>
+              <input
+                type="text"
+                placeholder="00.000.000/0000-00"
+                value={form.cnpj}
+                onChange={e => atualizar('cnpj', mascaraCNPJ(e.target.value))}
+                style={styles.input}
+                maxLength={18}
                 required
               />
             </div>
@@ -100,28 +113,65 @@ export default function Cadastro() {
             <div style={styles.linha2}>
               <div style={styles.campo}>
                 <label style={styles.label}>Senha</label>
-                <input
-                  type="password"
-                  placeholder="••••••••"
-                  value={form.senha}
-                  onChange={e => atualizar('senha', e.target.value)}
-                  style={styles.input}
-                  required
-                />
+                <div style={styles.inputWrapper}>
+                  <input
+                    type={verSenha ? 'text' : 'password'}
+                    placeholder="••••••••"
+                    value={form.senha}
+                    onChange={e => atualizar('senha', e.target.value)}
+                    style={{ ...styles.input, paddingRight: '42px' }}
+                    required
+                  />
+                  <button type="button" style={styles.btnOlho} onClick={() => setVerSenha(v => !v)} title={verSenha ? 'Ocultar senha' : 'Ver senha'}>
+                    {verSenha
+                      ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                      : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    }
+                  </button>
+                </div>
               </div>
               <div style={styles.campo}>
                 <label style={styles.label}>Confirmar senha</label>
-                <input
-                  type="password"
-                  placeholder="••••••••"
-                  value={form.confirmarSenha}
-                  onChange={e => atualizar('confirmarSenha', e.target.value)}
-                  style={styles.input}
-                  required
-                />
+                <div style={styles.inputWrapper}>
+                  <input
+                    type={verConfirmar ? 'text' : 'password'}
+                    placeholder="••••••••"
+                    value={form.confirmarSenha}
+                    onChange={e => atualizar('confirmarSenha', e.target.value)}
+                    style={{ ...styles.input, paddingRight: '42px' }}
+                    required
+                  />
+                  <button type="button" style={styles.btnOlho} onClick={() => setVerConfirmar(v => !v)} title={verConfirmar ? 'Ocultar senha' : 'Ver senha'}>
+                    {verConfirmar
+                      ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                      : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    }
+                  </button>
+                </div>
               </div>
             </div>
           </div>
+
+          {/* Termos de uso */}
+          <label style={styles.termosLabel}>
+            <input
+              type="checkbox"
+              checked={aceitouTermos}
+              onChange={e => setAceitouTermos(e.target.checked)}
+              style={{ marginTop: '2px', accentColor: '#00b141', width: '16px', height: '16px', flexShrink: 0, cursor: 'pointer' }}
+            />
+            <span style={{ fontSize: '0.85rem', color: '#a1a1aa', lineHeight: '1.5' }}>
+              Li e aceito os{' '}
+              <button type="button" style={styles.linkTermos} onClick={() => setModalTermos(true)}>
+                Termos de Uso
+              </button>
+              {' '}e a{' '}
+              <button type="button" style={styles.linkTermos} onClick={() => setModalTermos(true)}>
+                Política de Privacidade
+              </button>
+              {' '}do Zempofy.
+            </span>
+          </label>
 
           <button type="submit" style={styles.botao} disabled={carregando}>
             {carregando ? 'Criando conta...' : 'Criar empresa grátis'}
@@ -133,6 +183,50 @@ export default function Cadastro() {
           <Link to="/login" style={styles.link}>Fazer login</Link>
         </p>
       </div>
+
+      {/* Modal Termos de Uso */}
+      {modalTermos && (
+        <div style={styles.termosOverlay} onClick={() => setModalTermos(false)}>
+          <div style={styles.termosModal} onClick={e => e.stopPropagation()}>
+            <div style={styles.termosTopo}>
+              <span style={styles.termosTitulo}>Termos de Uso e Política de Privacidade</span>
+              <button style={styles.termosFechar} onClick={() => setModalTermos(false)}>✕</button>
+            </div>
+            <div style={styles.termosCorpo}>
+              <p style={styles.termosTexto}>Última atualização: Janeiro de 2025</p>
+
+              <p style={styles.termosSecTitulo}>1. Aceitação dos Termos</p>
+              <p style={styles.termosTexto}>Ao criar uma conta no Zempofy, você concorda com estes Termos de Uso. O Zempofy é uma plataforma de gestão de onboarding para escritórios contábeis. O uso do sistema implica na aceitação integral das condições aqui descritas.</p>
+
+              <p style={styles.termosSecTitulo}>2. Uso do Sistema</p>
+              <p style={styles.termosTexto}>O Zempofy é fornecido para uso exclusivo do escritório contábil cadastrado e sua equipe. É proibido compartilhar credenciais de acesso, utilizar o sistema para fins ilícitos, ou tentar comprometer a segurança da plataforma.</p>
+
+              <p style={styles.termosSecTitulo}>3. Dados e Privacidade</p>
+              <p style={styles.termosTexto}>Os dados cadastrados no sistema (informações de clientes, documentos, configurações) são de responsabilidade do escritório. O Zempofy não compartilha dados com terceiros e adota medidas de segurança para proteger as informações armazenadas.</p>
+
+              <p style={styles.termosSecTitulo}>4. Disponibilidade</p>
+              <p style={styles.termosTexto}>O Zempofy se esforça para manter o sistema disponível, mas não garante disponibilidade ininterrupta. Manutenções podem ser realizadas sem aviso prévio. Não nos responsabilizamos por perdas decorrentes de indisponibilidade temporária.</p>
+
+              <p style={styles.termosSecTitulo}>5. Gratuidade</p>
+              <p style={styles.termosTexto}>O plano atual é gratuito. O Zempofy se reserva o direito de introduzir planos pagos no futuro, comunicando os usuários com antecedência mínima de 30 dias.</p>
+
+              <p style={styles.termosSecTitulo}>6. Cancelamento</p>
+              <p style={styles.termosTexto}>Você pode cancelar sua conta a qualquer momento. Após o cancelamento, os dados poderão ser removidos permanentemente após 30 dias.</p>
+
+              <p style={styles.termosSecTitulo}>7. Contato</p>
+              <p style={styles.termosTexto}>Em caso de dúvidas sobre estes termos, entre em contato através do e-mail disponível na plataforma.</p>
+            </div>
+            <div style={{ padding: '16px 24px', borderTop: '1px solid #27272a' }}>
+              <button
+                style={{ ...styles.botao, marginTop: 0 }}
+                onClick={() => { setAceitouTermos(true); setModalTermos(false) }}
+              >
+                Li e aceito os Termos de Uso
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -216,9 +310,21 @@ const styles = {
     color: '#fff', border: 'none', borderRadius: '10px',
     padding: '14px', fontFamily: 'Inter, sans-serif',
     fontWeight: '600', fontSize: '1rem', cursor: 'pointer',
-    marginTop: '4px', letterSpacing: '0.3px',
+    marginTop: '4px', letterSpacing: '0.3px', width: '100%',
     boxShadow: '0 2px 12px rgba(0,177,65,0.35)',
   },
+  inputWrapper: { position: 'relative', display: 'flex', alignItems: 'center' },
+  btnOlho: { position: 'absolute', right: '12px', background: 'none', border: 'none', color: '#71717a', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' },
+  termosLabel: { display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer', marginTop: '4px' },
+  linkTermos: { background: 'none', border: 'none', color: '#00b141', cursor: 'pointer', fontWeight: '600', fontSize: '0.85rem', padding: 0, fontFamily: 'Inter, sans-serif', textDecoration: 'underline' },
+  termosOverlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', backdropFilter: 'blur(4px)' },
+  termosModal: { background: '#18181b', border: '1px solid #27272a', borderRadius: '16px', width: '100%', maxWidth: '560px', maxHeight: '85vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 64px rgba(0,0,0,0.6)' },
+  termosTopo: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px', borderBottom: '1px solid #27272a' },
+  termosTitulo: { fontWeight: '700', fontSize: '1rem', color: '#fafafa', fontFamily: 'Inter, sans-serif' },
+  termosFechar: { background: 'none', border: '1px solid #27272a', borderRadius: '6px', color: '#71717a', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', cursor: 'pointer' },
+  termosCorpo: { padding: '24px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px', flex: 1 },
+  termosSecTitulo: { fontSize: '0.85rem', fontWeight: '700', color: '#00b141', marginBottom: '-8px' },
+  termosTexto: { fontSize: '0.85rem', color: '#a1a1aa', lineHeight: '1.7' },
   rodape: { textAlign: 'center', marginTop: '20px', color: '#71717a', fontSize: '0.875rem' },
   link: { color: '#00b141', fontWeight: '600' },
 }

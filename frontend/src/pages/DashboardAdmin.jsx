@@ -849,7 +849,6 @@ export default function DashboardAdmin() {
     { id: 'clientes', label: 'Clientes', icone: <Icone.Users size={16} /> },
     { id: 'tarefas', label: 'Tarefas', icone: <Icone.ClipboardList size={16} /> },
     { id: 'anotacoes', label: 'Anotações', icone: <Icone.Edit size={16} /> },
-    { id: 'mural', label: 'Mural', icone: <Icone.Bell size={16} /> },
     { id: 'relatorios', label: 'Relatórios', icone: <Icone.BarChart size={16} /> },
     { id: 'historico', label: 'Histórico', icone: <Icone.CheckCircle size={16} /> },
   ]

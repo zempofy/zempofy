@@ -1,50 +1,65 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import api from '../services/api'
 import { useToast } from './Toast'
 
-// ── Tela de detalhe de uma implantação ──
+// ── Mapa mental horizontal da implantação ──
 function DetalheImplantacao({ implantacao: inicial, voltar, onAtualizado }) {
   const [implantacao, setImplantacao] = useState(inicial)
   const [etapaSelecionada, setEtapaSelecionada] = useState(
     () => inicial.etapas.find(e => e.status === 'em_andamento') || inicial.etapas[0]
   )
+  const mapaRef = useRef(null)
+  const isDragging = useRef(false)
+  const startX = useRef(0)
+  const scrollLeft = useRef(0)
   const { mostrar: toast } = useToast()
 
   const recarregar = async () => {
     try {
       const res = await api.get(`/implantacoes/${implantacao._id}`)
       setImplantacao(res.data)
-      const etapaAtual = res.data.etapas.find(e => e._id === etapaSelecionada._id)
-      if (etapaAtual) setEtapaSelecionada(etapaAtual)
+      const atual = res.data.etapas.find(e => e._id === etapaSelecionada._id)
+      if (atual) setEtapaSelecionada(atual)
       onAtualizado()
     } catch { toast('Erro ao atualizar.', 'erro') }
   }
 
-  const toggleTarefa = async (etapa, tarefa) => {
-    const rota = tarefa.status === 'pendente' ? 'concluir' : 'desmarcar'
-    try {
-      await api.patch(`/implantacoes/${implantacao._id}/tarefas/${etapa._id}/${tarefa._id}/${rota}`)
-      await recarregar()
-    } catch { toast('Erro ao atualizar tarefa.', 'erro') }
+  useEffect(() => { recarregar() }, [])
+
+  // Drag to scroll
+  const onMouseDown = (e) => {
+    isDragging.current = true
+    startX.current = e.pageX - mapaRef.current.offsetLeft
+    scrollLeft.current = mapaRef.current.scrollLeft
+    mapaRef.current.style.cursor = 'grabbing'
+  }
+  const onMouseUp = () => {
+    isDragging.current = false
+    if (mapaRef.current) mapaRef.current.style.cursor = 'grab'
+  }
+  const onMouseMove = (e) => {
+    if (!isDragging.current) return
+    e.preventDefault()
+    const x = e.pageX - mapaRef.current.offsetLeft
+    mapaRef.current.scrollLeft = scrollLeft.current - (x - startX.current)
   }
 
   const progresso = () => {
     const total = implantacao.etapas.length
-    const concluidas = implantacao.etapas.filter(e => e.status === 'concluida').length
-    return total > 0 ? Math.round((concluidas / total) * 100) : 0
+    const conc = implantacao.etapas.filter(e => e.status === 'concluida').length
+    return total > 0 ? Math.round((conc / total) * 100) : 0
   }
 
   const etapaExibida = implantacao.etapas.find(e => e._id === etapaSelecionada._id) || etapaSelecionada
+  const concEtapas = implantacao.etapas.filter(e => e.status === 'concluida').length
 
   return (
     <div>
       {/* Voltar */}
-      <button style={s.btnVoltar} onClick={voltar}>
-        ← Onboarding
-      </button>
+      <button style={s.btnVoltar} onClick={voltar}>← Onboarding</button>
 
       {/* Cabeçalho */}
-      <div style={{ marginBottom: '24px' }}>
+      <div style={{ marginBottom: '20px' }}>
         <h1 style={s.titulo}>{implantacao.nomeCliente}</h1>
         <p style={s.subtitulo}>
           {implantacao.cnpj && `${implantacao.cnpj} · `}
@@ -53,103 +68,156 @@ function DetalheImplantacao({ implantacao: inicial, voltar, onAtualizado }) {
         </p>
       </div>
 
-      {/* Barra de progresso */}
-      <div style={{ marginBottom: '28px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-          <span style={s.labelProg}>Progresso geral</span>
-          <span style={s.labelProg}>{implantacao.etapas.filter(e => e.status === 'concluida').length} de {implantacao.etapas.length} etapas</span>
-        </div>
-        <div style={s.baraBg}>
-          <div style={{ ...s.baraFill, width: `${progresso()}%` }} />
-        </div>
-      </div>
-
-      {/* Timeline de setores */}
-      <div style={s.timeline}>
-        {implantacao.etapas.map((etapa, idx) => {
-          const ativa = etapa._id === etapaExibida._id
-          const cor = etapa.setor?.cor || '#2DAA59'
-          return (
-            <div key={etapa._id} style={{ display: 'flex', alignItems: 'flex-start' }}>
-              <div
-                style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: etapa.status !== 'bloqueada' ? 'pointer' : 'default' }}
-                onClick={() => etapa.status !== 'bloqueada' && setEtapaSelecionada(etapa)}
-              >
-                <div style={{
-                  ...s.stepCircle,
-                  background: etapa.status === 'concluida' ? '#2DAA59' : etapa.status === 'em_andamento' ? `${cor}22` : 'var(--input)',
-                  border: ativa ? `2px solid ${cor}` : etapa.status === 'concluida' ? '2px solid #2DAA59' : '1px solid #2A3830',
-                  color: etapa.status === 'concluida' ? '#fff' : etapa.status === 'em_andamento' ? cor : 'var(--texto-apagado)'
-                }}>
-                  {etapa.status === 'concluida' ? '✓' : idx + 1}
-                </div>
-                <span style={{
-                  ...s.stepLabel,
-                  color: ativa ? cor : etapa.status === 'bloqueada' ? 'var(--texto-apagado)' : 'var(--texto)',
-                  fontWeight: ativa ? '600' : '400'
-                }}>
-                  {etapa.setor?.nome}
-                </span>
-              </div>
-              {idx < implantacao.etapas.length - 1 && (
-                <div style={{
-                  ...s.connector,
-                  background: etapa.status === 'concluida' ? '#2DAA59' : '#2A3830'
-                }} />
-              )}
-            </div>
-          )
-        })}
-      </div>
-
-      {/* Tarefas da etapa selecionada */}
-      {etapaExibida && (
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
-            <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: etapaExibida.setor?.cor || '#2DAA59' }} />
-            <h2 style={s.secaoTitulo}>Tarefas — {etapaExibida.setor?.nome}</h2>
-            {etapaExibida.status === 'bloqueada' && (
-              <span style={s.badgeBloqueado}>🔒 Bloqueada</span>
-            )}
+      {/* Card do mapa */}
+      <div style={s.mapaCard}>
+        {/* Topo do card: progresso */}
+        <div style={s.mapaCardTopo}>
+          <span style={s.mapaProgLabel}>{concEtapas} de {implantacao.etapas.length} etapas concluídas</span>
+          <div style={s.mapaBaraBg}>
+            <div style={{ ...s.mapaBaraFill, width: `${progresso()}%` }} />
           </div>
+          <span style={s.mapaProgPct}>{progresso()}%</span>
+        </div>
 
-          {etapaExibida.status === 'bloqueada' ? (
-            <p style={{ color: 'var(--texto-apagado)', fontSize: '0.875rem' }}>
-              Esta etapa será liberada quando a anterior for concluída.
-            </p>
-          ) : etapaExibida.tarefas.length === 0 ? (
-            <p style={{ color: 'var(--texto-apagado)', fontSize: '0.875rem' }}>Nenhuma tarefa nesta etapa.</p>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {etapaExibida.tarefas.map(tarefaEtapa => (
-                <div
-                  key={tarefaEtapa._id}
-                  style={{ ...s.tarefaCard, opacity: etapaExibida.status === 'bloqueada' ? 0.5 : 1 }}
-                  onClick={() => etapaExibida.status !== 'bloqueada' && toggleTarefa(etapaExibida, tarefaEtapa)}
-                >
-                  <div style={{
-                    ...s.check,
-                    background: tarefaEtapa.status === 'concluida' ? '#2DAA59' : 'transparent',
-                    borderColor: tarefaEtapa.status === 'concluida' ? '#2DAA59' : '#2A3830'
-                  }}>
-                    {tarefaEtapa.status === 'concluida' && <span style={{ color: '#fff', fontSize: '11px' }}>✓</span>}
+        {/* Mapa horizontal arrastável */}
+        <div
+          ref={mapaRef}
+          style={s.mapaScroll}
+          onMouseDown={onMouseDown}
+          onMouseUp={onMouseUp}
+          onMouseLeave={onMouseUp}
+          onMouseMove={onMouseMove}
+        >
+          <div style={s.mapaFlex}>
+            {implantacao.etapas.map((etapa, idx) => {
+              const cor = etapa.setor?.cor || '#2DAA59'
+              const ativa = etapa._id === etapaExibida._id
+              const concluida = etapa.status === 'concluida'
+              const bloqueada = etapa.status === 'bloqueada'
+              const concTarefas = etapa.tarefas.filter(t => t.status === 'concluida').length
+              const totalTarefas = etapa.tarefas.length
+
+              return (
+                <div key={etapa._id} style={{ display: 'flex', alignItems: 'center' }}>
+                  {/* Box do setor */}
+                  <div
+                    style={{
+                      ...s.setorBox,
+                      borderColor: ativa ? cor : concluida ? '#2DAA59' : 'rgba(255,255,255,0.08)',
+                      background: ativa ? `${cor}12` : concluida ? 'rgba(34,197,94,0.06)' : 'rgba(255,255,255,0.03)',
+                      opacity: bloqueada ? 0.35 : 1,
+                      cursor: bloqueada ? 'default' : 'pointer',
+                      outline: ativa ? `2px solid ${cor}` : 'none',
+                      outlineOffset: '3px',
+                    }}
+                    onClick={() => !bloqueada && setEtapaSelecionada(etapa)}
+                  >
+                    {/* Ícone de status */}
+                    <div style={{
+                      ...s.setorIcone,
+                      background: concluida ? '#2DAA59' : ativa ? `${cor}22` : 'rgba(255,255,255,0.06)',
+                      border: concluida ? '2px solid #2DAA59' : ativa ? `1.5px solid ${cor}` : '1px solid rgba(255,255,255,0.1)',
+                      color: concluida ? '#fff' : ativa ? cor : 'rgba(255,255,255,0.3)',
+                    }}>
+                      {concluida
+                        ? <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="1.5 6 4.5 9 10.5 3"/></svg>
+                        : <span style={{ fontSize: '11px', fontWeight: '700', fontFamily: 'Inter, sans-serif' }}>{idx + 1}</span>
+                      }
+                    </div>
+
+                    {/* Nome */}
+                    <span style={{
+                      ...s.setorNome,
+                      color: ativa ? cor : concluida ? '#2DAA59' : 'var(--texto-apagado)',
+                      fontWeight: ativa ? '600' : '400',
+                    }}>
+                      {etapa.setor?.nome}
+                    </span>
+
+                    {/* Contagem de tarefas */}
+                    {totalTarefas > 0 && (
+                      <span style={{
+                        ...s.setorCount,
+                        color: concluida ? '#2DAA59' : ativa ? cor : 'var(--texto-apagado)',
+                        background: concluida ? 'rgba(34,197,94,0.12)' : ativa ? `${cor}18` : 'rgba(255,255,255,0.05)',
+                      }}>
+                        {concTarefas}/{totalTarefas}
+                      </span>
+                    )}
                   </div>
-                  <span style={{
-                    ...s.tarefaDesc,
-                    textDecoration: tarefaEtapa.status === 'concluida' ? 'line-through' : 'none',
-                    color: tarefaEtapa.status === 'concluida' ? 'var(--texto-apagado)' : 'var(--texto)'
-                  }}>
-                    {tarefaEtapa.tarefa?.descricao || 'Tarefa'}
-                  </span>
-                  {tarefaEtapa.tarefa?.responsavel?.nome && (
-                    <span style={s.tarefaResp}>{tarefaEtapa.tarefa.responsavel.nome}</span>
+
+                  {/* Conector */}
+                  {idx < implantacao.etapas.length - 1 && (
+                    <div style={{
+                      ...s.conector,
+                      background: concluida ? '#2DAA59' : 'rgba(255,255,255,0.08)',
+                    }} />
                   )}
                 </div>
-              ))}
-            </div>
-          )}
+              )
+            })}
+          </div>
+          <p style={s.mapaHint}>← arraste para navegar →</p>
         </div>
-      )}
+
+        {/* Painel de tarefas */}
+        {etapaExibida && (
+          <div style={s.painel}>
+            <div style={s.painelHeader}>
+              <div style={{ width: '9px', height: '9px', borderRadius: '50%', background: etapaExibida.setor?.cor || '#2DAA59', flexShrink: 0 }} />
+              <span style={s.painelTitulo}>{etapaExibida.setor?.nome}</span>
+              {etapaExibida.status === 'bloqueada' && (
+                <span style={s.badgeBloqueado}>Bloqueada</span>
+              )}
+              {etapaExibida.status === 'concluida' && (
+                <span style={{ ...s.badgeBloqueado, background: 'rgba(34,197,94,0.12)', color: '#2DAA59', border: '1px solid rgba(34,197,94,0.2)' }}>Concluída</span>
+              )}
+              {etapaExibida.status === 'em_andamento' && (
+                <span style={{ ...s.badgeBloqueado, background: 'rgba(55,138,221,0.12)', color: '#5BAAFF', border: '1px solid rgba(55,138,221,0.2)' }}>Em andamento</span>
+              )}
+            </div>
+
+            {etapaExibida.status === 'bloqueada' ? (
+              <p style={{ color: 'var(--texto-apagado)', fontSize: '0.85rem', fontFamily: 'Inter, sans-serif' }}>
+                Esta etapa será liberada quando a anterior for concluída.
+              </p>
+            ) : etapaExibida.tarefas.length === 0 ? (
+              <p style={{ color: 'var(--texto-apagado)', fontSize: '0.85rem', fontFamily: 'Inter, sans-serif' }}>Nenhuma atividade nesta etapa.</p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {etapaExibida.tarefas.map(tarefaEtapa => {
+                  const feita = tarefaEtapa.status === 'concluida'
+                  return (
+                    <div key={tarefaEtapa._id} style={{ ...s.tarefaItem, opacity: feita ? 0.65 : 1 }}>
+                      <div style={{
+                        ...s.tarefaCheck,
+                        background: feita ? '#2DAA59' : 'transparent',
+                        borderColor: feita ? '#2DAA59' : 'rgba(255,255,255,0.15)',
+                      }}>
+                        {feita && (
+                          <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round">
+                            <polyline points="1.5 5 4 7.5 8.5 2.5"/>
+                          </svg>
+                        )}
+                      </div>
+                      <span style={{
+                        ...s.tarefaTexto,
+                        textDecoration: feita ? 'line-through' : 'none',
+                        color: feita ? 'var(--texto-apagado)' : 'var(--texto)',
+                      }}>
+                        {tarefaEtapa.tarefa?.descricao || 'Atividade'}
+                      </span>
+                      {tarefaEtapa.tarefa?.responsavel?.nome && (
+                        <span style={s.tarefaResp}>{tarefaEtapa.tarefa.responsavel.nome}</span>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
@@ -195,7 +263,16 @@ function ModalNovaImplantacao({ fechar, onCriado }) {
           </div>
           <div style={s.campo}>
             <label style={s.label}>CNPJ (opcional)</label>
-            <input style={s.input} value={cnpj} onChange={e => setCnpj(e.target.value)} placeholder="00.000.000/0001-00" />
+            <input style={s.input} value={cnpj}
+              onChange={e => {
+                const v = e.target.value.replace(/\D/g, '').slice(0, 14)
+                  .replace(/^(\d{2})(\d)/, '$1.$2')
+                  .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
+                  .replace(/\.(\d{3})(\d)/, '.$1/$2')
+                  .replace(/(\d{4})(\d)/, '$1-$2')
+                setCnpj(v)
+              }}
+              placeholder="00.000.000/0000-00" maxLength={18} />
           </div>
           <div style={s.campo}>
             <label style={s.label}>Modelo de onboarding</label>
@@ -373,31 +450,75 @@ const s = {
   etapaBadge: { display: 'inline-block', fontSize: '0.78rem', fontWeight: '500', padding: '3px 10px', borderRadius: '99px', fontFamily: 'Inter, sans-serif' },
   baraBg: { height: '5px', background: '#2A3830', borderRadius: '99px', overflow: 'hidden' },
   baraFill: { height: '100%', background: '#2DAA59', borderRadius: '99px', transition: 'width 0.3s' },
-  // Detalhe
+  // Detalhe — mapa mental
   btnVoltar: {
     background: 'none', border: 'none', color: 'var(--texto-apagado)',
     cursor: 'pointer', fontSize: '0.875rem', fontFamily: 'Inter, sans-serif',
     marginBottom: '20px', padding: 0
   },
-  labelProg: { fontSize: '0.75rem', color: 'var(--texto-apagado)', fontFamily: 'Inter, sans-serif' },
-  timeline: { display: 'flex', alignItems: 'flex-start', marginBottom: '28px', overflowX: 'auto', paddingBottom: '4px' },
-  stepCircle: {
-    width: '34px', height: '34px', borderRadius: '50%',
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    fontSize: '12px', fontWeight: '600', transition: 'all 0.15s', fontFamily: 'Inter, sans-serif'
+  mapaCard: {
+    background: 'var(--sidebar)', border: '1px solid #2A3830',
+    borderRadius: '16px', overflow: 'hidden'
   },
-  stepLabel: { fontSize: '0.7rem', marginTop: '6px', textAlign: 'center', maxWidth: '70px', fontFamily: 'Inter, sans-serif' },
-  connector: { flex: 1, height: '2px', minWidth: '16px', margin: '16px 0 0' },
-  secaoTitulo: { fontSize: '1rem', fontWeight: '600', color: 'var(--texto)', margin: 0, fontFamily: 'Inter, sans-serif' },
-  badgeBloqueado: { fontSize: '0.75rem', color: 'var(--texto-apagado)', background: 'var(--input)', padding: '3px 10px', borderRadius: '99px', border: '1px solid #2A3830' },
-  tarefaCard: {
+  mapaCardTopo: {
     display: 'flex', alignItems: 'center', gap: '12px',
-    background: 'var(--input)', border: '1px solid #2A3830', borderRadius: '10px',
-    padding: '12px 16px', cursor: 'pointer', transition: 'border-color 0.15s'
+    padding: '14px 20px', borderBottom: '1px solid #2A3830'
   },
-  check: { width: '18px', height: '18px', borderRadius: '50%', border: '1.5px solid', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  tarefaDesc: { fontSize: '0.875rem', flex: 1, fontFamily: 'Inter, sans-serif' },
-  tarefaResp: { fontSize: '0.75rem', color: 'var(--texto-apagado)', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' },
+  mapaProgLabel: { fontSize: '0.78rem', color: 'var(--texto-apagado)', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' },
+  mapaBaraBg: { flex: 1, height: '4px', background: '#2A3830', borderRadius: '99px', overflow: 'hidden' },
+  mapaBaraFill: { height: '100%', background: '#2DAA59', borderRadius: '99px', transition: 'width 0.4s' },
+  mapaProgPct: { fontSize: '0.78rem', color: 'var(--verde)', fontFamily: 'Inter, sans-serif', fontWeight: '600', whiteSpace: 'nowrap' },
+  mapaScroll: {
+    overflowX: 'auto', cursor: 'grab',
+    padding: '28px 32px 8px',
+    userSelect: 'none',
+  },
+  mapaFlex: { display: 'flex', alignItems: 'center', minWidth: 'max-content' },
+  setorBox: {
+    width: '120px', padding: '16px 12px',
+    borderRadius: '14px', border: '1.5px solid',
+    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px',
+    transition: 'all 0.2s', flexShrink: 0,
+  },
+  setorIcone: {
+    width: '28px', height: '28px', borderRadius: '50%',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    transition: 'all 0.2s', flexShrink: 0,
+  },
+  setorNome: {
+    fontSize: '0.78rem', textAlign: 'center', lineHeight: '1.3',
+    fontFamily: 'Inter, sans-serif', transition: 'color 0.2s'
+  },
+  setorCount: {
+    fontSize: '0.65rem', padding: '2px 8px', borderRadius: '99px',
+    fontFamily: 'Inter, sans-serif', fontWeight: '500'
+  },
+  conector: { width: '48px', height: '2px', flexShrink: 0, transition: 'background 0.3s' },
+  mapaHint: {
+    fontSize: '0.7rem', color: 'var(--texto-apagado)',
+    textAlign: 'center', padding: '8px 0 16px',
+    fontFamily: 'Inter, sans-serif'
+  },
+  painel: {
+    borderTop: '1px solid #2A3830',
+    padding: '20px 24px',
+  },
+  painelHeader: { display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' },
+  painelTitulo: { fontSize: '0.95rem', fontWeight: '600', color: 'var(--texto)', fontFamily: 'Inter, sans-serif' },
+  badgeBloqueado: { fontSize: '0.72rem', color: 'var(--texto-apagado)', background: 'var(--input)', padding: '3px 10px', borderRadius: '99px', border: '1px solid #2A3830', marginLeft: 'auto', fontFamily: 'Inter, sans-serif' },
+  tarefaItem: {
+    display: 'flex', alignItems: 'center', gap: '10px',
+    background: 'var(--input)', border: '1px solid #2A3830',
+    borderRadius: '10px', padding: '11px 14px',
+  },
+  tarefaCheck: {
+    width: '17px', height: '17px', borderRadius: '50%',
+    border: '1.5px solid', flexShrink: 0,
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    transition: 'all 0.15s'
+  },
+  tarefaTexto: { fontSize: '0.875rem', flex: 1, fontFamily: 'Inter, sans-serif', transition: 'all 0.15s' },
+  tarefaResp: { fontSize: '0.72rem', color: 'var(--texto-apagado)', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' },
   vazio: { color: 'var(--texto-apagado)', fontSize: '0.9rem', textAlign: 'center', marginTop: '40px' },
   vazioBox: { textAlign: 'center', marginTop: '60px' },
   // Modal
