@@ -122,6 +122,26 @@ router.put('/:id', autenticar, apenasGestores, async (req, res) => {
   }
 });
 
+// PUT /api/usuarios/:id/permissoes - Atualizar permissões de um colaborador
+router.put('/:id/permissoes', autenticar, apenasGestores, async (req, res) => {
+  const { permissoes } = req.body;
+  try {
+    const alvo = await Usuario.findOne({ _id: req.params.id, empresa: req.usuario.empresa._id });
+    if (!alvo) return res.status(404).json({ erro: 'Usuário não encontrado.' });
+    if (alvo.cargo !== 'colaborador') {
+      return res.status(403).json({ erro: 'Permissões customizadas são apenas para colaboradores.' });
+    }
+    const permissoesValidas = ['clientes', 'implantacao', 'modelos_onboarding', 'checklist', 'setores', 'adicionar_colaboradores'];
+    const permissoesFiltradas = (permissoes || []).filter(p => permissoesValidas.includes(p));
+    const usuario = await Usuario.findByIdAndUpdate(
+      req.params.id, { permissoes: permissoesFiltradas }, { new: true }
+    ).select('-senha');
+    res.json(usuario);
+  } catch (err) {
+    res.status(500).json({ erro: 'Erro ao atualizar permissões.' });
+  }
+});
+
 // DELETE /api/usuarios/:id - Remover usuário
 router.delete('/:id', autenticar, apenasGestores, async (req, res) => {
   try {

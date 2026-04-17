@@ -24,6 +24,30 @@ router.get('/', autenticar, async (req, res) => {
   }
 });
 
+// GET /api/implantacoes/por-tarefa/:tarefaId — busca a implantação que contém essa tarefa
+router.get('/por-tarefa/:tarefaId', autenticar, async (req, res) => {
+  try {
+    const implantacao = await Implantacao.findOne({
+      empresa: req.usuario.empresa._id,
+      'etapas.tarefas.tarefa': req.params.tarefaId
+    })
+    .populate('criadoPor', 'nome')
+    .populate('modelo', 'nome');
+    if (!implantacao) return res.status(404).json({ erro: 'Implantação não encontrada.' });
+    res.json({
+      _id: implantacao._id,
+      nomeCliente: implantacao.nomeCliente,
+      cnpj: implantacao.cnpj,
+      modelo: implantacao.modelo?.nome || '',
+      criadoPor: implantacao.criadoPor?.nome || '',
+      criadoEm: implantacao.criadoEm,
+      status: implantacao.status,
+    });
+  } catch (err) {
+    res.status(500).json({ erro: 'Erro ao buscar implantação.' });
+  }
+});
+
 // GET /api/implantacoes/:id
 router.get('/:id', autenticar, async (req, res) => {
   try {

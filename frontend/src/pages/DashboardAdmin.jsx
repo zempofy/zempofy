@@ -527,6 +527,66 @@ function CardTarefa({ t, onConcluir, onDesmarcar, onEditar, onExcluir, onEtiquet
   )
 }
 
+// Popup de info do onboarding — reutilizado do funcionário
+function PopupOnboardingAdmin({ tarefaId, onFechar }) {
+  const [dados, setDados] = useState(null)
+  const [carregando, setCarregando] = useState(true)
+
+  useEffect(() => {
+    api.get(`/implantacoes/por-tarefa/${tarefaId}`)
+      .then(r => setDados(r.data))
+      .catch(() => setDados(null))
+      .finally(() => setCarregando(false))
+  }, [tarefaId])
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)' }}
+      onClick={onFechar}>
+      <div style={{ background: 'var(--card)', border: '1px solid var(--borda)', borderRadius: '18px', width: '100%', maxWidth: '420px', margin: '0 16px', boxShadow: '0 8px 32px rgba(0,0,0,0.5)', overflow: 'hidden' }}
+        onClick={e => e.stopPropagation()}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 22px', borderBottom: '1px solid var(--borda)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontSize: '0.62rem', fontWeight: '700', padding: '2px 7px', borderRadius: '6px', background: 'var(--verde-glow)', color: 'var(--verde)', border: '1px solid rgba(0,177,65,0.2)' }}>Onboarding</span>
+            <span style={{ fontWeight: '700', fontSize: '0.95rem', color: 'var(--texto)', fontFamily: 'Inter, sans-serif' }}>Informações do cliente</span>
+          </div>
+          <button style={{ background: 'none', border: '1px solid var(--borda)', borderRadius: '6px', color: 'var(--texto-apagado)', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', cursor: 'pointer' }} onClick={onFechar}>✕</button>
+        </div>
+        <div style={{ padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {carregando ? (
+            <p style={{ color: 'var(--texto-apagado)', fontSize: '0.875rem' }}>Carregando...</p>
+          ) : !dados ? (
+            <p style={{ color: 'var(--texto-apagado)', fontSize: '0.875rem' }}>Não foi possível carregar os dados.</p>
+          ) : (
+            <>
+              {[
+                { label: 'Cliente', valor: dados.nomeCliente },
+                dados.cnpj ? { label: 'CNPJ', valor: dados.cnpj, mono: true } : null,
+                dados.modelo ? { label: 'Modelo de onboarding', valor: dados.modelo } : null,
+                { label: 'Criado por', valor: dados.criadoPor },
+                { label: 'Data de início', valor: new Date(dados.criadoEm).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' }) },
+              ].filter(Boolean).map(item => (
+                <div key={item.label} style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                  <span style={{ fontSize: '0.65rem', fontWeight: '700', color: 'var(--texto-apagado)', textTransform: 'uppercase', letterSpacing: '0.8px' }}>{item.label}</span>
+                  <span style={{ fontSize: '0.9rem', color: 'var(--texto)', fontWeight: '500', fontFamily: item.mono ? 'monospace' : 'Inter, sans-serif', letterSpacing: item.mono ? '0.5px' : 0 }}>{item.valor}</span>
+                </div>
+              ))}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                <span style={{ fontSize: '0.65rem', fontWeight: '700', color: 'var(--texto-apagado)', textTransform: 'uppercase', letterSpacing: '0.8px' }}>Status</span>
+                <span style={{ fontSize: '0.75rem', fontWeight: '600', padding: '2px 8px', borderRadius: '6px', width: 'fit-content', background: dados.status === 'concluida' ? 'rgba(0,177,65,0.12)' : 'rgba(245,158,11,0.12)', color: dados.status === 'concluida' ? 'var(--verde)' : '#F59E0B', border: dados.status === 'concluida' ? '1px solid rgba(0,177,65,0.2)' : '1px solid rgba(245,158,11,0.2)' }}>
+                  {dados.status === 'concluida' ? 'Concluído' : 'Em andamento'}
+                </span>
+              </div>
+            </>
+          )}
+        </div>
+        <div style={{ padding: '14px 22px', borderTop: '1px solid var(--borda)', display: 'flex', justifyContent: 'flex-end' }}>
+          <button style={{ background: 'none', border: '1px solid var(--borda)', borderRadius: '8px', color: 'var(--texto-apagado)', padding: '8px 18px', fontFamily: 'Inter, sans-serif', fontSize: '0.875rem', cursor: 'pointer' }} onClick={onFechar}>Fechar</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function PaginaTarefas({ tarefas, funcionarios, recarregar }) {
   const [mostrarForm, setMostrarForm] = useState(false)
   const [form, setForm] = useState({ descricao: '', data: '', hora: '', local: '', responsavelId: '', prioridade: '' })
@@ -537,12 +597,13 @@ function PaginaTarefas({ tarefas, funcionarios, recarregar }) {
   const [gerenciarEtiquetas, setGerenciarEtiquetas] = useState(false)
   const [novaEtiqueta, setNovaEtiqueta] = useState('')
   const [idsOnboarding, setIdsOnboarding] = useState(new Set())
+  const [popupTarefaId, setPopupTarefaId] = useState(null)
   const [etiquetasCustom, setEtiquetasCustom] = useState(() => {
     try { return JSON.parse(localStorage.getItem('zmp_etiquetas') || 'null') || ETIQUETAS_OPCOES } catch { return ETIQUETAS_OPCOES }
   })
   const { mostrar } = useToast()
 
-  // Busca implantações para saber quais tarefas são de onboarding
+  // Busca implantações para identificar tarefas de onboarding
   useEffect(() => {
     api.get('/implantacoes').then(res => {
       const ids = new Set()
@@ -556,6 +617,8 @@ function PaginaTarefas({ tarefas, funcionarios, recarregar }) {
       setIdsOnboarding(ids)
     }).catch(() => {})
   }, [tarefas])
+
+  const ehOnboarding = (t) => idsOnboarding.has(t._id)
 
   const salvarEtiquetasCustom = (lista) => {
     setEtiquetasCustom(lista)
@@ -605,20 +668,57 @@ function PaginaTarefas({ tarefas, funcionarios, recarregar }) {
     return matchBusca && matchStatus && matchResp
   })
 
-  // Separar tarefas normais das de onboarding
-  const tarefasNormais = tarefasFiltradas.filter(t => !idsOnboarding.has(t._id))
-  const tarefasOnboarding = tarefasFiltradas.filter(t => idsOnboarding.has(t._id))
-
+  // Separar onboarding das normais
+  const tarefasOnb = tarefasFiltradas.filter(t => ehOnboarding(t))
+  const tarefasNormais = tarefasFiltradas.filter(t => !ehOnboarding(t))
+  const onbPendentes = tarefasOnb.filter(t => t.status === 'pendente')
+  const onbConcluidas = tarefasOnb.filter(t => t.status === 'concluida')
   const normaisPendentes = tarefasNormais.filter(t => t.status === 'pendente')
   const normaisConcluidas = tarefasNormais.filter(t => t.status === 'concluida')
-  const onbPendentes = tarefasOnboarding.filter(t => t.status === 'pendente')
-  const onbConcluidas = tarefasOnboarding.filter(t => t.status === 'concluida')
   const totalPendentes = tarefasFiltradas.filter(t => t.status === 'pendente').length
   const totalConcluidas = tarefasFiltradas.filter(t => t.status === 'concluida').length
   const temFiltro = busca || filtroStatus !== 'todas' || filtroResponsavel
 
+  // Wrapper do CardTarefa que injeta badge e botão Info nas tarefas de onboarding
+  const CardComInfo = ({ t, concluida = false }) => (
+    <div style={{ position: 'relative' }}>
+      {ehOnboarding(t) && (
+        <div style={{ position: 'absolute', top: '12px', left: '12px', zIndex: 1, display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span style={{ fontSize: '0.6rem', fontWeight: '700', padding: '1px 6px', borderRadius: '5px', background: 'var(--verde-glow)', color: 'var(--verde)', border: '1px solid rgba(0,177,65,0.2)', letterSpacing: '0.3px' }}>
+            Onboarding
+          </span>
+          <button
+            style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'rgba(0,177,65,0.06)', border: '1px solid rgba(0,177,65,0.2)', borderRadius: '6px', color: 'var(--verde)', padding: '1px 7px', fontSize: '0.72rem', cursor: 'pointer', fontFamily: 'Inter, sans-serif', fontWeight: '600' }}
+            onClick={() => setPopupTarefaId(t._id)}
+          >
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+            Info
+          </button>
+        </div>
+      )}
+      <div style={{ paddingTop: ehOnboarding(t) ? '32px' : '0', borderLeft: ehOnboarding(t) ? '3px solid var(--verde)' : undefined, borderRadius: ehOnboarding(t) ? '12px' : undefined }}>
+        <CardTarefa t={t} etiquetasOpcoes={etiquetasCustom}
+          onConcluir={concluir} onDesmarcar={desmarcar} onEditar={editar}
+          onExcluir={excluir} onEtiquetas={atualizarEtiquetas} concluida={concluida} />
+      </div>
+    </div>
+  )
+
+  const SecaoHeader = ({ titulo, count, verde }) => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px', paddingBottom: '8px', borderBottom: '1px solid var(--borda)' }}>
+      <h2 style={{ fontSize: '0.72rem', fontWeight: '700', color: 'var(--texto-apagado)', textTransform: 'uppercase', letterSpacing: '1.5px', margin: 0 }}>{titulo}</h2>
+      <span style={{ fontSize: '0.72rem', fontWeight: '600', borderRadius: '20px', padding: '2px 10px', ...(verde ? { color: 'var(--verde)', background: 'var(--verde-glow)', border: '1px solid rgba(0,177,65,0.2)' } : { color: 'var(--texto-apagado)', background: 'var(--input)', border: '1px solid var(--borda)' }) }}>
+        {count} pendente(s)
+      </span>
+    </div>
+  )
+
   return (
     <div>
+      {popupTarefaId && (
+        <PopupOnboardingAdmin tarefaId={popupTarefaId} onFechar={() => setPopupTarefaId(null)} />
+      )}
+
       {/* Cabeçalho */}
       <div style={styles.cabecalho}>
         <div>
@@ -731,39 +831,26 @@ function PaginaTarefas({ tarefas, funcionarios, recarregar }) {
         </div>
       )}
 
-      {/* Lista de tarefas — sem resultados com filtro */}
+      {/* Lista de tarefas */}
       {tarefasFiltradas.length === 0 && temFiltro ? (
         <div style={{ textAlign: 'center', padding: '40px', color: 'var(--texto-apagado)' }}>
           <p>Nenhuma tarefa encontrada com esses filtros.</p>
         </div>
       ) : (
         <>
-          {/* ── TAREFAS DE ONBOARDING ── */}
+          {/* ── ONBOARDING DE CLIENTES ── */}
           <div style={styles.secao}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px', paddingBottom: '8px', borderBottom: '1px solid var(--borda)' }}>
-              <h2 style={{ ...styles.secaoTitulo, margin: 0, border: 'none', padding: 0 }}>Onboarding de clientes</h2>
-              <span style={{ fontSize: '0.72rem', color: 'var(--verde)', background: 'var(--verde-glow)', borderRadius: '20px', padding: '2px 8px', border: '1px solid rgba(0,177,65,0.2)' }}>
-                {onbPendentes.length} pendente(s)
-              </span>
-            </div>
+            <SecaoHeader titulo="Onboarding de clientes" count={onbPendentes.length} verde />
             {onbPendentes.length === 0 && onbConcluidas.length === 0 ? (
               <p style={{ color: 'var(--texto-apagado)', fontSize: '0.875rem' }}>Nenhuma tarefa de onboarding em andamento.</p>
             ) : (
               <>
-                {onbPendentes.map(t => (
-                  <CardTarefa key={t._id} t={t} etiquetasOpcoes={etiquetasCustom}
-                    onConcluir={concluir} onDesmarcar={desmarcar} onEditar={editar}
-                    onExcluir={excluir} onEtiquetas={atualizarEtiquetas} />
-                ))}
+                {onbPendentes.map(t => <CardComInfo key={t._id} t={t} />)}
                 {onbConcluidas.length > 0 && (
-                  <div style={{ marginTop: '16px' }}>
-                    <p style={{ fontSize: '0.72rem', fontWeight: '700', color: 'var(--texto-apagado)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '8px' }}>Concluídas</p>
-                    {onbConcluidas.map(t => (
-                      <CardTarefa key={t._id} t={t} etiquetasOpcoes={etiquetasCustom}
-                        onConcluir={concluir} onDesmarcar={desmarcar} onEditar={editar}
-                        onExcluir={excluir} onEtiquetas={atualizarEtiquetas} concluida />
-                    ))}
-                  </div>
+                  <>
+                    <p style={{ fontSize: '0.68rem', fontWeight: '700', color: 'var(--texto-apagado)', textTransform: 'uppercase', letterSpacing: '0.8px', margin: '16px 0 8px' }}>Concluídas</p>
+                    {onbConcluidas.map(t => <CardComInfo key={t._id} t={t} concluida />)}
+                  </>
                 )}
               </>
             )}
@@ -771,30 +858,17 @@ function PaginaTarefas({ tarefas, funcionarios, recarregar }) {
 
           {/* ── TAREFAS DA EQUIPE ── */}
           <div style={styles.secao}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px', paddingBottom: '8px', borderBottom: '1px solid var(--borda)' }}>
-              <h2 style={{ ...styles.secaoTitulo, margin: 0, border: 'none', padding: 0 }}>Tarefas da equipe</h2>
-              <span style={{ fontSize: '0.72rem', color: 'var(--texto-apagado)', background: 'var(--input)', borderRadius: '20px', padding: '2px 8px', border: '1px solid var(--borda)' }}>
-                {normaisPendentes.length} pendente(s)
-              </span>
-            </div>
+            <SecaoHeader titulo="Tarefas da equipe" count={normaisPendentes.length} verde={false} />
             {normaisPendentes.length === 0 && normaisConcluidas.length === 0 ? (
-              <p style={{ color: 'var(--texto-apagado)', fontSize: '0.875rem' }}>Nenhuma tarefa criada ainda. Use o botão "+ Nova tarefa" para começar.</p>
+              <p style={{ color: 'var(--texto-apagado)', fontSize: '0.875rem' }}>Nenhuma tarefa criada ainda. Use "+ Nova tarefa" para começar.</p>
             ) : (
               <>
-                {normaisPendentes.map(t => (
-                  <CardTarefa key={t._id} t={t} etiquetasOpcoes={etiquetasCustom}
-                    onConcluir={concluir} onDesmarcar={desmarcar} onEditar={editar}
-                    onExcluir={excluir} onEtiquetas={atualizarEtiquetas} />
-                ))}
+                {normaisPendentes.map(t => <CardComInfo key={t._id} t={t} />)}
                 {normaisConcluidas.length > 0 && (
-                  <div style={{ marginTop: '16px' }}>
-                    <p style={{ fontSize: '0.72rem', fontWeight: '700', color: 'var(--texto-apagado)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '8px' }}>Concluídas</p>
-                    {normaisConcluidas.map(t => (
-                      <CardTarefa key={t._id} t={t} etiquetasOpcoes={etiquetasCustom}
-                        onConcluir={concluir} onDesmarcar={desmarcar} onEditar={editar}
-                        onExcluir={excluir} onEtiquetas={atualizarEtiquetas} concluida />
-                    ))}
-                  </div>
+                  <>
+                    <p style={{ fontSize: '0.68rem', fontWeight: '700', color: 'var(--texto-apagado)', textTransform: 'uppercase', letterSpacing: '0.8px', margin: '16px 0 8px' }}>Concluídas</p>
+                    {normaisConcluidas.map(t => <CardComInfo key={t._id} t={t} concluida />)}
+                  </>
                 )}
               </>
             )}
