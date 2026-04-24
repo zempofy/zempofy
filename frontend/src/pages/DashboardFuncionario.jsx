@@ -96,13 +96,21 @@ function PopupOnboarding({ tarefaId, onFechar }) {
 }
 
 function PaginaMinhasTarefas({ tarefas, recarregar }) {
-  const { usuario } = useAuth()
+  const { usuario, temPermissao } = useAuth()
+  const podeCriarParaOutros = temPermissao('criarTarefas')
   const [mostrarForm, setMostrarForm] = useState(false)
-  const [form, setForm] = useState({ descricao: '', data: '', hora: '', local: '' })
+  const [form, setForm] = useState({ descricao: '', data: '', hora: '', local: '', responsavelId: '' })
+  const [funcionarios, setFuncionarios] = useState([])
   const [erro, setErro] = useState('')
   const [salvando, setSalvando] = useState(false)
   const [idsOnboarding, setIdsOnboarding] = useState(new Set())
   const [popupTarefaId, setPopupTarefaId] = useState(null)
+
+  useEffect(() => {
+    if (podeCriarParaOutros) {
+      api.get('/usuarios').then(r => setFuncionarios(r.data.filter(u => u._id !== usuario?._id && u._id !== usuario?.id))).catch(() => {})
+    }
+  }, [podeCriarParaOutros])
 
   useEffect(() => {
     api.get('/implantacoes').then(res => {
@@ -138,8 +146,9 @@ function PaginaMinhasTarefas({ tarefas, recarregar }) {
     if (!form.descricao.trim()) return setErro('Descrição é obrigatória.')
     setSalvando(true); setErro('')
     try {
-      await api.post('/tarefas', { ...form, responsavelId: usuario?._id || usuario?.id })
-      setForm({ descricao: '', data: '', hora: '', local: '' })
+      const respId = podeCriarParaOutros && form.responsavelId ? form.responsavelId : (usuario?._id || usuario?.id)
+      await api.post('/tarefas', { ...form, responsavelId: respId })
+      setForm({ descricao: '', data: '', hora: '', local: '', responsavelId: '' })
       setMostrarForm(false)
       recarregar()
     } catch (err) {
@@ -237,6 +246,15 @@ function PaginaMinhasTarefas({ tarefas, recarregar }) {
               <label style={styles.label}>Local</label>
               <input style={styles.input} placeholder="Ex: Escritório..." value={form.local} onChange={e => setForm({ ...form, local: e.target.value })} />
             </div>
+            {podeCriarParaOutros && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={styles.label}>Atribuir para</label>
+                <select style={styles.input} value={form.responsavelId} onChange={e => setForm({ ...form, responsavelId: e.target.value })}>
+                  <option value="">Eu mesmo</option>
+                  {funcionarios.map(f => <option key={f._id} value={f._id}>{f.nome}</option>)}
+                </select>
+              </div>
+            )}
             <button type="submit" disabled={salvando} style={{ ...styles.btnNovo, alignSelf: 'end' }}>
               {salvando ? 'Salvando...' : 'Criar tarefa'}
             </button>

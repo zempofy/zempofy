@@ -10,8 +10,7 @@ import Modal from './Modal'
 const REACOES = ['👍', '❤️', '😂', '😮', '👏', '🔥']
 
 function labelCargo(cargo) {
-  if (cargo === 'admin') return 'Dono'
-  if (cargo === 'administrador') return 'Administrador'
+  if (cargo === 'admin') return 'Titular'
   return 'Colaborador'
 }
 
@@ -239,7 +238,8 @@ export default function Mural() {
   const [confirmandoId, setConfirmandoId] = useState(null)
   const { mostrar } = useToast()
 
-  const isGestor = ['admin', 'administrador'].includes(usuario?.cargo)
+  const { temPermissao } = useAuth()
+  const isGestor = usuario?.cargo === 'admin' || temPermissao('publicarMural')
 
   const carregar = async () => {
     try {

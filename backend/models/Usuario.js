@@ -12,6 +12,7 @@ const usuarioSchema = new mongoose.Schema({
     gerenciarClientes:  { type: Boolean, default: false },
     verRelatorios:      { type: Boolean, default: false },
     publicarMural:      { type: Boolean, default: false },
+    criarTarefas:       { type: Boolean, default: false },
   },
   empresa: { type: mongoose.Schema.Types.ObjectId, ref: 'Empresa', required: true },
   avatar: { type: String, default: '' },

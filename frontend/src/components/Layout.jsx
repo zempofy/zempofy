@@ -191,7 +191,7 @@ const stylesModal = {
   topo: {
     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
     padding: '20px 24px',
-    borderBottom: '1px solid #2A3830',
+    borderBottom: '1px solid #27272a',
   },
   titulo: {
     fontFamily: 'Inter, sans-serif', fontWeight: '700',
@@ -602,8 +602,8 @@ const styles = {
     position: 'fixed',
     top: 0, left: 0, right: 0,
     height: '52px',
-    background: 'var(--sidebar)',
-    borderBottom: '1px solid #2A3830',
+    background: '#18181b',
+    borderBottom: '1px solid #27272a',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',

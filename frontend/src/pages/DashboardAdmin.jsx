@@ -150,6 +150,7 @@ const PERMISSOES_LABELS = [
   { key: 'gerenciarClientes',   label: 'Gerenciar clientes',    desc: 'Ver e editar carteira de clientes' },
   { key: 'verRelatorios',       label: 'Ver relatórios',        desc: 'Métricas e dados da equipe' },
   { key: 'publicarMural',       label: 'Publicar no mural',     desc: 'Postar avisos para a equipe' },
+  { key: 'criarTarefas',         label: 'Criar tarefas para outros', desc: 'Atribuir tarefas a outros colaboradores' },
 ]
 
 function PainelPermissoes({ permissoes, onChange }) {
@@ -191,13 +192,14 @@ function PainelPermissoes({ permissoes, onChange }) {
 
 const PERMISSOES_VAZIAS = {
   gerenciarEquipe: false, gerenciarOnboarding: false,
-  gerenciarClientes: false, verRelatorios: false, publicarMural: false,
+  gerenciarClientes: false, verRelatorios: false, publicarMural: false, criarTarefas: false,
 }
 
 function PaginaEquipe({ usuario, equipe, recarregar }) {
   const [mostrarForm, setMostrarForm] = useState(false)
-  const [form, setForm] = useState({ nome: '', email: '', senha: '' })
+  const [form, setForm] = useState({ nome: '', email: '', senha: '', setorId: '' })
   const [permissoes, setPermissoes] = useState({ ...PERMISSOES_VAZIAS })
+  const [setores, setSetores] = useState([])
   const [erro, setErro] = useState('')
   const [carregando, setCarregando] = useState(false)
   const [confirmandoId, setConfirmandoId] = useState(null)
@@ -205,14 +207,22 @@ function PaginaEquipe({ usuario, equipe, recarregar }) {
   const [permEdicao, setPermEdicao] = useState({})
   const { mostrar } = useToast()
 
+  useEffect(() => {
+    api.get('/setores').then(r => setSetores(r.data)).catch(() => {})
+  }, [])
+
   const membroParaRemover = equipe.find(f => f._id === confirmandoId)
 
   const criar = async (e) => {
     e.preventDefault()
     setErro(''); setCarregando(true)
     try {
-      await api.post('/usuarios', { ...form, permissoes })
-      setForm({ nome: '', email: '', senha: '' })
+      const res = await api.post('/usuarios', { ...form, permissoes })
+      // Se selecionou setor, adiciona o colaborador ao setor
+      if (form.setorId && res?.data?.id) {
+        await api.patch(`/setores/${form.setorId}/membros`, { usuarioId: res.data.id }).catch(() => {})
+      }
+      setForm({ nome: '', email: '', senha: '', setorId: '' })
       setPermissoes({ ...PERMISSOES_VAZIAS })
       setMostrarForm(false)
       recarregar()
@@ -274,6 +284,13 @@ function PaginaEquipe({ usuario, equipe, recarregar }) {
             <div style={styles.campo}>
               <label style={styles.label}>Senha temporária</label>
               <input style={styles.input} type="password" placeholder="Mínimo 6 caracteres" value={form.senha} onChange={e => setForm({ ...form, senha: e.target.value })} required />
+            </div>
+            <div style={styles.campo}>
+              <label style={styles.label}>Setor</label>
+              <select style={styles.input} value={form.setorId} onChange={e => setForm({ ...form, setorId: e.target.value })}>
+                <option value="">Selecionar setor (opcional)</option>
+                {setores.map(s => <option key={s._id} value={s._id}>{s.nome}</option>)}
+              </select>
             </div>
             <button type="submit" style={styles.btnPrimario} disabled={carregando}>
               {carregando ? 'Criando...' : 'Criar colaborador'}
