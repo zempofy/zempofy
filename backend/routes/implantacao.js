@@ -5,6 +5,8 @@ const ModeloOnboarding = require('../models/ModeloOnboarding');
 const AtividadeChecklist = require('../models/AtividadeChecklist');
 const Tarefa = require('../models/Tarefa');
 const Setor = require('../models/Setor');
+const Usuario = require('../models/Usuario');
+const { enviarOnboardingCriado, enviarEtapaDesbloqueada } = require('../services/email');
 
 const router = express.Router();
 
@@ -128,6 +130,62 @@ router.post('/', autenticar, async (req, res) => {
 
     const populada = await populateImplantacao(Implantacao.findById(implantacao._id));
     res.status(201).json(populada);
+
+    // Dispara e-mails em background (não bloqueia a resposta)
+    setImmediate(async () => {
+      try {
+        const nomeEmpresa = req.usuario.empresa?.nome || 'seu escritório';
+        const criadoPor = req.usuario.nome;
+
+        // Coleta todos os responsáveis únicos de todas as etapas
+        const responsavelIds = new Set();
+        implantacao.etapas.forEach(etapa => {
+          etapa.tarefas.forEach(t => {
+            if (t.tarefa) responsavelIds.add(t.tarefa.toString());
+          });
+        });
+
+        // Busca e-mails de todos os responsáveis via tarefas criadas
+        const tarefasPopuladas = await Tarefa.find({
+          _id: { $in: [...responsavelIds] }
+        }).populate('responsavel', 'email nome');
+
+        const emailsEnvolvidos = [...new Set(
+          tarefasPopuladas
+            .map(t => t.responsavel?.email)
+            .filter(Boolean)
+            .filter(e => e !== req.usuario.email)
+        )];
+
+        // E-mail 1: avisa todos os envolvidos que o onboarding foi criado
+        await enviarOnboardingCriado({
+          destinatarios: emailsEnvolvidos,
+          nomeCliente: nomeCliente.trim(),
+          criadoPor,
+          empresa: nomeEmpresa,
+        });
+
+        // E-mail 2: avisa o responsável da primeira etapa que é a vez dele
+        const primeiraEtapa = implantacao.etapas.find(e => e.status === 'em_andamento');
+        if (primeiraEtapa) {
+          const setorDaPrimeira = await Setor.findById(primeiraEtapa.setor);
+          const tarefasDaPrimeira = await Tarefa.find({
+            _id: { $in: primeiraEtapa.tarefas.map(t => t.tarefa) }
+          }).populate('responsavel', 'email');
+          const emailsPrimeira = [...new Set(
+            tarefasDaPrimeira.map(t => t.responsavel?.email).filter(Boolean)
+          )];
+          await enviarEtapaDesbloqueada({
+            destinatarios: emailsPrimeira,
+            nomeCliente: nomeCliente.trim(),
+            setor: setorDaPrimeira?.nome || 'Primeiro setor',
+            empresa: nomeEmpresa,
+          });
+        }
+      } catch (e) {
+        console.error('Erro ao enviar e-mails de onboarding:', e);
+      }
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ erro: 'Erro ao criar implantação.' });

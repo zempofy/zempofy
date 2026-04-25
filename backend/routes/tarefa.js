@@ -1,7 +1,9 @@
 const express = require('express');
+const { enviarTarefaAtribuida, enviarEtapaDesbloqueada } = require('../services/email');
 const { autenticar } = require('../middleware/auth');
 const Tarefa = require('../models/Tarefa');
 const Implantacao = require('../models/Implantacao');
+const Usuario = require('../models/Usuario');
 
 const router = express.Router();
 
@@ -37,6 +39,27 @@ async function sincronizarImplantacao(tarefaId, novoStatus, usuarioId) {
         if (proxima && proxima.status === 'bloqueada') {
           proxima.status = 'em_andamento';
           proxima.iniciadaEm = new Date();
+          // Dispara e-mail pra quem vai agir na próxima etapa
+          setImmediate(async () => {
+            try {
+              const setorProximo = await require('../models/Setor').findById(proxima.setor);
+              const tarefasProximas = await Tarefa.find({
+                _id: { $in: proxima.tarefas.map(t => t.tarefa) }
+              }).populate('responsavel', 'email');
+              const emailsProximos = [...new Set(
+                tarefasProximas.map(t => t.responsavel?.email).filter(Boolean)
+              )];
+              const imp = await Implantacao.findOne({ 'etapas._id': etapa._id });
+              if (imp && emailsProximos.length) {
+                await enviarEtapaDesbloqueada({
+                  destinatarios: emailsProximos,
+                  nomeCliente: imp.nomeCliente,
+                  setor: setorProximo?.nome || 'próximo setor',
+                  empresa: '',
+                });
+              }
+            } catch (e) { console.error('Erro e-mail etapa:', e); }
+          });
         } else if (!proxima) {
           implantacao.status = 'concluida';
           implantacao.concluidaEm = new Date();
@@ -110,8 +133,8 @@ router.post('/', autenticar, async (req, res) => {
   const { descricao, data, hora, local, cor, responsavelId, etiquetas, prioridade, tarefaMaeId } = req.body;
   if (!descricao) return res.status(400).json({ erro: 'Descrição é obrigatória.' });
   try {
-    const responsavel = ['admin', 'administrador'].includes(req.usuario.cargo) && responsavelId
-      ? responsavelId : req.usuario._id;
+    const podeAtribuir = req.usuario.cargo === 'admin' || req.usuario.permissoes?.criarTarefas;
+    const responsavel = podeAtribuir && responsavelId ? responsavelId : req.usuario._id;
     const tarefa = await Tarefa.create({
       descricao, data, hora, local, cor,
       etiquetas: etiquetas || [],
@@ -123,6 +146,27 @@ router.post('/', autenticar, async (req, res) => {
     });
     const populada = await populateTarefa(Tarefa.findById(tarefa._id));
     res.status(201).json(populada);
+
+    // Dispara e-mail se tarefa foi atribuída a outro colaborador
+    const ehOutraPessoa = responsavel.toString() !== req.usuario._id.toString();
+    if (ehOutraPessoa) {
+      setImmediate(async () => {
+        try {
+          const resp = await Usuario.findById(responsavel).select('email');
+          if (resp?.email) {
+            await enviarTarefaAtribuida({
+              destinatario: resp.email,
+              descricao,
+              criadoPor: req.usuario.nome,
+              data,
+              empresa: req.usuario.empresa?.nome || 'seu escritório',
+            });
+          }
+        } catch (e) {
+          console.error('Erro ao enviar e-mail de tarefa:', e);
+        }
+      });
+    }
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao criar tarefa.' });
   }
