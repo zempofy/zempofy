@@ -11,7 +11,7 @@ const template = (titulo, corpo) => `
 <style>
   body { margin:0; padding:0; background:#09090b; font-family:'Segoe UI',Arial,sans-serif; }
   .wrap { max-width:560px; margin:40px auto; background:#18181b; border:1px solid #27272a; border-radius:16px; overflow:hidden; }
-  .top { background:#006b28; padding:22px 32px; }
+  .top { background:#00b141; padding:22px 32px; }
   .top h1 { color:#fff; margin:0; font-size:1.3rem; letter-spacing:-0.02em; }
   .body { padding:28px 32px; }
   .body p { color:#a1a1aa; font-size:0.9rem; line-height:1.7; margin:0 0 16px; }
