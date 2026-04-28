@@ -13,6 +13,17 @@ function DetalheImplantacao({ implantacao: inicial, voltar, onAtualizado }) {
   const startX = useRef(0)
   const scrollLeft = useRef(0)
   const { mostrar: toast } = useToast()
+  const [confirmandoExcluir, setConfirmandoExcluir] = useState(false)
+
+  const excluir = async () => {
+    try {
+      await api.delete(`/implantacoes/${implantacao._id}`)
+      toast('Onboarding excluído.', 'aviso')
+      voltar()
+    } catch {
+      toast('Erro ao excluir onboarding.', 'erro')
+    }
+  }
 
   const recarregar = async () => {
     try {
@@ -55,17 +66,47 @@ function DetalheImplantacao({ implantacao: inicial, voltar, onAtualizado }) {
 
   return (
     <div>
+      {/* Modal confirmação exclusão */}
+      {confirmandoExcluir && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)' }}
+          onClick={() => setConfirmandoExcluir(false)}>
+          <div style={{ background: 'var(--card)', border: '1px solid var(--borda)', borderRadius: '18px', width: '100%', maxWidth: '400px', margin: '0 16px', boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }}
+            onClick={e => e.stopPropagation()}>
+            <div style={{ padding: '24px' }}>
+              <p style={{ fontWeight: '700', fontSize: '1rem', color: 'var(--texto)', marginBottom: '10px', fontFamily: 'Inter, sans-serif' }}>Excluir onboarding</p>
+              <p style={{ fontSize: '0.875rem', color: 'var(--texto-apagado)', lineHeight: '1.6', margin: 0 }}>
+                Tem certeza que deseja excluir o onboarding de <strong style={{ color: 'var(--texto)' }}>{implantacao.nomeCliente}</strong>? Todas as tarefas geradas também serão removidas. Essa ação não pode ser desfeita.
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', padding: '14px 24px', borderTop: '1px solid var(--borda)' }}>
+              <button style={{ background: 'none', border: '1px solid var(--borda)', borderRadius: '8px', color: 'var(--texto-apagado)', padding: '9px 18px', fontFamily: 'Inter, sans-serif', fontSize: '0.875rem', cursor: 'pointer' }}
+                onClick={() => setConfirmandoExcluir(false)}>Cancelar</button>
+              <button style={{ background: 'rgba(248,113,113,0.15)', border: '1px solid rgba(248,113,113,0.3)', borderRadius: '8px', color: '#f87171', padding: '9px 18px', fontFamily: 'Inter, sans-serif', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer' }}
+                onClick={excluir}>Sim, excluir</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Voltar */}
       <button style={s.btnVoltar} onClick={voltar}>← Onboarding</button>
 
       {/* Cabeçalho */}
-      <div style={{ marginBottom: '20px' }}>
-        <h1 style={s.titulo}>{implantacao.nomeCliente}</h1>
-        <p style={s.subtitulo}>
-          {implantacao.cnpj && `${implantacao.cnpj} · `}
-          {implantacao.modelo?.nome && `${implantacao.modelo.nome} · `}
-          Iniciado em {new Date(implantacao.criadoEm).toLocaleDateString('pt-BR')}
-        </p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
+        <div>
+          <h1 style={s.titulo}>{implantacao.nomeCliente}</h1>
+          <p style={s.subtitulo}>
+            {implantacao.cnpj && `${implantacao.cnpj} · `}
+            {implantacao.modelo?.nome && `${implantacao.modelo.nome} · `}
+            Iniciado em {new Date(implantacao.criadoEm).toLocaleDateString('pt-BR')}
+          </p>
+        </div>
+        <button
+          style={{ background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.25)', borderRadius: '10px', color: '#f87171', padding: '9px 18px', fontFamily: 'Inter, sans-serif', fontWeight: '600', fontSize: '0.85rem', cursor: 'pointer' }}
+          onClick={() => setConfirmandoExcluir(true)}
+        >
+          Excluir onboarding
+        </button>
       </div>
 
       {/* Card do mapa */}
@@ -231,6 +272,7 @@ function ModalNovaImplantacao({ fechar, onCriado }) {
   const [carregando, setCarregando] = useState(false)
   const [erro, setErro] = useState('')
   const { mostrar: toast } = useToast()
+  const [confirmandoExcluir, setConfirmandoExcluir] = useState(false)
 
   useEffect(() => {
     api.get('/modelos-onboarding').then(r => setModelos(r.data)).catch(() => {})
@@ -301,6 +343,7 @@ export default function Implantacao() {
   const [modalAberto, setModalAberto] = useState(false)
   const [detalheSelecionado, setDetalheSelecionado] = useState(null)
   const { mostrar: toast } = useToast()
+  const [confirmandoExcluir, setConfirmandoExcluir] = useState(false)
 
   const buscar = async () => {
     setCarregando(true)

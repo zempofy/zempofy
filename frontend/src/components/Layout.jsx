@@ -546,7 +546,7 @@ export default function Layout({ children, menuItens, paginaAtual, setPagina }) 
       <header style={styles.topbar}>
         {/* Esquerda: logo clicável */}
         <button style={styles.logoBtn} onClick={() => setPagina('inicio')} title="Ir para início">
-          <img src="/logo-branca.png" alt="Zempofy" style={{ height: '32px', width: 'auto' }} />
+          <img src="/logo-branca.png" alt="Zempofy" style={{ height: '40px', width: 'auto' }} />
         </button>
 
         {/* Direita: ações rápidas + avatar */}
