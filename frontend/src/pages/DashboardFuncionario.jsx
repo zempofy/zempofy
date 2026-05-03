@@ -66,11 +66,19 @@ function PopupOnboarding({ tarefaId, onFechar }) {
                 <span style={styles.popupValor}>{dados.criadoPor}</span>
               </div>
               <div style={styles.popupLinha}>
-                <span style={styles.popupLabel}>Data de início</span>
+                <span style={styles.popupLabel}>Onboarding criado em</span>
                 <span style={styles.popupValor}>
                   {new Date(dados.criadoEm).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
                 </span>
               </div>
+              {dados.inicioServicos && (
+                <div style={styles.popupLinha}>
+                  <span style={styles.popupLabel}>Início dos serviços</span>
+                  <span style={styles.popupValor}>
+                    {new Date(dados.inicioServicos).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
+                  </span>
+                </div>
+              )}
               <div style={styles.popupLinha}>
                 <span style={styles.popupLabel}>Status</span>
                 <span style={{

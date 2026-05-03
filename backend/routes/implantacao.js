@@ -1,6 +1,6 @@
 const express = require('express');
 const { autenticar } = require('../middleware/auth');
-const Implantacao = require('../models/Implantacao');
+const ImplantacaoModel = require('../models/Implantacao');
 const ModeloOnboarding = require('../models/ModeloOnboarding');
 const AtividadeChecklist = require('../models/AtividadeChecklist');
 const Tarefa = require('../models/Tarefa');
@@ -21,7 +21,7 @@ const populateImplantacao = (q) => q
 router.get('/', autenticar, async (req, res) => {
   try {
     const implantacoes = await populateImplantacao(
-      Implantacao.find({ empresa: req.usuario.empresa._id, status: { $ne: 'cancelada' } })
+      ImplantacaoModel.find({ empresa: req.usuario.empresa._id, status: { $ne: 'cancelada' } })
     ).sort({ criadoEm: -1 });
     res.json(implantacoes);
   } catch (err) {
@@ -32,7 +32,7 @@ router.get('/', autenticar, async (req, res) => {
 // GET /api/implantacoes/por-tarefa/:tarefaId — busca a implantação que contém essa tarefa
 router.get('/por-tarefa/:tarefaId', autenticar, async (req, res) => {
   try {
-    const implantacao = await Implantacao.findOne({
+    const implantacao = await ImplantacaoModel.findOne({
       empresa: req.usuario.empresa._id,
       'etapas.tarefas.tarefa': req.params.tarefaId
     })
@@ -43,6 +43,7 @@ router.get('/por-tarefa/:tarefaId', autenticar, async (req, res) => {
       _id: implantacao._id,
       nomeCliente: implantacao.nomeCliente,
       cnpj: implantacao.cnpj,
+      inicioServicos: implantacao.inicioServicos,
       modelo: implantacao.modelo?.nome || '',
       criadoPor: implantacao.criadoPor?.nome || '',
       criadoEm: implantacao.criadoEm,
@@ -57,7 +58,7 @@ router.get('/por-tarefa/:tarefaId', autenticar, async (req, res) => {
 router.get('/:id', autenticar, async (req, res) => {
   try {
     const implantacao = await populateImplantacao(
-      Implantacao.findOne({ _id: req.params.id, empresa: req.usuario.empresa._id })
+      ImplantacaoModel.findOne({ _id: req.params.id, empresa: req.usuario.empresa._id })
     );
     if (!implantacao) return res.status(404).json({ erro: 'Implantação não encontrada.' });
     res.json(implantacao);
@@ -68,8 +69,9 @@ router.get('/:id', autenticar, async (req, res) => {
 
 // POST /api/implantacoes - Cria nova implantação e gera tarefas reais para cada colaborador
 router.post('/', autenticar, async (req, res) => {
-  const { nomeCliente, cnpj, modeloId } = req.body;
+  const { nomeCliente, cnpj, modeloId, inicioServicos } = req.body;
   if (!nomeCliente?.trim()) return res.status(400).json({ erro: 'Nome do cliente é obrigatório.' });
+  if (!inicioServicos) return res.status(400).json({ erro: 'Data de início dos serviços é obrigatória.' });
   try {
     let etapas = [];
 
@@ -119,16 +121,17 @@ router.post('/', autenticar, async (req, res) => {
       }
     }
 
-    const implantacao = await Implantacao.create({
+    const implantacao = await ImplantacaoModel.create({
       nomeCliente: nomeCliente.trim(),
       cnpj: cnpj?.trim() || '',
+      inicioServicos: new Date(inicioServicos),
       modelo: modeloId || null,
       etapas,
       empresa: req.usuario.empresa._id,
       criadoPor: req.usuario._id
     });
 
-    const populada = await populateImplantacao(Implantacao.findById(implantacao._id));
+    const populada = await populateImplantacao(ImplantacaoModel.findById(implantacao._id));
     res.status(201).json(populada);
 
     // Dispara e-mails em background (não bloqueia a resposta)
@@ -195,7 +198,7 @@ router.post('/', autenticar, async (req, res) => {
 // PATCH /api/implantacoes/:id/tarefas/:etapaId/:tarefaId/concluir
 router.patch('/:id/tarefas/:etapaId/:tarefaId/concluir', autenticar, async (req, res) => {
   try {
-    const implantacao = await Implantacao.findOne({
+    const implantacao = await ImplantacaoModel.findOne({
       _id: req.params.id,
       empresa: req.usuario.empresa._id
     });
@@ -230,7 +233,7 @@ router.patch('/:id/tarefas/:etapaId/:tarefaId/concluir', autenticar, async (req,
     }
 
     await implantacao.save();
-    const populada = await populateImplantacao(Implantacao.findById(implantacao._id));
+    const populada = await populateImplantacao(ImplantacaoModel.findById(implantacao._id));
     res.json(populada);
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao concluir tarefa.' });
@@ -240,7 +243,7 @@ router.patch('/:id/tarefas/:etapaId/:tarefaId/concluir', autenticar, async (req,
 // PATCH /api/implantacoes/:id/tarefas/:etapaId/:tarefaId/desmarcar
 router.patch('/:id/tarefas/:etapaId/:tarefaId/desmarcar', autenticar, async (req, res) => {
   try {
-    const implantacao = await Implantacao.findOne({
+    const implantacao = await ImplantacaoModel.findOne({
       _id: req.params.id,
       empresa: req.usuario.empresa._id
     });
@@ -261,7 +264,7 @@ router.patch('/:id/tarefas/:etapaId/:tarefaId/desmarcar', autenticar, async (req
     }
 
     await implantacao.save();
-    const populada = await populateImplantacao(Implantacao.findById(implantacao._id));
+    const populada = await populateImplantacao(ImplantacaoModel.findById(implantacao._id));
     res.json(populada);
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao desmarcar tarefa.' });
@@ -271,7 +274,7 @@ router.patch('/:id/tarefas/:etapaId/:tarefaId/desmarcar', autenticar, async (req
 // DELETE /api/implantacoes/:id — exclui a implantação e todas as tarefas geradas por ela
 router.delete('/:id', autenticar, async (req, res) => {
   try {
-    const implantacao = await Implantacao.findOne({
+    const implantacao = await ImplantacaoModel.findOne({
       _id: req.params.id,
       empresa: req.usuario.empresa._id
     });
@@ -288,7 +291,7 @@ router.delete('/:id', autenticar, async (req, res) => {
       await Tarefa.deleteMany({ _id: { $in: tarefaIds } });
     }
 
-    await Implantacao.findByIdAndDelete(req.params.id);
+    await ImplantacaoModel.findByIdAndDelete(req.params.id);
     res.json({ mensagem: 'Implantação excluída com sucesso.' });
   } catch (err) {
     console.error(err);

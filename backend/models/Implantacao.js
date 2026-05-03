@@ -21,6 +21,7 @@ const etapaSchema = new mongoose.Schema({
 const implantacaoSchema = new mongoose.Schema({
   nomeCliente: { type: String, required: true, trim: true },
   cnpj: { type: String, trim: true, default: '' },
+  inicioServicos: { type: Date, default: null },
   modelo: { type: mongoose.Schema.Types.ObjectId, ref: 'ModeloOnboarding' },
   etapas: [etapaSchema],
   status: { type: String, enum: ['em_andamento', 'concluida', 'cancelada'], default: 'em_andamento' },

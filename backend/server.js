@@ -50,6 +50,10 @@ app.get('/', (req, res) => {
   res.json({ mensagem: 'Zempofy API rodando 🚀' });
 });
 
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
 // Conectar ao MongoDB e iniciar servidor
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => {

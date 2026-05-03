@@ -671,7 +671,8 @@ function PopupOnboardingAdmin({ tarefaId, onFechar }) {
                 dados.cnpj ? { label: 'CNPJ', valor: dados.cnpj, mono: true } : null,
                 dados.modelo ? { label: 'Modelo de onboarding', valor: dados.modelo } : null,
                 { label: 'Criado por', valor: dados.criadoPor },
-                { label: 'Data de início', valor: new Date(dados.criadoEm).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' }) },
+                { label: 'Onboarding criado em', valor: new Date(dados.criadoEm).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' }) },
+              dados.inicioServicos ? { label: 'Início dos serviços', valor: new Date(dados.inicioServicos).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' }) } : null,
               ].filter(Boolean).map(item => (
                 <div key={item.label} style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
                   <span style={{ fontSize: '0.65rem', fontWeight: '700', color: 'var(--texto-apagado)', textTransform: 'uppercase', letterSpacing: '0.8px' }}>{item.label}</span>

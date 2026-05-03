@@ -42,6 +42,7 @@ function ModalCliente({ cliente, onFechar, onSalvo }) {
     regime: cliente?.regime || '',
     tipo: cliente?.tipo || '',
     observacoes: cliente?.observacoes || '',
+    inicioServicos: cliente?.inicioServicos ? new Date(cliente.inicioServicos).toISOString().split('T')[0] : '',
   })
   const [erro, setErro] = useState('')
   const [carregando, setCarregando] = useState(false)
@@ -108,6 +109,10 @@ function ModalCliente({ cliente, onFechar, onSalvo }) {
             </div>
           </div>
 
+          <div style={s.campo}>
+            <label style={s.label}>Data de início dos serviços <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(opcional)</span></label>
+            <input style={s.input} type="date" value={form.inicioServicos} onChange={e => setForm({ ...form, inicioServicos: e.target.value })} />
+          </div>
           <div style={s.campo}>
             <label style={s.label}>Observações <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(opcional)</span></label>
             <textarea style={{ ...s.input, resize: 'vertical', minHeight: '80px', lineHeight: '1.5' }}

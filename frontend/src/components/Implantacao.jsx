@@ -98,7 +98,8 @@ function DetalheImplantacao({ implantacao: inicial, voltar, onAtualizado }) {
           <p style={s.subtitulo}>
             {implantacao.cnpj && `${implantacao.cnpj} · `}
             {implantacao.modelo?.nome && `${implantacao.modelo.nome} · `}
-            Iniciado em {new Date(implantacao.criadoEm).toLocaleDateString('pt-BR')}
+            Criado em {new Date(implantacao.criadoEm).toLocaleDateString('pt-BR')}
+            {implantacao.inicioServicos && ` · Início dos serviços: ${new Date(implantacao.inicioServicos).toLocaleDateString('pt-BR')}`}
           </p>
         </div>
         <button
@@ -264,11 +265,26 @@ function DetalheImplantacao({ implantacao: inicial, voltar, onAtualizado }) {
 }
 
 // ── Modal para nova implantação ──
+
+const mascaraData = (v) => {
+  const nums = v.replace(/\D/g, '').slice(0, 8)
+  if (nums.length <= 2) return nums
+  if (nums.length <= 4) return `${nums.slice(0,2)}/${nums.slice(2)}`
+  return `${nums.slice(0,2)}/${nums.slice(2,4)}/${nums.slice(4)}`
+}
+
+const dataParaISO = (v) => {
+  const nums = v.replace(/\D/g, '')
+  if (nums.length !== 8) return ''
+  return `${nums.slice(4)}-${nums.slice(2,4)}-${nums.slice(0,2)}`
+}
+
 function ModalNovaImplantacao({ fechar, onCriado }) {
   const [nomeCliente, setNomeCliente] = useState('')
   const [cnpj, setCnpj] = useState('')
   const [modeloId, setModeloId] = useState('')
   const [modelos, setModelos] = useState([])
+  const [inicioServicos, setInicioServicos] = useState('')  // formato DD/MM/AAAA
   const [carregando, setCarregando] = useState(false)
   const [erro, setErro] = useState('')
   const { mostrar: toast } = useToast()
@@ -280,9 +296,11 @@ function ModalNovaImplantacao({ fechar, onCriado }) {
 
   const criar = async () => {
     if (!nomeCliente.trim()) return setErro('Nome do cliente é obrigatório.')
+    const inicioISO = dataParaISO(inicioServicos)
+    if (!inicioISO) return setErro('Data de início dos serviços é obrigatória (DD/MM/AAAA).')
     setCarregando(true); setErro('')
     try {
-      await api.post('/implantacoes', { nomeCliente, cnpj, modeloId: modeloId || undefined })
+      await api.post('/implantacoes', { nomeCliente, cnpj, modeloId: modeloId || undefined, inicioServicos: inicioISO })
       toast('Implantação criada!', 'sucesso')
       onCriado(); fechar()
     } catch (err) {
@@ -322,6 +340,16 @@ function ModalNovaImplantacao({ fechar, onCriado }) {
               <option value="">Sem modelo (criar manualmente)</option>
               {modelos.map(m => <option key={m._id} value={m._id}>{m.nome}</option>)}
             </select>
+          </div>
+          <div style={s.campo}>
+            <label style={s.label}>Data de início dos serviços *</label>
+            <input
+              style={s.input}
+              placeholder="DD/MM/AAAA"
+              value={inicioServicos}
+              onChange={e => setInicioServicos(mascaraData(e.target.value))}
+              maxLength={10}
+            />
           </div>
         </div>
         <div style={s.modalRodape}>
