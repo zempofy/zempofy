@@ -2,6 +2,8 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
+const rateLimit = require('express-rate-limit');
+const helmet = require('helmet');
 
 const authRoutes = require('./routes/auth');
 const empresaRoutes = require('./routes/empresa');
@@ -22,14 +24,61 @@ const feedbackRoutes = require('./routes/feedback');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-app.use(cors({
-  origin: '*',
-  credentials: false
+// ── Origens permitidas ──
+const ORIGENS_PERMITIDAS = [
+  'https://zempofy.com.br',
+  'https://app.zempofy.com.br',
+  'https://zempofy.vercel.app',
+  'https://zempofy-landing.vercel.app',
+  'https://zempofy-painel.vercel.app',
+  // desenvolvimento local
+  'http://localhost:5173',
+  'http://localhost:3000',
+];
+
+// ── Helmet — headers de segurança ──
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
 }));
+
+// ── CORS restrito ──
+app.use(cors({
+  origin: (origin, callback) => {
+    // Permite requisições sem origin (Render health check, curl, etc)
+    if (!origin) return callback(null, true);
+    if (ORIGENS_PERMITIDAS.includes(origin)) return callback(null, true);
+    callback(new Error(`CORS bloqueado para origem: ${origin}`));
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
-// Rotas
+// ── Rate Limit global — 200 req/15min por IP ──
+const limitadorGeral = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 200,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { erro: 'Muitas requisições. Tente novamente em alguns minutos.' },
+});
+app.use('/api', limitadorGeral);
+
+// ── Rate Limit específico pra autenticação — 10 tentativas/15min ──
+const limitadorAuth = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { erro: 'Muitas tentativas de login. Aguarde 15 minutos.' },
+});
+app.use('/api/auth/login', limitadorAuth);
+app.use('/api/auth/cadastro', limitadorAuth);
+
+// ── Rotas ──
 app.use('/api/auth', authRoutes);
 app.use('/api/empresa', empresaRoutes);
 app.use('/api/usuarios', usuarioRoutes);
@@ -54,7 +103,7 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Conectar ao MongoDB e iniciar servidor
+// ── Conectar ao MongoDB e iniciar servidor ──
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => {
     console.log('✅ Conectado ao MongoDB!');
