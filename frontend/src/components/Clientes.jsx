@@ -50,6 +50,9 @@ function ModalCliente({ cliente, onFechar, onSalvo }) {
 
   const salvar = async () => {
     if (!form.nome.trim()) return setErro('Nome é obrigatório.')
+    if (!form.cnpj.trim()) return setErro('CNPJ é obrigatório.')
+    if (!form.regime) return setErro('Regime tributário é obrigatório.')
+    if (!form.tipo) return setErro('Tipo de atividade é obrigatório.')
     setCarregando(true); setErro('')
     try {
       if (cliente?._id) {

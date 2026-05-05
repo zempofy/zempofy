@@ -6,7 +6,7 @@ const router = express.Router();
 
 const populateModelo = (q) => q
   .populate('setores.setor', 'nome cor')
-  .populate('setores.tarefas', 'descricao responsavel setor')
+  .populate({ path: 'setores.tarefas', model: 'AtividadeChecklist', populate: { path: 'responsavel', select: 'nome' } })
   .populate('criadoPor', 'nome');
 
 // GET /api/modelos-onboarding

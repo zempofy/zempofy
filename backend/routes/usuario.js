@@ -53,7 +53,7 @@ router.put('/minha-senha', autenticar, async (req, res) => {
 // GET /api/usuarios
 router.get('/', autenticar, async (req, res) => {
   try {
-    const usuarios = await Usuario.find({ empresa: req.usuario.empresa._id, ativo: true }).select('-senha');
+    const usuarios = await Usuario.find({ empresa: req.usuario.empresa._id, ativo: true }).select('-senha').populate('setores', 'nome cor');
     res.json(usuarios);
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao buscar usuários.' });
@@ -62,8 +62,9 @@ router.get('/', autenticar, async (req, res) => {
 
 // POST /api/usuarios — só o titular cria colaboradores
 router.post('/', autenticar, apenasAdmin, async (req, res) => {
-  const { nome, email, senha, permissoes } = req.body;
+  const { nome, email, senha, permissoes, setores } = req.body;
   if (!nome || !email || !senha) return res.status(400).json({ erro: 'Preencha todos os campos.' });
+  if (!setores || setores.length === 0) return res.status(400).json({ erro: 'Selecione pelo menos um setor.' });
   try {
     const emailExiste = await Usuario.findOne({ email });
     if (emailExiste) return res.status(400).json({ erro: 'E-mail já em uso.' });
@@ -72,6 +73,7 @@ router.post('/', autenticar, apenasAdmin, async (req, res) => {
       nome, email, senha,
       cargo: 'colaborador',
       permissoes: permissoes || {},
+      setores: setores || [],
       empresa: req.usuario.empresa._id,
       tokenVerificacao: tokenVerif,
       emailVerificado: false,
@@ -86,7 +88,7 @@ router.post('/', autenticar, apenasAdmin, async (req, res) => {
 
 // PUT /api/usuarios/:id — titular edita nome/email e permissões
 router.put('/:id', autenticar, apenasAdmin, async (req, res) => {
-  const { nome, email, permissoes } = req.body;
+  const { nome, email, permissoes, setores } = req.body;
   try {
     const alvo = await Usuario.findOne({ _id: req.params.id, empresa: req.usuario.empresa._id });
     if (!alvo) return res.status(404).json({ erro: 'Usuário não encontrado.' });
@@ -95,7 +97,8 @@ router.put('/:id', autenticar, apenasAdmin, async (req, res) => {
     if (nome?.trim()) atualizacao.nome = nome.trim();
     if (email) atualizacao.email = email;
     if (permissoes) atualizacao.permissoes = permissoes;
-    const usuario = await Usuario.findByIdAndUpdate(req.params.id, atualizacao, { new: true }).select('-senha');
+    if (setores !== undefined) atualizacao.setores = setores;
+    const usuario = await Usuario.findByIdAndUpdate(req.params.id, atualizacao, { new: true }).select('-senha').populate('setores', 'nome cor');
     res.json(usuario);
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao editar usuário.' });

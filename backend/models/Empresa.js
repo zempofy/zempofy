@@ -7,7 +7,8 @@ const empresaSchema = new mongoose.Schema({
   plano: { type: String, enum: ['gratuito', 'premium'], default: 'gratuito' },
   maxFuncionarios: { type: Number, default: 5 },
   ativa: { type: Boolean, default: true },
-  criadaEm: { type: Date, default: Date.now }
+  criadaEm: { type: Date, default: Date.now },
+  colaboradoresPodeAtribuirTitular: { type: Boolean, default: true }
 });
 
 module.exports = mongoose.model('Empresa', empresaSchema);

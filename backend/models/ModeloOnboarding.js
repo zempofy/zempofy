@@ -4,7 +4,7 @@ const mongoose = require('mongoose');
 const setorModeloSchema = new mongoose.Schema({
   setor: { type: mongoose.Schema.Types.ObjectId, ref: 'Setor', required: true },
   ordem: { type: Number, required: true }, // posição no fluxo (1, 2, 3...)
-  tarefas: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Tarefa' }]
+  tarefas: [{ type: mongoose.Schema.Types.ObjectId, ref: 'AtividadeChecklist' }]
 }, { _id: false });
 
 const modeloOnboardingSchema = new mongoose.Schema({

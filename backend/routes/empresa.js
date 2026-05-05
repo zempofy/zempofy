@@ -14,13 +14,16 @@ router.get('/', autenticar, async (req, res) => {
   }
 });
 
-// PUT /api/empresa - Atualizar nome da empresa (só admin)
+// PUT /api/empresa - Atualizar dados da empresa (só admin)
 router.put('/', autenticar, apenasAdmin, async (req, res) => {
-  const { nome } = req.body;
+  const { nome, colaboradoresPodeAtribuirTitular } = req.body;
+  const atualizacao = {}
+  if (nome !== undefined) atualizacao.nome = nome
+  if (colaboradoresPodeAtribuirTitular !== undefined) atualizacao.colaboradoresPodeAtribuirTitular = colaboradoresPodeAtribuirTitular
   try {
     const empresa = await Empresa.findByIdAndUpdate(
       req.usuario.empresa._id,
-      { nome },
+      atualizacao,
       { new: true }
     );
     res.json(empresa);

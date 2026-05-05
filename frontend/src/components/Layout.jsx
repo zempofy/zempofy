@@ -10,7 +10,7 @@ import WidgetFeedback from './WidgetFeedback'
 import { useToast } from './Toast'
 
 function ModalAcessoSenha({ usuario, fechar, onNomeAtualizado }) {
-  const [aba, setAba] = useState(null) // null | 'nome' | 'email' | 'senha'
+  const [aba, setAba] = useState(null)
   const [form, setForm] = useState({ novoNome: '', novoEmail: '', senhaAtual: '', novaSenha: '', confirmar: '' })
   const [erro, setErro] = useState('')
   const [sucesso, setSucesso] = useState('')
@@ -110,60 +110,60 @@ function ModalAcessoSenha({ usuario, fechar, onNomeAtualizado }) {
           </div>
         </div>
 
-          {aba === 'email' && (
-            <div style={stylesModal.subForm}>
-              {erro && <p style={stylesModal.erro}>{erro}</p>}
-              {sucesso && <p style={stylesModal.sucesso}>{sucesso}</p>}
-              <div style={stylesModal.campo}>
-                <label style={stylesModal.label}>Novo e-mail</label>
-                <input
-                  style={stylesModal.input}
-                  type="email"
-                  placeholder="novo@email.com"
-                  value={form.novoEmail}
-                  onChange={e => setForm({ ...form, novoEmail: e.target.value })}
-                />
-              </div>
-              <button style={stylesModal.btnSalvar} onClick={salvarEmail} disabled={carregando}>
-                {carregando ? 'Salvando...' : 'Salvar e-mail'}
-              </button>
+        {aba === 'email' && (
+          <div style={stylesModal.subForm}>
+            {erro && <p style={stylesModal.erro}>{erro}</p>}
+            {sucesso && <p style={stylesModal.sucesso}>{sucesso}</p>}
+            <div style={stylesModal.campo}>
+              <label style={stylesModal.label}>Novo e-mail</label>
+              <input
+                style={stylesModal.input}
+                type="email"
+                placeholder="novo@email.com"
+                value={form.novoEmail}
+                onChange={e => setForm({ ...form, novoEmail: e.target.value })}
+              />
             </div>
-          )}
-
-          <div style={stylesModal.campo}>
-            <label style={stylesModal.label}>Senha</label>
-            <div style={stylesModal.valorComAcao}>
-              <span style={{ letterSpacing: '3px', color: 'var(--texto-apagado)' }}>••••••••</span>
-              <button style={stylesModal.btnAlterar} onClick={() => trocarAba(aba === 'senha' ? null : 'senha')}>
-                {aba === 'senha' ? 'Cancelar' : 'Alterar'}
-              </button>
-            </div>
+            <button style={stylesModal.btnSalvar} onClick={salvarEmail} disabled={carregando}>
+              {carregando ? 'Salvando...' : 'Salvar e-mail'}
+            </button>
           </div>
+        )}
 
-          {aba === 'senha' && (
-            <div style={stylesModal.subForm}>
-              {erro && <p style={stylesModal.erro}>{erro}</p>}
-              {sucesso && <p style={stylesModal.sucesso}>{sucesso}</p>}
-              <div style={stylesModal.campo}>
-                <label style={stylesModal.label}>Senha atual</label>
-                <input style={stylesModal.input} type="password" placeholder="••••••••" value={form.senhaAtual} onChange={e => setForm({ ...form, senhaAtual: e.target.value })} />
-              </div>
-              <div style={stylesModal.campo}>
-                <label style={stylesModal.label}>Nova senha</label>
-                <input style={stylesModal.input} type="password" placeholder="••••••••" value={form.novaSenha} onChange={e => setForm({ ...form, novaSenha: e.target.value })} />
-              </div>
-              <div style={stylesModal.campo}>
-                <label style={stylesModal.label}>Confirmar nova senha</label>
-                <input style={stylesModal.input} type="password" placeholder="••••••••" value={form.confirmar} onChange={e => setForm({ ...form, confirmar: e.target.value })} />
-              </div>
-              <button style={stylesModal.btnSalvar} onClick={salvarSenha} disabled={carregando}>
-                {carregando ? 'Salvando...' : 'Salvar senha'}
-              </button>
-            </div>
-          )}
-
-          {sucesso && aba === null && <p style={stylesModal.sucesso}>{sucesso}</p>}
+        <div style={stylesModal.campo}>
+          <label style={stylesModal.label}>Senha</label>
+          <div style={stylesModal.valorComAcao}>
+            <span style={{ letterSpacing: '3px', color: 'var(--texto-apagado)' }}>••••••••</span>
+            <button style={stylesModal.btnAlterar} onClick={() => trocarAba(aba === 'senha' ? null : 'senha')}>
+              {aba === 'senha' ? 'Cancelar' : 'Alterar'}
+            </button>
+          </div>
         </div>
+
+        {aba === 'senha' && (
+          <div style={stylesModal.subForm}>
+            {erro && <p style={stylesModal.erro}>{erro}</p>}
+            {sucesso && <p style={stylesModal.sucesso}>{sucesso}</p>}
+            <div style={stylesModal.campo}>
+              <label style={stylesModal.label}>Senha atual</label>
+              <input style={stylesModal.input} type="password" placeholder="••••••••" value={form.senhaAtual} onChange={e => setForm({ ...form, senhaAtual: e.target.value })} />
+            </div>
+            <div style={stylesModal.campo}>
+              <label style={stylesModal.label}>Nova senha</label>
+              <input style={stylesModal.input} type="password" placeholder="••••••••" value={form.novaSenha} onChange={e => setForm({ ...form, novaSenha: e.target.value })} />
+            </div>
+            <div style={stylesModal.campo}>
+              <label style={stylesModal.label}>Confirmar nova senha</label>
+              <input style={stylesModal.input} type="password" placeholder="••••••••" value={form.confirmar} onChange={e => setForm({ ...form, confirmar: e.target.value })} />
+            </div>
+            <button style={stylesModal.btnSalvar} onClick={salvarSenha} disabled={carregando}>
+              {carregando ? 'Salvando...' : 'Salvar senha'}
+            </button>
+          </div>
+        )}
+
+        {sucesso && aba === null && <p style={stylesModal.sucesso}>{sucesso}</p>}
+      </div>
     </Modal>
   )
 
@@ -171,59 +171,30 @@ function ModalAcessoSenha({ usuario, fechar, onNomeAtualizado }) {
 }
 
 const stylesModal = {
-  fundo: {
-    position: 'fixed', inset: 0,
-    left: 0,
-    background: 'rgba(0,0,0,0.6)',
-    zIndex: 200,
-  },
-  janela: {
-    position: 'fixed',
-    top: '50vh',
-    left: '50vw',
-    transform: 'translate(-50%, -50%)',
-    width: '100%', maxWidth: '440px',
-    background: 'var(--sidebar)',
-    border: '1px solid #2A3830',
-    borderRadius: '20px',
-    zIndex: 201,
-    boxShadow: '0 24px 64px rgba(0,0,0,0.6)',
-    overflow: 'hidden',
-  },
   topo: {
     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
     padding: '20px 24px',
-    borderBottom: '1px solid #27272a',
+    borderBottom: '1px solid var(--borda)',
   },
   titulo: {
     fontFamily: 'Inter, sans-serif', fontWeight: '700',
     fontSize: '1rem', color: 'var(--texto)',
   },
   btnX: {
-    background: 'none', border: '1px solid #2A3830', borderRadius: '6px',
+    background: 'none', border: '1px solid var(--borda)', borderRadius: '6px',
     color: 'var(--texto-apagado)', width: '28px', height: '28px',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
     fontSize: '12px', cursor: 'pointer',
   },
   corpo: { padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' },
   infoBloco: { display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '4px' },
-  avatar: {
-    width: '48px', height: '48px', minWidth: '48px',
-    background: 'linear-gradient(135deg, #22C55E, #1A6B3C)',
-    borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-    fontFamily: 'Inter, sans-serif', fontWeight: '800', fontSize: '20px', color: '#fff',
-  },
   infoNome: { fontSize: '1rem', fontWeight: '600', color: 'var(--texto)' },
   infoCargo: { fontSize: '0.8rem', color: 'var(--texto-apagado)', marginTop: '2px' },
   campo: { display: 'flex', flexDirection: 'column', gap: '6px' },
   label: { fontSize: '0.7rem', fontWeight: '600', color: 'var(--texto-apagado)', textTransform: 'uppercase', letterSpacing: '1px' },
-  valorFixo: {
-    background: 'var(--input)', border: '1px solid #2A3830', borderRadius: '10px',
-    padding: '10px 14px', color: 'var(--texto)', fontSize: '0.9rem',
-  },
   valorComAcao: {
     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-    background: 'var(--input)', border: '1px solid #2A3830', borderRadius: '10px',
+    background: 'var(--input)', border: '1px solid var(--borda)', borderRadius: '10px',
     padding: '10px 14px', color: 'var(--texto)', fontSize: '0.9rem',
   },
   btnAlterar: {
@@ -232,53 +203,64 @@ const stylesModal = {
     fontWeight: '500',
   },
   subForm: {
-    background: 'var(--input-2)', border: '1px solid #2A3830', borderRadius: '12px',
+    background: 'var(--input-2)', border: '1px solid var(--borda)', borderRadius: '12px',
     padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px',
   },
   input: {
-    background: 'var(--input)', border: '1px solid #2A3830', borderRadius: '10px',
+    background: 'var(--input)', border: '1px solid var(--borda)', borderRadius: '10px',
     padding: '10px 14px', color: 'var(--texto)', fontSize: '0.9rem',
     width: '100%', fontFamily: 'Inter, sans-serif',
   },
   btnSalvar: {
-    background: 'linear-gradient(135deg, #22C55E, #1A6B3C)',
+    background: 'var(--gradiente-verde)',
     color: '#fff', border: 'none', borderRadius: '10px',
     padding: '10px 20px', fontFamily: 'Inter, sans-serif',
     fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer',
     alignSelf: 'flex-start',
   },
   erro: { color: '#FCA5A5', fontSize: '0.8rem', background: 'rgba(239,68,68,0.1)', padding: '8px 12px', borderRadius: '8px' },
-  sucesso: { color: 'var(--verde)', fontSize: '0.8rem', background: 'rgba(34,197,94,0.1)', padding: '8px 12px', borderRadius: '8px' },
+  sucesso: { color: 'var(--verde)', fontSize: '0.8rem', background: 'rgba(0,177,65,0.08)', padding: '8px 12px', borderRadius: '8px' },
 }
 
-const SIDEBAR_ABERTA = '240px'
-const SIDEBAR_FECHADA = '64px'
+const SIDEBAR_LARGURA = '224px'
+const SIDEBAR_FECHADA = '56px'
+const TOPBAR_ALTURA = '54px'
 
+// ── Ícones inline ──
+const IconeFeed = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+  </svg>
+)
+const IconeChat = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+  </svg>
+)
+const IconeRecolher = ({ aberta }) => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    {aberta ? <polyline points="15 18 9 12 15 6"/> : <polyline points="9 18 15 12 9 6"/>}
+  </svg>
+)
+
+// ── Painel de Perfil ──
 function PainelPerfil({ usuario, sair, fechar, setPagina, setModalAcessoExterno, setModalConfigExterno }) {
   const id = usuario?.id?.slice(-8).toUpperCase() || '--------'
 
-  const irPara = (pag) => {
-    setPagina(pag)
-    fechar()
-  }
+  const irPara = (pag) => { setPagina(pag); fechar() }
 
   return (
     <>
-      {/* Overlay escuro */}
       <div onClick={fechar} style={styles.overlay} />
-
-      {/* Painel */}
       <div style={styles.painel} className="fade-in">
-        {/* Topo com X */}
         <div style={styles.painelTopo}>
           <span style={styles.painelTitulo}>Minha conta</span>
           <button style={styles.btnFechar} onClick={fechar}>✕</button>
         </div>
 
-        {/* Avatar + info + upload foto */}
         <div style={styles.painelPerfil}>
           <div style={{ position: 'relative', flexShrink: 0 }}>
-            <Avatar nome={usuario?.nome} foto={usuario?.avatar} size={56} fontSize={22} />
+            <Avatar nome={usuario?.nome} foto={usuario?.avatar} size={52} fontSize={20} />
             <button
               style={styles.btnEditarFoto}
               onClick={() => document.getElementById('upload-foto-perfil').click()}
@@ -308,13 +290,12 @@ function PainelPerfil({ usuario, sair, fechar, setPagina, setModalAcessoExterno,
           <div>
             <p style={styles.painelNome}>{usuario?.nome}</p>
             <p style={styles.painelEmpresa}>{usuario?.empresa?.nome}</p>
-            <p style={styles.painelId}>ID: #{id}</p>
+            <p style={styles.painelId}>ID #{id}</p>
           </div>
         </div>
 
         <div style={styles.painelDivisor} />
 
-        {/* Seção Empresa — só admin */}
         {usuario?.cargo === 'admin' && (
           <>
             <p style={styles.painelSecaoTitulo}>Empresa</p>
@@ -328,7 +309,6 @@ function PainelPerfil({ usuario, sair, fechar, setPagina, setModalAcessoExterno,
           </>
         )}
 
-        {/* Seção Conta */}
         <p style={styles.painelSecaoTitulo}>Conta</p>
         <button style={styles.painelItem} onClick={() => { fechar(); setModalAcessoExterno(true) }}>
           <span><Icone.Lock size={15} /></span> Acesso e senha
@@ -339,8 +319,6 @@ function PainelPerfil({ usuario, sair, fechar, setPagina, setModalAcessoExterno,
 
         <div style={{ flex: 1 }} />
         <div style={styles.painelDivisor} />
-
-        {/* Sair */}
         <button style={styles.painelSair} onClick={sair}>
           <span><Icone.LogOut size={15} /></span> Sair da conta
         </button>
@@ -349,50 +327,85 @@ function PainelPerfil({ usuario, sair, fechar, setPagina, setModalAcessoExterno,
   )
 }
 
-// Ícones SVG
-const IconeFeed = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-  </svg>
-)
-const IconeAgenda = IconeFeed
-const IconeChat = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-  </svg>
-)
-const IconeRecolher = ({ aberta }) => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    {aberta ? <><polyline points="15 18 9 12 15 6"/></> : <><polyline points="9 18 15 12 9 6"/></>}
-  </svg>
-)
+// ── Banner de verificação de e-mail ──
+function BannerVerificacao() {
+  const [enviando, setEnviando] = useState(false)
+  const [enviado, setEnviado] = useState(false)
+  const { mostrar } = useToast()
 
-// ── Navegação com suporte a grupos e submenus ──
+  const reenviar = async () => {
+    setEnviando(true)
+    try {
+      await api.post('/auth/reenviar-verificacao')
+      setEnviado(true)
+      mostrar('E-mail de verificação reenviado!', 'sucesso')
+    } catch {
+      mostrar('Erro ao reenviar e-mail.', 'erro')
+    } finally {
+      setEnviando(false)
+    }
+  }
+
+  return (
+    <div style={{
+      background: 'rgba(245,158,11,0.08)',
+      border: '1px solid rgba(245,158,11,0.2)',
+      borderRadius: '12px',
+      padding: '12px 20px',
+      display: 'flex', alignItems: 'center',
+      justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap',
+      marginBottom: '8px',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <span style={{ fontSize: '15px' }}>⚠️</span>
+        <span style={{ fontSize: '0.82rem', color: '#FCD34D', fontFamily: 'Inter, sans-serif' }}>
+          Seu e-mail ainda não foi verificado. Verifique sua caixa de entrada.
+        </span>
+      </div>
+      {!enviado ? (
+        <button
+          onClick={reenviar}
+          disabled={enviando}
+          style={{ background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '8px', color: '#FCD34D', padding: '5px 14px', fontSize: '0.75rem', cursor: 'pointer', fontFamily: 'Inter, sans-serif', fontWeight: '600', whiteSpace: 'nowrap' }}
+        >
+          {enviando ? 'Enviando...' : 'Reenviar e-mail'}
+        </button>
+      ) : (
+        <span style={{ fontSize: '0.75rem', color: '#4ADE80' }}>✓ E-mail enviado!</span>
+      )}
+    </div>
+  )
+}
+
+// ── Navegação ──
 function NavItens({ menuItens, paginaAtual, setPagina, sidebarAberta }) {
   const [gruposAbertos, setGruposAbertos] = useState(() => {
-    // Abre o grupo cujo subitem está ativo
     const inicial = {}
     menuItens.forEach(item => {
-      if (item.subItens?.some(s => s.id === paginaAtual)) {
-        inicial[item.id] = true
-      }
+      if (item.subItens?.some(s => s.id === paginaAtual)) inicial[item.id] = true
     })
     return inicial
   })
 
-  const toggleGrupo = (id) => {
-    setGruposAbertos(prev => ({ ...prev, [id]: !prev[id] }))
-  }
+  const toggleGrupo = (id) => setGruposAbertos(prev => ({ ...prev, [id]: !prev[id] }))
 
   return (
     <>
       {menuItens.map(item => {
+        // Separador de seção (sem subItens, id começa com '__')
+        if (item.separador) {
+          return sidebarAberta ? (
+            <div key={item.id} style={styles.navSeparador}>{item.label}</div>
+          ) : (
+            <div key={item.id} style={styles.navSeparadorFechado} />
+          )
+        }
+
         if (item.subItens) {
           const aberto = gruposAbertos[item.id]
           const subAtivo = item.subItens.some(s => s.id === paginaAtual)
           return (
             <div key={item.id}>
-              {/* Botão do grupo */}
               <button
                 className="nav-btn"
                 style={{
@@ -400,7 +413,7 @@ function NavItens({ menuItens, paginaAtual, setPagina, sidebarAberta }) {
                   ...(subAtivo && !aberto ? styles.navBtnAtivo : {}),
                   justifyContent: sidebarAberta ? 'space-between' : 'center',
                 }}
-                onClick={() => sidebarAberta ? toggleGrupo(item.id) : toggleGrupo(item.id)}
+                onClick={() => toggleGrupo(item.id)}
                 title={!sidebarAberta ? item.label : ''}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -408,27 +421,29 @@ function NavItens({ menuItens, paginaAtual, setPagina, sidebarAberta }) {
                   {sidebarAberta && <span style={styles.navLabel}>{item.label}</span>}
                 </div>
                 {sidebarAberta && (
-                  <span style={{ fontSize: '10px', color: 'var(--texto-apagado)', transition: 'transform 0.2s', transform: aberto ? 'rotate(90deg)' : 'rotate(0deg)' }}>
-                    ▶
-                  </span>
+                  <span style={{
+                    fontSize: '9px', color: 'var(--texto-apagado)',
+                    transition: 'transform 0.2s',
+                    transform: aberto ? 'rotate(90deg)' : 'rotate(0deg)',
+                    display: 'flex', alignItems: 'center',
+                  }}>▶</span>
                 )}
               </button>
 
-              {/* Submenus */}
               {aberto && sidebarAberta && (
-                <div style={{ marginLeft: '12px', borderLeft: '1px solid #2A3830', paddingLeft: '8px', marginTop: '2px', marginBottom: '2px' }}>
+                <div style={styles.subMenu}>
                   {item.subItens.map(sub => (
                     <button
                       key={sub.id}
                       className="nav-btn"
                       style={{
                         ...styles.navBtn,
+                        ...styles.navBtnSub,
                         ...(paginaAtual === sub.id ? styles.navBtnAtivo : {}),
-                        fontSize: '0.82rem',
-                        padding: '8px 12px',
                       }}
                       onClick={() => setPagina(sub.id)}
                     >
+                      <span style={styles.navDot} />
                       <span style={styles.navLabel}>{sub.label}</span>
                     </button>
                   ))}
@@ -438,7 +453,6 @@ function NavItens({ menuItens, paginaAtual, setPagina, sidebarAberta }) {
           )
         }
 
-        // Item normal sem submenus
         return (
           <button
             key={item.id}
@@ -460,52 +474,6 @@ function NavItens({ menuItens, paginaAtual, setPagina, sidebarAberta }) {
   )
 }
 
-
-function BannerVerificacao() {
-  const { usuario } = useAuth()
-  const [enviando, setEnviando] = useState(false)
-  const [enviado, setEnviado] = useState(false)
-  const { mostrar } = useToast()
-
-  const reenviar = async () => {
-    setEnviando(true)
-    try {
-      await api.post('/auth/reenviar-verificacao')
-      setEnviado(true)
-      mostrar('E-mail de verificação reenviado!', 'sucesso')
-    } catch {
-      mostrar('Erro ao reenviar e-mail.', 'erro')
-    } finally {
-      setEnviando(false)
-    }
-  }
-
-  return (
-    <div style={{
-      position: 'fixed', top: '52px', left: 0, right: 0, zIndex: 99,
-      background: 'rgba(245,158,11,0.12)', borderBottom: '1px solid rgba(245,158,11,0.25)',
-      padding: '10px 20px', display: 'flex', alignItems: 'center',
-      justifyContent: 'center', gap: '12px', flexWrap: 'wrap'
-    }}>
-      <span style={{ fontSize: '0.82rem', color: '#FCD34D', fontFamily: 'Inter, sans-serif' }}>
-        ⚠️ Seu e-mail ainda não foi verificado. Verifique sua caixa de entrada.
-      </span>
-      {!enviado ? (
-        <button
-          onClick={reenviar}
-          disabled={enviando}
-          style={{ background: 'rgba(245,158,11,0.2)', border: '1px solid rgba(245,158,11,0.4)', borderRadius: '6px', color: '#FCD34D', padding: '4px 12px', fontSize: '0.78rem', cursor: 'pointer', fontFamily: 'Inter, sans-serif', fontWeight: '600' }}
-        >
-          {enviando ? 'Enviando...' : 'Reenviar e-mail'}
-        </button>
-      ) : (
-        <span style={{ fontSize: '0.78rem', color: '#4ADE80' }}>✓ E-mail enviado!</span>
-      )}
-    <WidgetFeedback />
-    </div>
-  )
-}
-
 export default function Layout({ children, menuItens, paginaAtual, setPagina }) {
   const { usuario, sair, recarregarUsuario } = useAuth()
   const [sidebarAberta, setSidebarAberta] = useState(true)
@@ -514,9 +482,6 @@ export default function Layout({ children, menuItens, paginaAtual, setPagina }) 
   const [modalConfig, setModalConfig] = useState(false)
   const [naoLidasChat, setNaoLidasChat] = useState(0)
 
-  const TOPO = '52px'
-
-  // Polling badge de mensagens não lidas
   useEffect(() => {
     const buscarNaoLidas = async () => {
       try {
@@ -533,36 +498,52 @@ export default function Layout({ children, menuItens, paginaAtual, setPagina }) 
     <div style={styles.app}>
       <style>{`
         .nav-btn:hover {
-          background: rgba(255,255,255,0.06) !important;
-          color: #fff !important;
+          background: rgba(255,255,255,0.05) !important;
+          color: var(--texto) !important;
         }
-        .nav-btn:hover .nav-icone {
-          opacity: 1;
+        .nav-btn-ativo {
+          border-left: 3px solid var(--verde) !important;
+        }
+        .topbar-btn:hover {
+          background: rgba(255,255,255,0.08) !important;
+        }
+        .painel-item:hover {
+          background: rgba(255,255,255,0.05) !important;
         }
       `}</style>
 
-      {/* Banner verificação de e-mail */}
-      {usuario && !usuario.emailVerificado && <BannerVerificacao />}
-
-      {/* ===== BARRA SUPERIOR ===== */}
+      {/* ===== TOPBAR ===== */}
       <header style={styles.topbar}>
-        {/* Esquerda: logo clicável */}
-        <button style={styles.logoBtn} onClick={() => setPagina('inicio')} title="Ir para início">
-          <img src="/logo-branca.png" alt="Zempofy" style={{ height: '40px', width: 'auto' }} />
-        </button>
+        {/* Logo + toggle */}
+        <div style={styles.topbarEsquerda}>
+          <button
+            className="topbar-btn"
+            style={{ ...styles.btnTopbar, marginRight: '4px', flexShrink: 0 }}
+            onClick={() => setSidebarAberta(!sidebarAberta)}
+            title={sidebarAberta ? 'Recolher menu' : 'Expandir menu'}
+          >
+            <IconeRecolher aberta={sidebarAberta} />
+          </button>
+          <button style={styles.logoBtn} onClick={() => setPagina('inicio')} title="Ir para início">
+            <img src="/logo-branca.png" alt="Zempofy" style={{ height: '36px', width: 'auto' }} />
+          </button>
+        </div>
 
-        {/* Direita: ações rápidas + avatar */}
+        {/* Ações + avatar */}
         <div style={styles.topbarDireita}>
           {/* Feed */}
           <button
-            style={{ ...styles.btnTopbar, position: 'relative' }}
+            className="topbar-btn"
+            style={{ ...styles.btnTopbar, ...(paginaAtual === 'mural' ? styles.btnTopbarAtivo : {}) }}
             onClick={() => setPagina('mural')}
             title="Feed de atividades"
           >
-            <IconeAgenda />
-            <span style={{ ...styles.chatBadge, background: '#f87171', boxShadow: '0 0 6px rgba(248,113,113,0.5)', display: 'none' }} id="feed-badge">!</span>
+            <IconeFeed />
           </button>
+
+          {/* Chat */}
           <button
+            className="topbar-btn"
             style={{ ...styles.btnTopbar, ...(paginaAtual === 'chat' ? styles.btnTopbarAtivo : {}), position: 'relative' }}
             onClick={() => setPagina('chat')}
             title="Chat"
@@ -573,29 +554,26 @@ export default function Layout({ children, menuItens, paginaAtual, setPagina }) 
             )}
           </button>
 
-          <div style={styles.topbarDivisor} />
+          <div style={styles.topbarSep} />
 
-          {/* Avatar */}
+          {/* Avatar compacto */}
           <button style={styles.avatarBtn} onClick={() => setPainelAberto(true)} title="Minha conta">
             <Avatar nome={usuario?.nome} foto={usuario?.avatar} size={30} fontSize={13} />
             <div style={styles.avatarInfo}>
               <span style={styles.avatarNome}>{usuario?.nome}</span>
-              <span style={styles.avatarCargo}>
-                {usuario?.cargo === 'admin' ? 'Titular' : 'Colaborador'}
-              </span>
+              <span style={styles.avatarCargo}>{usuario?.cargo === 'admin' ? 'Titular' : 'Colaborador'}</span>
             </div>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="2" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg>
           </button>
         </div>
       </header>
 
       {/* ===== SIDEBAR ===== */}
-      <aside style={{ ...styles.sidebar, width: sidebarAberta ? SIDEBAR_ABERTA : SIDEBAR_FECHADA, top: TOPO }}>
-        {/* Botão de recolher no topo da sidebar */}
-        <div style={{ ...styles.sidebarTopoBtn, justifyContent: sidebarAberta ? 'flex-end' : 'center' }}>
-          <button style={styles.btnToggle} onClick={() => setSidebarAberta(!sidebarAberta)} title={sidebarAberta ? 'Recolher menu' : 'Expandir menu'}>
-            <IconeRecolher aberta={sidebarAberta} />
-          </button>
-        </div>
+      <aside style={{
+        ...styles.sidebar,
+        width: sidebarAberta ? SIDEBAR_LARGURA : SIDEBAR_FECHADA,
+        top: TOPBAR_ALTURA,
+      }}>
 
         <nav style={styles.nav}>
           <NavItens
@@ -605,6 +583,13 @@ export default function Layout({ children, menuItens, paginaAtual, setPagina }) 
             sidebarAberta={sidebarAberta}
           />
         </nav>
+
+        {/* Rodapé da sidebar — versão */}
+        {sidebarAberta && (
+          <div style={styles.sidebarRodape}>
+            <span style={styles.sidebarVersao}>Zempofy Onboarding</span>
+          </div>
+        )}
       </aside>
 
       {/* Painel de perfil */}
@@ -619,23 +604,27 @@ export default function Layout({ children, menuItens, paginaAtual, setPagina }) 
         />
       )}
 
-      {/* Modal Acesso e Senha */}
       {modalAcesso && (
         <ModalAcessoSenha usuario={usuario} fechar={() => setModalAcesso(false)} onNomeAtualizado={recarregarUsuario} />
       )}
 
-      {/* Modal Configurações */}
       {modalConfig && (
         <ModalConfiguracoes fechar={() => setModalConfig(false)} />
       )}
 
-      {/* Conteúdo */}
-      <main style={{ ...styles.conteudo, marginLeft: sidebarAberta ? SIDEBAR_ABERTA : SIDEBAR_FECHADA, marginTop: TOPO }}>
+      {/* Conteúdo principal */}
+      <main style={{
+        ...styles.conteudo,
+        marginLeft: sidebarAberta ? SIDEBAR_LARGURA : SIDEBAR_FECHADA,
+        marginTop: TOPBAR_ALTURA,
+      }}>
         <div style={styles.conteudoInner} className="fade-in">
+          {usuario && !usuario.emailVerificado && <BannerVerificacao />}
           {children}
         </div>
       </main>
-    <WidgetFeedback />
+
+      <WidgetFeedback />
     </div>
   )
 }
@@ -649,165 +638,255 @@ const styles = {
     width: '100%',
   },
 
-  // Topbar
+  // ── Topbar ──
   topbar: {
     position: 'fixed',
     top: 0, left: 0, right: 0,
-    height: '52px',
-    background: '#18181b',
-    borderBottom: '1px solid #27272a',
+    height: TOPBAR_ALTURA,
+    background: 'rgba(9,9,11,0.92)',
+    backdropFilter: 'blur(12px)',
+    WebkitBackdropFilter: 'blur(12px)',
+    borderBottom: '1px solid rgba(255,255,255,0.06)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingLeft: '20px',
+    paddingLeft: '0',
+    paddingRight: '0',
     zIndex: 100,
   },
+  topbarEsquerda: {
+    display: 'flex',
+    alignItems: 'center',
+    paddingLeft: '10px',
+    gap: '4px',
+    flexShrink: 0,
+  },
   logoBtn: {
-    display: 'flex', alignItems: 'center', gap: '8px',
+    display: 'flex', alignItems: 'center',
     background: 'none', border: 'none', cursor: 'pointer',
-    padding: '4px 8px', borderRadius: '8px',
-    transition: 'background 0.15s',
-  },
-  logoIcone: {
-    width: '28px', height: '28px', minWidth: '28px',
-    background: 'var(--gradiente-verde)',
-    borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-    fontFamily: 'Inter, sans-serif', fontWeight: '800', fontSize: '14px', color: '#fff',
-    boxShadow: '0 2px 8px rgba(0,177,65,0.35)',
-  },
-  logoNome: {
-    fontFamily: 'Inter, sans-serif', fontWeight: '700',
-    fontSize: '16px', color: '#ffffff', whiteSpace: 'nowrap',
-    letterSpacing: '-0.02em',
+    padding: '4px 0',
   },
   topbarDireita: {
     display: 'flex', alignItems: 'center', gap: '4px',
-    paddingRight: '16px',
+    paddingRight: '18px',
   },
   btnTopbar: {
     background: 'none', border: 'none', borderRadius: '8px',
-    color: 'rgba(255,255,255,0.85)', width: '36px', height: '36px',
+    color: 'rgba(255,255,255,0.6)', width: '34px', height: '34px',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
     cursor: 'pointer', transition: 'all 0.15s',
   },
   btnTopbarAtivo: {
-    background: 'rgba(255,255,255,0.15)',
-    color: '#ffffff',
+    background: 'rgba(255,255,255,0.08)',
+    color: 'rgba(255,255,255,0.95)',
   },
   chatBadge: {
     position: 'absolute', top: '4px', right: '4px',
-    background: '#ffffff', color: '#00b141',
-    fontSize: '0.5rem', fontWeight: '800',
-    borderRadius: '50%', width: '13px', height: '13px',
+    background: 'var(--verde)', color: '#fff',
+    fontSize: '0.48rem', fontWeight: '800',
+    borderRadius: '50%', width: '14px', height: '14px',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
+    boxShadow: '0 0 6px rgba(0,177,65,0.6)',
   },
-  topbarDivisor: {
-    width: '1px', height: '20px', background: 'rgba(255,255,255,0.25)', margin: '0 8px',
+  topbarSep: {
+    width: '1px', height: '18px',
+    background: 'rgba(255,255,255,0.1)',
+    margin: '0 6px',
   },
   avatarBtn: {
     display: 'flex', alignItems: 'center', gap: '8px',
-    background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', cursor: 'pointer',
-    padding: '4px 10px 4px 6px', borderRadius: '99px',
-    transition: 'background 0.15s',
+    background: 'rgba(255,255,255,0.06)',
+    border: '1px solid rgba(255,255,255,0.1)',
+    cursor: 'pointer',
+    padding: '5px 10px 5px 6px',
+    borderRadius: '10px',
+    transition: 'all 0.15s',
   },
   avatarInfo: { display: 'flex', flexDirection: 'column', textAlign: 'left' },
-  avatarNome: { fontSize: '0.8rem', fontWeight: '600', color: '#ffffff', whiteSpace: 'nowrap', letterSpacing: '-0.01em' },
-  avatarCargo: { fontSize: '0.65rem', color: 'rgba(255,255,255,0.7)' },
+  avatarNome: {
+    fontSize: '0.78rem', fontWeight: '600',
+    color: 'rgba(255,255,255,0.9)', whiteSpace: 'nowrap',
+    letterSpacing: '-0.01em', lineHeight: '1.2',
+  },
+  avatarCargo: {
+    fontSize: '0.62rem', color: 'rgba(255,255,255,0.45)',
+    lineHeight: '1.2',
+  },
 
-  // Sidebar
+  // ── Sidebar ──
   sidebar: {
-    background: 'var(--sidebar)',
-    borderRight: '1px solid var(--borda)',
+    background: '#0d0d0f',
+    borderRight: '1px solid rgba(255,255,255,0.06)',
     display: 'flex',
     flexDirection: 'column',
-    transition: 'width 0.25s ease',
+    transition: 'width 0.22s cubic-bezier(0.4,0,0.2,1)',
     position: 'fixed',
     left: 0, bottom: 0,
     zIndex: 50,
     overflow: 'hidden',
   },
-  sidebarTopoBtn: {
+  sidebarToggleRow: {
     display: 'flex',
     alignItems: 'center',
-    padding: '10px 8px',
-    borderBottom: '1px solid var(--borda)',
+    padding: '10px 10px',
+    borderBottom: '1px solid rgba(255,255,255,0.05)',
     flexShrink: 0,
   },
   btnToggle: {
-    background: 'none', border: '1px solid var(--borda)', borderRadius: '6px',
-    color: 'var(--texto-apagado)', width: '26px', height: '26px', display: 'flex',
-    alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0,
+    background: 'none',
+    border: '1px solid rgba(255,255,255,0.08)',
+    borderRadius: '6px',
+    color: 'rgba(255,255,255,0.3)',
+    width: '26px', height: '26px',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    cursor: 'pointer', flexShrink: 0,
     transition: 'all 0.15s',
   },
   nav: {
-    flex: 1, padding: '10px 8px',
-    display: 'flex', flexDirection: 'column', gap: '2px',
+    flex: 1,
+    padding: '8px 8px',
+    display: 'flex', flexDirection: 'column', gap: '1px',
     overflowY: 'auto',
+    overflowX: 'hidden',
   },
+
+  // Separador de seção
+  navSeparador: {
+    fontSize: '0.6rem',
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.22)',
+    textTransform: 'uppercase',
+    letterSpacing: '1.5px',
+    padding: '14px 10px 5px',
+    fontFamily: 'Inter, sans-serif',
+    whiteSpace: 'nowrap',
+  },
+  navSeparadorFechado: {
+    height: '1px',
+    background: 'rgba(255,255,255,0.05)',
+    margin: '8px 10px',
+  },
+
+  // Item de navegação
   navBtn: {
-    display: 'flex', alignItems: 'center', gap: '10px',
-    padding: '8px 10px', borderRadius: '8px',
-    background: 'none', border: 'none', color: 'var(--texto)',
-    cursor: 'pointer', fontSize: '0.875rem', fontFamily: 'Inter, sans-serif',
-    transition: 'all 0.15s', width: '100%', whiteSpace: 'nowrap',
+    display: 'flex', alignItems: 'center', gap: '9px',
+    padding: '7px 10px',
+    borderRadius: '7px',
+    background: 'none',
+    border: 'none',
+    borderLeft: '3px solid transparent',
+    color: 'rgba(255,255,255,0.5)',
+    cursor: 'pointer',
+    fontSize: '0.82rem',
+    fontFamily: 'Inter, sans-serif',
+    transition: 'all 0.12s',
+    width: '100%',
+    whiteSpace: 'nowrap',
     fontWeight: '500',
+    textAlign: 'left',
   },
   navBtnAtivo: {
-    background: 'var(--verde-glow)',
-    color: 'var(--verde)',
+    borderLeft: '3px solid var(--verde)',
+    background: 'rgba(0,177,65,0.07)',
+    color: '#fff',
     fontWeight: '600',
+    borderRadius: '0 7px 7px 0',
   },
-  navIcone: { fontSize: '16px', flexShrink: 0, width: '20px', textAlign: 'center' },
-  navLabel: { fontSize: '0.875rem', fontWeight: 'inherit' },
+  navBtnSub: {
+    padding: '6px 10px 6px 8px',
+    fontSize: '0.8rem',
+  },
+  navIcone: {
+    flexShrink: 0,
+    width: '18px',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    opacity: 0.7,
+  },
+  navLabel: {
+    fontSize: 'inherit',
+    fontWeight: 'inherit',
+    letterSpacing: '-0.01em',
+  },
+  navDot: {
+    width: '4px', height: '4px',
+    borderRadius: '50%',
+    background: 'currentColor',
+    flexShrink: 0,
+    marginLeft: '7px',
+    opacity: 0.5,
+  },
+  subMenu: {
+    marginLeft: '0',
+    paddingLeft: '0',
+    paddingTop: '1px',
+    paddingBottom: '1px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '1px',
+  },
 
-  // Conteúdo
+  // Rodapé da sidebar
+  sidebarRodape: {
+    padding: '12px 14px',
+    borderTop: '1px solid rgba(255,255,255,0.05)',
+    flexShrink: 0,
+  },
+  sidebarVersao: {
+    fontSize: '0.65rem',
+    color: 'rgba(255,255,255,0.18)',
+    fontFamily: 'Inter, sans-serif',
+    letterSpacing: '0.3px',
+  },
+
+  // ── Conteúdo ──
   conteudo: {
     flex: 1,
-    transition: 'margin-left 0.25s ease, margin-top 0.25s ease',
-    height: 'calc(100vh - 52px)',
+    transition: 'margin-left 0.22s cubic-bezier(0.4,0,0.2,1), margin-top 0.22s',
+    height: `calc(100vh - ${TOPBAR_ALTURA})`,
     overflowY: 'auto',
     overflowX: 'hidden',
     minWidth: 0,
   },
   conteudoInner: {
-    padding: '32px',
+    padding: '40px 40px',
     width: '100%',
     boxSizing: 'border-box',
     minHeight: '100%',
+    maxWidth: '1400px',
   },
 
-  // Painel de perfil
+  // ── Painel de perfil ──
   overlay: {
     position: 'fixed', inset: 0,
-    background: 'var(--overlay)',
+    background: 'rgba(0,0,0,0.5)',
     zIndex: 98,
     backdropFilter: 'blur(2px)',
   },
   painel: {
     position: 'fixed',
-    top: '52px', left: 0, bottom: 0,
+    top: TOPBAR_ALTURA, left: 0, bottom: 0,
     width: '260px',
-    background: 'var(--card)',
-    borderRight: '1px solid var(--borda)',
+    background: '#0d0d0f',
+    borderRight: '1px solid rgba(255,255,255,0.07)',
     zIndex: 99,
     display: 'flex',
     flexDirection: 'column',
-    boxShadow: 'var(--sombra-elevada)',
+    boxShadow: '4px 0 24px rgba(0,0,0,0.4)',
   },
   painelTopo: {
     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-    padding: '20px 20px 16px',
-    borderBottom: '1px solid var(--borda)',
+    padding: '18px 20px 14px',
+    borderBottom: '1px solid rgba(255,255,255,0.06)',
   },
   painelTitulo: {
     fontFamily: 'Inter, sans-serif', fontWeight: '700',
-    fontSize: '1rem', color: 'var(--texto)', letterSpacing: '-0.02em',
+    fontSize: '0.9rem', color: 'rgba(255,255,255,0.9)', letterSpacing: '-0.02em',
   },
   btnFechar: {
-    background: 'none', border: '1px solid var(--borda)', borderRadius: '6px',
-    color: 'var(--texto-apagado)', width: '28px', height: '28px',
+    background: 'none', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px',
+    color: 'rgba(255,255,255,0.3)', width: '26px', height: '26px',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
-    fontSize: '12px', cursor: 'pointer',
+    fontSize: '11px', cursor: 'pointer',
   },
   painelPerfil: {
     display: 'flex', alignItems: 'center', gap: '14px',
@@ -816,31 +895,39 @@ const styles = {
   btnEditarFoto: {
     position: 'absolute', bottom: 0, right: 0,
     width: '18px', height: '18px',
-    background: 'var(--gradiente-verde)', border: '2px solid var(--card)',
+    background: 'var(--gradiente-verde)', border: '2px solid #0d0d0f',
     borderRadius: '50%', cursor: 'pointer',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
     color: '#fff', padding: 0,
   },
-  painelNome: { fontSize: '0.95rem', fontWeight: '600', color: 'var(--texto)', marginBottom: '2px', letterSpacing: '-0.01em' },
-  painelEmpresa: { fontSize: '0.8rem', color: 'var(--verde)', marginBottom: '4px' },
-  painelId: { fontSize: '0.7rem', color: 'var(--texto-apagado)', fontFamily: 'monospace', letterSpacing: '1px' },
-  painelDivisor: { height: '1px', background: 'var(--borda)', margin: '4px 20px' },
+  painelNome: {
+    fontSize: '0.9rem', fontWeight: '600',
+    color: 'rgba(255,255,255,0.9)', marginBottom: '2px', letterSpacing: '-0.01em',
+  },
+  painelEmpresa: { fontSize: '0.77rem', color: 'var(--verde)', marginBottom: '4px' },
+  painelId: {
+    fontSize: '0.65rem', color: 'rgba(255,255,255,0.25)',
+    fontFamily: 'monospace', letterSpacing: '1px',
+  },
+  painelDivisor: {
+    height: '1px', background: 'rgba(255,255,255,0.06)', margin: '4px 20px',
+  },
   painelSecaoTitulo: {
-    fontSize: '0.65rem', fontWeight: '700', color: 'var(--texto-apagado)',
+    fontSize: '0.6rem', fontWeight: '700', color: 'rgba(255,255,255,0.25)',
     textTransform: 'uppercase', letterSpacing: '1.5px',
-    padding: '12px 20px 6px',
+    padding: '12px 20px 5px',
   },
   painelItem: {
     display: 'flex', alignItems: 'center', gap: '10px',
-    padding: '10px 20px', background: 'none', border: 'none',
-    color: 'var(--texto)', fontSize: '0.875rem', cursor: 'pointer',
+    padding: '9px 20px', background: 'none', border: 'none',
+    color: 'rgba(255,255,255,0.6)', fontSize: '0.83rem', cursor: 'pointer',
     width: '100%', textAlign: 'left', fontFamily: 'Inter, sans-serif',
-    transition: 'background 0.15s', borderRadius: '0',
+    transition: 'background 0.12s, color 0.12s',
   },
   painelSair: {
     display: 'flex', alignItems: 'center', gap: '10px',
-    padding: '16px 20px', background: 'none', border: 'none',
-    color: '#f87171', fontSize: '0.875rem', cursor: 'pointer',
+    padding: '15px 20px', background: 'none', border: 'none',
+    color: '#f87171', fontSize: '0.83rem', cursor: 'pointer',
     width: '100%', textAlign: 'left', fontFamily: 'Inter, sans-serif',
   },
 }

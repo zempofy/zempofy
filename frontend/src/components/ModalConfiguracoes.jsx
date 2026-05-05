@@ -1,8 +1,35 @@
+import { useState, useEffect } from 'react'
 import { usePreferencias } from '../contexts/PreferenciasContext'
+import { useAuth } from '../contexts/AuthContext'
 import Modal from './Modal'
+import api from '../services/api'
+import { useToast } from './Toast'
 
 export default function ModalConfiguracoes({ fechar }) {
   const { tema, setTema, fonte, setFonte } = usePreferencias()
+  const { usuario } = useAuth()
+  const { mostrar } = useToast()
+  const isTitular = usuario?.cargo === 'admin'
+  const [podeAtribuir, setPodeAtribuir] = useState(true)
+  const [salvandoConfig, setSalvandoConfig] = useState(false)
+
+  useEffect(() => {
+    if (!isTitular) return
+    api.get('/empresa').then(r => {
+      setPodeAtribuir(r.data.colaboradoresPodeAtribuirTitular ?? true)
+    }).catch(() => {})
+  }, [])
+
+  const salvarPodeAtribuir = async (valor) => {
+    setPodeAtribuir(valor)
+    setSalvandoConfig(true)
+    try {
+      await api.put('/empresa', { colaboradoresPodeAtribuirTitular: valor })
+      mostrar(valor ? 'Colaboradores podem te atribuir tarefas.' : 'Colaboradores não podem mais te atribuir tarefas.', 'sucesso')
+    } catch {
+      mostrar('Erro ao salvar configuração.', 'erro')
+    } finally { setSalvandoConfig(false) }
+  }
 
   return (
     <Modal onFechar={fechar} maxWidth="480px">
@@ -47,6 +74,26 @@ export default function ModalConfiguracoes({ fechar }) {
             </button>
           </div>
         </div>
+
+        {/* EMPRESA — só pra titular */}
+        {isTitular && (
+          <div style={styles.secao}>
+            <p style={styles.secaoTitulo}>Equipe</p>
+            <div style={styles.toggleRow}>
+              <div>
+                <p style={styles.toggleLabel}>Colaboradores podem me atribuir tarefas</p>
+                <p style={styles.toggleDesc}>Quando ativo, seu nome aparece na lista de responsáveis ao criar uma tarefa</p>
+              </div>
+              <button
+                style={{ ...styles.toggle, ...(podeAtribuir ? styles.toggleAtivo : {}) }}
+                onClick={() => salvarPodeAtribuir(!podeAtribuir)}
+                disabled={salvandoConfig}
+              >
+                <div style={{ ...styles.toggleBola, ...(podeAtribuir ? styles.toggleBolaAtiva : {}) }} />
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* FONTE */}
         <div style={styles.secao}>
@@ -112,4 +159,11 @@ const styles = {
   sliderLabels: { display: 'flex', justifyContent: 'space-between', marginTop: '-8px' },
   sliderOpcaoLabel: { fontSize: '0.72rem', fontFamily: 'Inter, sans-serif', transition: 'color 0.2s' },
   fontePreview: { background: 'var(--input)', border: '1px solid var(--borda)', borderRadius: '10px', padding: '14px 16px', marginTop: '4px' },
+  toggleRow: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', background: 'var(--input)', border: '1px solid var(--borda)', borderRadius: '12px', padding: '14px 16px' },
+  toggleLabel: { fontSize: '0.85rem', fontWeight: '500', color: 'var(--texto)', margin: '0 0 4px', fontFamily: 'Inter, sans-serif' },
+  toggleDesc: { fontSize: '0.75rem', color: 'var(--texto-apagado)', margin: 0, lineHeight: '1.4', fontFamily: 'Inter, sans-serif' },
+  toggle: { width: '40px', height: '22px', borderRadius: '99px', background: 'var(--borda)', border: 'none', cursor: 'pointer', position: 'relative', flexShrink: 0, transition: 'background 0.2s', marginTop: '2px', padding: 0 },
+  toggleAtivo: { background: 'var(--verde)' },
+  toggleBola: { position: 'absolute', top: '3px', left: '3px', width: '16px', height: '16px', borderRadius: '50%', background: '#fff', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' },
+  toggleBolaAtiva: { left: '21px' },
 }

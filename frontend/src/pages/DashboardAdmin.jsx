@@ -15,7 +15,7 @@ import Relatorios from '../components/Relatorios'
 import Implantacao from '../components/Implantacao'
 import ModelosOnboarding from '../components/ModelosOnboarding'
 import Setores from '../components/Setores'
-import Checklist from '../components/Checklist'
+import BancoAtividades from '../components/BancoAtividades'
 import Clientes from '../components/Clientes'
 
 // ============ PÁGINAS INTERNAS ============
@@ -36,112 +36,310 @@ function PaginaInicio({ usuario, tarefas, funcionarios, setPagina }) {
   const tarefasHoje = tarefas.filter(t => t.data === hoje && t.status === 'pendente')
 
   useEffect(() => {
-    api.get('/mural').then(r => setAvisos(r.data.slice(0, 2))).catch(() => {})
+    api.get('/mural').then(r => setAvisos(r.data.slice(0, 3))).catch(() => {})
   }, [])
 
+  const metricas = [
+    {
+      label: 'Colaboradores',
+      valor: funcionarios.length,
+      icone: <Icone.Users size={18} />,
+      cor: 'rgba(255,255,255,0.5)',
+      desc: 'membros ativos',
+    },
+    {
+      label: 'Tarefas pendentes',
+      valor: pendentes,
+      icone: <Icone.ClipboardList size={18} />,
+      cor: '#fbbf24',
+      desc: 'aguardando conclusão',
+    },
+    {
+      label: 'Concluídas',
+      valor: concluidas,
+      icone: <Icone.CheckCircle size={18} />,
+      cor: 'rgba(255,255,255,0.5)',
+      desc: 'tarefas finalizadas',
+    },
+    {
+      label: 'Taxa de conclusão',
+      valor: taxa + '%',
+      icone: <Icone.BarChart size={18} />,
+      cor: 'var(--verde)',
+      destaque: true,
+      desc: 'do total de tarefas',
+    },
+  ]
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      {/* Saudação */}
-      <div>
-        <h1 style={styles.titulo}>{saudacao(usuario.nome)}</h1>
-        <p style={styles.subtitulo}>{usuario.empresa.nome}</p>
-      </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
 
-      {/* Cards métricas */}
-      <div style={styles.cards}>
-        <div style={styles.card}>
-          <span style={styles.cardIcone}><Icone.Users size={22} /></span>
-          <div>
-            <p style={styles.cardNum}>{funcionarios.length}</p>
-            <p style={styles.cardLabel}>Colaboradores</p>
-          </div>
+      {/* ── Cabeçalho ── */}
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
+        <div>
+          <p style={{ fontSize: '0.72rem', fontWeight: '600', color: 'var(--verde)', textTransform: 'uppercase', letterSpacing: '1.5px', marginBottom: '6px' }}>
+            {usuario.empresa.nome}
+          </p>
+          <h1 style={{ fontSize: '1.9rem', fontWeight: '700', color: 'var(--texto)', letterSpacing: '-0.04em', lineHeight: 1.1 }}>
+            {saudacao(usuario.nome)}
+          </h1>
         </div>
-        <div style={styles.card}>
-          <span style={styles.cardIcone}><Icone.ClipboardList size={22} /></span>
-          <div>
-            <p style={styles.cardNum}>{pendentes}</p>
-            <p style={styles.cardLabel}>Pendentes</p>
-          </div>
-        </div>
-        <div style={styles.card}>
-          <span style={styles.cardIcone}><Icone.CheckCircle size={22} /></span>
-          <div>
-            <p style={styles.cardNum}>{concluidas}</p>
-            <p style={styles.cardLabel}>Concluídas</p>
-          </div>
-        </div>
-        <div style={{ ...styles.card, borderColor: 'rgba(34,197,94,0.3)' }}>
-          <span style={{ ...styles.cardIcone, color: 'var(--verde)' }}><Icone.BarChart size={22} /></span>
-          <div>
-            <p style={{ ...styles.cardNum, color: 'var(--verde)' }}>{taxa}%</p>
-            <p style={styles.cardLabel}>Conclusão</p>
-          </div>
+        <div style={{ textAlign: 'right' }}>
+          <p style={{ fontSize: '0.75rem', color: 'var(--texto-apagado)' }}>
+            {new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}
+          </p>
         </div>
       </div>
 
-      <div style={styles.gridDois}>
+      {/* ── Métricas ── */}
+      <div style={stylesInicio.metricas}>
+        {metricas.map((m, i) => (
+          <div key={i} style={{
+            ...stylesInicio.metricaCard,
+            ...(m.destaque ? stylesInicio.metricaDestaque : {}),
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+              <span style={{ fontSize: '0.65rem', fontWeight: '700', color: m.destaque ? 'rgba(0,177,65,0.7)' : 'var(--texto-apagado)', textTransform: 'uppercase', letterSpacing: '1.2px' }}>
+                {m.label}
+              </span>
+              <span style={{ color: m.cor, opacity: 0.7 }}>{m.icone}</span>
+            </div>
+            <p style={{ fontSize: '2.4rem', fontWeight: '700', color: m.destaque ? 'var(--verde)' : 'var(--texto)', letterSpacing: '-0.04em', lineHeight: 1, marginBottom: '6px' }}>
+              {m.valor}
+            </p>
+            <p style={{ fontSize: '0.72rem', color: m.destaque ? 'rgba(0,177,65,0.6)' : 'var(--texto-apagado)' }}>{m.desc}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* ── Grade inferior ── */}
+      <div style={stylesInicio.grade}>
+
         {/* Tarefas de hoje */}
-        <div style={styles.secaoCard}>
-          <div style={styles.secaoCardTopo}>
-            <h2 style={styles.secaoTitulo}>Tarefas de hoje</h2>
-            <button style={styles.btnVer} onClick={() => setPagina('tarefas')}>Ver todas</button>
+        <div style={stylesInicio.bloco}>
+          <div style={stylesInicio.blocoTopo}>
+            <div>
+              <p style={stylesInicio.blocoLabel}>Tarefas de hoje</p>
+              <p style={stylesInicio.blocoSub}>{tarefasHoje.length} pendente{tarefasHoje.length !== 1 ? 's' : ''}</p>
+            </div>
+            <button style={stylesInicio.btnLink} onClick={() => setPagina('tarefas')}>Ver todas →</button>
           </div>
-          {tarefasHoje.length === 0 ? (
-            <div style={styles.vazioCard}>
-              <Icone.CheckCircle size={28} style={{ color: 'var(--borda)' }} />
-              <p>Nenhuma tarefa para hoje</p>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {tarefasHoje.slice(0, 5).map(t => (
-                <div key={t._id} style={styles.linhaTarefa}>
-                  <div style={styles.linhaTarefaPonto} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={styles.linhaTarefaDesc}>{t.descricao}</p>
-                    {(t.hora || t.responsavel?.nome) && (
-                      <p style={styles.linhaTarefaMeta}>
-                        {t.hora && t.hora}{t.hora && t.responsavel?.nome && ' · '}{t.responsavel?.nome}
-                      </p>
-                    )}
-                  </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
+            {tarefasHoje.length === 0 ? (
+              <div style={stylesInicio.vazio}>
+                <div style={stylesInicio.vazioIcone}><Icone.CheckCircle size={20} /></div>
+                <p style={stylesInicio.vazioTexto}>Nenhuma tarefa para hoje</p>
+              </div>
+            ) : tarefasHoje.slice(0, 5).map((t, i) => (
+              <div key={t._id} style={{
+                ...stylesInicio.tarefaLinha,
+                borderBottom: i < Math.min(tarefasHoje.length, 5) - 1 ? '1px solid var(--borda-sutil)' : 'none',
+              }}>
+                <div style={stylesInicio.tarefaDot} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={stylesInicio.tarefaTexto}>{t.descricao}</p>
+                  {(t.hora || t.responsavel?.nome) && (
+                    <p style={stylesInicio.tarefaMeta}>
+                      {t.hora}{t.hora && t.responsavel?.nome ? ' · ' : ''}{t.responsavel?.nome}
+                    </p>
+                  )}
                 </div>
-              ))}
-              {tarefasHoje.length > 5 && (
-                <p style={{ color: 'var(--texto-apagado)', fontSize: '0.78rem', textAlign: 'center' }}>
-                  +{tarefasHoje.length - 5} tarefas
-                </p>
-              )}
-            </div>
-          )}
+                {t.prioridade === 'alta' && (
+                  <span style={stylesInicio.badgeAlta}>Alta</span>
+                )}
+              </div>
+            ))}
+            {tarefasHoje.length > 5 && (
+              <p style={{ color: 'var(--texto-apagado)', fontSize: '0.75rem', textAlign: 'center', padding: '12px 0 4px' }}>
+                +{tarefasHoje.length - 5} tarefas
+              </p>
+            )}
+          </div>
         </div>
 
-        {/* Últimos avisos do mural */}
-        <div style={styles.secaoCard}>
-          <div style={styles.secaoCardTopo}>
-            <h2 style={styles.secaoTitulo}>Mural de avisos</h2>
-            <button style={styles.btnVer} onClick={() => setPagina('mural')}>Ver todos</button>
+        {/* Mural de avisos */}
+        <div style={stylesInicio.bloco}>
+          <div style={stylesInicio.blocoTopo}>
+            <div>
+              <p style={stylesInicio.blocoLabel}>Mural de avisos</p>
+              <p style={stylesInicio.blocoSub}>{avisos.length} publicaç{avisos.length !== 1 ? 'ões' : 'ão'} recente{avisos.length !== 1 ? 's' : ''}</p>
+            </div>
+            <button style={stylesInicio.btnLink} onClick={() => setPagina('mural')}>Ver todos →</button>
           </div>
-          {avisos.length === 0 ? (
-            <div style={styles.vazioCard}>
-              <Icone.Bell size={28} style={{ color: 'var(--borda)' }} />
-              <p>Nenhum aviso publicado</p>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {avisos.map(a => (
-                <div key={a._id} style={styles.linhaAviso}>
-                  {a.fixado && <span style={styles.badgeFixado}>Fixado</span>}
-                  <p style={styles.linhaAvisoTitulo}>{a.titulo}</p>
-                  <p style={styles.linhaAvisoTexto}>{a.texto.slice(0, 80)}{a.texto.length > 80 ? '...' : ''}</p>
-                  <p style={styles.linhaAvisoMeta}>{a.autor?.nome} · {new Date(a.criadoEm).toLocaleDateString('pt-BR')}</p>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {avisos.length === 0 ? (
+              <div style={stylesInicio.vazio}>
+                <div style={stylesInicio.vazioIcone}><Icone.Bell size={20} /></div>
+                <p style={stylesInicio.vazioTexto}>Nenhum aviso publicado</p>
+              </div>
+            ) : avisos.map(a => (
+              <div key={a._id} style={stylesInicio.avisoCard}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '5px' }}>
+                  {a.fixado && <span style={stylesInicio.badgeFixado}>Fixado</span>}
+                  <p style={stylesInicio.avisoTitulo}>{a.titulo}</p>
                 </div>
-              ))}
-            </div>
-          )}
+                <p style={stylesInicio.avisoTexto}>{a.texto.slice(0, 90)}{a.texto.length > 90 ? '...' : ''}</p>
+                <p style={stylesInicio.avisoMeta}>{a.autor?.nome} · {new Date(a.criadoEm).toLocaleDateString('pt-BR')}</p>
+              </div>
+            ))}
+          </div>
         </div>
+
       </div>
     </div>
   )
+}
+
+// Styles exclusivos da PaginaInicio
+const stylesInicio = {
+  metricas: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(4, 1fr)',
+    gap: '12px',
+  },
+  metricaCard: {
+    background: 'var(--card)',
+    border: '1px solid var(--borda)',
+    borderRadius: '14px',
+    padding: '22px 24px',
+    transition: 'border-color 0.2s',
+  },
+  metricaDestaque: {
+    background: 'rgba(0,177,65,0.05)',
+    border: '1px solid rgba(0,177,65,0.2)',
+  },
+  grade: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+    gap: '16px',
+  },
+  bloco: {
+    background: 'var(--card)',
+    border: '1px solid var(--borda)',
+    borderRadius: '14px',
+    padding: '24px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '20px',
+  },
+  blocoTopo: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+  },
+  blocoLabel: {
+    fontSize: '0.85rem',
+    fontWeight: '600',
+    color: 'var(--texto)',
+    letterSpacing: '-0.01em',
+    marginBottom: '2px',
+  },
+  blocoSub: {
+    fontSize: '0.72rem',
+    color: 'var(--texto-apagado)',
+  },
+  btnLink: {
+    background: 'none',
+    border: 'none',
+    color: 'var(--verde)',
+    fontSize: '0.75rem',
+    fontWeight: '600',
+    cursor: 'pointer',
+    fontFamily: 'Inter, sans-serif',
+    whiteSpace: 'nowrap',
+    padding: '2px 0',
+  },
+  vazio: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: '8px',
+    padding: '28px 0',
+    color: 'var(--texto-apagado)',
+  },
+  vazioIcone: {
+    width: '40px', height: '40px',
+    borderRadius: '10px',
+    background: 'var(--input)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    color: 'var(--texto-apagado)',
+  },
+  vazioTexto: {
+    fontSize: '0.82rem',
+    color: 'var(--texto-apagado)',
+  },
+  tarefaLinha: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    padding: '11px 0',
+  },
+  tarefaDot: {
+    width: '6px', height: '6px',
+    borderRadius: '50%',
+    background: '#fbbf24',
+    flexShrink: 0,
+  },
+  tarefaTexto: {
+    fontSize: '0.85rem',
+    color: 'var(--texto)',
+    lineHeight: '1.3',
+    margin: 0,
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+  },
+  tarefaMeta: {
+    fontSize: '0.72rem',
+    color: 'var(--texto-apagado)',
+    margin: '2px 0 0',
+  },
+  badgeAlta: {
+    fontSize: '0.6rem', fontWeight: '700',
+    color: '#f87171',
+    background: 'rgba(248,113,113,0.1)',
+    border: '1px solid rgba(248,113,113,0.2)',
+    borderRadius: '5px',
+    padding: '2px 6px',
+    flexShrink: 0,
+  },
+  avisoCard: {
+    background: 'var(--input)',
+    borderRadius: '10px',
+    padding: '12px 14px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '3px',
+  },
+  badgeFixado: {
+    fontSize: '0.6rem', fontWeight: '700',
+    color: 'var(--verde)',
+    background: 'var(--verde-glow)',
+    border: '1px solid rgba(0,177,65,0.2)',
+    borderRadius: '5px',
+    padding: '2px 6px',
+    flexShrink: 0,
+  },
+  avisoTitulo: {
+    fontSize: '0.85rem',
+    fontWeight: '600',
+    color: 'var(--texto)',
+    margin: 0,
+  },
+  avisoTexto: {
+    fontSize: '0.78rem',
+    color: 'var(--texto-apagado)',
+    margin: 0,
+    lineHeight: '1.45',
+  },
+  avisoMeta: {
+    fontSize: '0.68rem',
+    color: 'var(--texto-apagado)',
+    margin: '4px 0 0',
+    opacity: 0.7,
+  },
 }
 
 const PERMISSOES_LABELS = [
@@ -197,7 +395,8 @@ const PERMISSOES_VAZIAS = {
 
 function PaginaEquipe({ usuario, equipe, recarregar }) {
   const [mostrarForm, setMostrarForm] = useState(false)
-  const [form, setForm] = useState({ nome: '', email: '', senha: '', setorId: '' })
+  const [form, setForm] = useState({ nome: '', email: '', senha: '' })
+  const [setoresIds, setSetoresIds] = useState([])
   const [permissoes, setPermissoes] = useState({ ...PERMISSOES_VAZIAS })
   const [setores, setSetores] = useState([])
   const [erro, setErro] = useState('')
@@ -215,17 +414,19 @@ function PaginaEquipe({ usuario, equipe, recarregar }) {
 
   const criar = async (e) => {
     e.preventDefault()
+    if (setoresIds.length === 0) return setErro('Selecione pelo menos um setor.')
     setErro(''); setCarregando(true)
     try {
-      const res = await api.post('/usuarios', { ...form, permissoes })
-      // Se selecionou setor, adiciona o colaborador ao setor
-      if (form.setorId && res?.data?.id) {
-        if (res?.data?.id || res?.data?._id) {
-        const uid = res.data.id || res.data._id
-        await api.patch(`/setores/${form.setorId}/membros`, { usuarioId: uid }).catch(() => {})
+      const res = await api.post('/usuarios', { ...form, permissoes, setores: setoresIds })
+      const uid = res.data?.id || res.data?._id
+      // Adicionar ao(s) setor(es) selecionado(s)
+      if (uid) {
+        await Promise.all(setoresIds.map(sid =>
+          api.patch(`/setores/${sid}/membros`, { usuarioId: uid }).catch(() => {})
+        ))
       }
-      }
-      setForm({ nome: '', email: '', senha: '', setorId: '' })
+      setForm({ nome: '', email: '', senha: '' })
+      setSetoresIds([])
       setPermissoes({ ...PERMISSOES_VAZIAS })
       setMostrarForm(false)
       recarregar()
@@ -288,12 +489,30 @@ function PaginaEquipe({ usuario, equipe, recarregar }) {
               <label style={styles.label}>Senha temporária</label>
               <input style={styles.input} type="password" placeholder="Mínimo 6 caracteres" value={form.senha} onChange={e => setForm({ ...form, senha: e.target.value })} required />
             </div>
-            <div style={styles.campo}>
-              <label style={styles.label}>Setor</label>
-              <select style={styles.input} value={form.setorId} onChange={e => setForm({ ...form, setorId: e.target.value })}>
-                <option value="">Selecionar setor (opcional)</option>
-                {setores.map(s => <option key={s._id} value={s._id}>{s.nome}</option>)}
-              </select>
+            <div style={{ ...styles.campo, gridColumn: '1 / -1' }}>
+              <label style={styles.label}>Setores <span style={{ color: '#f87171', marginLeft: '2px' }}>*</span></label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                {setores.map(s => {
+                  const ativo = setoresIds.includes(s._id)
+                  return (
+                    <button key={s._id} type="button" onClick={() => {
+                      setSetoresIds(prev => ativo ? prev.filter(id => id !== s._id) : [...prev, s._id])
+                    }} style={{
+                      display: 'flex', alignItems: 'center', gap: '6px',
+                      padding: '6px 14px', borderRadius: '99px', cursor: 'pointer',
+                      fontSize: '0.8rem', fontFamily: 'Inter, sans-serif', fontWeight: '500',
+                      border: ativo ? `2px solid ${s.cor}` : '1px solid var(--borda)',
+                      background: ativo ? `${s.cor}22` : 'transparent',
+                      color: ativo ? s.cor : 'var(--texto-apagado)',
+                      transition: 'all 0.15s'
+                    }}>
+                      <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: s.cor }} />
+                      {s.nome}
+                    </button>
+                  )
+                })}
+              </div>
+              {setoresIds.length === 0 && <p style={{ fontSize: '0.75rem', color: '#f87171', margin: '4px 0 0' }}>Selecione pelo menos um setor</p>}
             </div>
             <button type="submit" style={styles.btnPrimario} disabled={carregando}>
               {carregando ? 'Criando...' : 'Criar colaborador'}
@@ -946,41 +1165,189 @@ function PaginaTarefas({ tarefas, funcionarios, recarregar }) {
           <p>Nenhuma tarefa encontrada com esses filtros.</p>
         </div>
       ) : (
-        <>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+
           {/* ── ONBOARDING DE CLIENTES ── */}
-          <div style={styles.secao}>
+          <div>
             <SecaoHeader titulo="Onboarding de clientes" count={onbPendentes.length} verde />
             {onbPendentes.length === 0 && onbConcluidas.length === 0 ? (
-              <p style={{ color: 'var(--texto-apagado)', fontSize: '0.875rem' }}>Nenhuma tarefa de onboarding em andamento.</p>
+              <p style={{ color: 'var(--texto-apagado)', fontSize: '0.875rem', padding: '12px 0' }}>Nenhuma tarefa de onboarding em andamento.</p>
             ) : (
-              <>
-                {onbPendentes.map(t => <CardComInfo key={t._id} t={t} />)}
-              </>
+              <div style={stylesTarefas.tabelaCard}>
+                {onbPendentes.map((t, i) => (
+                  <LinhaOnboarding key={t._id} t={t} ultimo={i === onbPendentes.length - 1}
+                    onConcluir={concluir} onPopup={() => setPopupTarefaId(t._id)} />
+                ))}
+              </div>
             )}
           </div>
 
           {/* ── TAREFAS DA EQUIPE ── */}
-          <div style={styles.secao}>
+          <div>
             <SecaoHeader titulo="Tarefas da equipe" count={normaisPendentes.length} verde={false} />
             {normaisPendentes.length === 0 && normaisConcluidas.length === 0 && onbConcluidas.length === 0 ? (
-              <p style={{ color: 'var(--texto-apagado)', fontSize: '0.875rem' }}>Nenhuma tarefa criada ainda. Use "+ Nova tarefa" para começar.</p>
+              <p style={{ color: 'var(--texto-apagado)', fontSize: '0.875rem', padding: '12px 0' }}>Nenhuma tarefa criada ainda.</p>
             ) : (
-              <>
-                {normaisPendentes.map(t => <CardComInfo key={t._id} t={t} />)}
-                {(normaisConcluidas.length > 0 || onbConcluidas.length > 0) && (
-                  <>
-                    <p style={{ fontSize: '0.68rem', fontWeight: '700', color: 'var(--texto-apagado)', textTransform: 'uppercase', letterSpacing: '0.8px', margin: '16px 0 8px' }}>Concluídas</p>
-                    {onbConcluidas.map(t => <CardComInfo key={t._id} t={t} concluida />)}
-                    {normaisConcluidas.map(t => <CardComInfo key={t._id} t={t} concluida />)}
-                  </>
-                )}
-              </>
+              <div style={stylesTarefas.tabelaCard}>
+                {normaisPendentes.map((t, i) => (
+                  <LinhaTarefa key={t._id} t={t}
+                    ultimo={i === normaisPendentes.length - 1 && normaisConcluidas.length === 0}
+                    onConcluir={concluir} onExcluir={excluir} />
+                ))}
+                {normaisConcluidas.map((t, i) => (
+                  <LinhaTarefa key={t._id} t={t} concluida
+                    ultimo={i === normaisConcluidas.length - 1}
+                    onDesmarcar={desmarcar} onExcluir={excluir} />
+                ))}
+              </div>
             )}
           </div>
-        </>
+
+        </div>
       )}
     </div>
   )
+}
+
+// ── Linha de tarefa de onboarding ──
+function LinhaOnboarding({ t, ultimo, onConcluir, onPopup }) {
+  const prioridadeCor = { alta: '#f87171', media: '#fbbf24', baixa: '#4ade80' }
+  return (
+    <div style={{ ...stylesTarefas.linha, borderBottom: ultimo ? 'none' : '1px solid var(--borda)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0 }}>
+        <span style={stylesTarefas.badgeOnb}>Onboarding</span>
+        <span style={stylesTarefas.descricao}>{t.descricao}</span>
+      </div>
+      <div style={stylesTarefas.metaGroup}>
+        {t.prioridade && (
+          <span style={{ ...stylesTarefas.badgePrio, color: prioridadeCor[t.prioridade] || 'var(--texto-apagado)', background: (prioridadeCor[t.prioridade] || '#fff') + '15' }}>
+            {t.prioridade}
+          </span>
+        )}
+        {t.responsavel?.nome && <span style={stylesTarefas.resp}>{t.responsavel.nome}</span>}
+        {t.data && <span style={stylesTarefas.data}>{new Date(t.data + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}</span>}
+        <button style={stylesTarefas.btnInfo} onClick={onPopup}>ⓘ Info</button>
+        <button style={stylesTarefas.btnConcluir} onClick={() => onConcluir(t._id)}>✓</button>
+      </div>
+    </div>
+  )
+}
+
+// ── Linha de tarefa normal ──
+function LinhaTarefa({ t, ultimo, concluida, onConcluir, onDesmarcar, onExcluir }) {
+  const prioridadeCor = { alta: '#f87171', media: '#fbbf24', baixa: '#4ade80' }
+  return (
+    <div style={{ ...stylesTarefas.linha, borderBottom: ultimo ? 'none' : '1px solid var(--borda)', opacity: concluida ? 0.55 : 1 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0 }}>
+        <button
+          style={{ ...stylesTarefas.check, ...(concluida ? stylesTarefas.checkFeito : {}) }}
+          onClick={() => concluida ? onDesmarcar(t._id) : onConcluir(t._id)}
+          title={concluida ? 'Reabrir' : 'Concluir'}
+        >
+          {concluida && '✓'}
+        </button>
+        <span style={{ ...stylesTarefas.descricao, textDecoration: concluida ? 'line-through' : 'none', color: concluida ? 'var(--texto-apagado)' : 'var(--texto)' }}>
+          {t.descricao}
+        </span>
+      </div>
+      <div style={stylesTarefas.metaGroup}>
+        {t.prioridade && !concluida && (
+          <span style={{ ...stylesTarefas.badgePrio, color: prioridadeCor[t.prioridade] || 'var(--texto-apagado)', background: (prioridadeCor[t.prioridade] || '#fff') + '15' }}>
+            {t.prioridade}
+          </span>
+        )}
+        {t.responsavel?.nome && <span style={stylesTarefas.resp}>{t.responsavel.nome}</span>}
+        {t.data && <span style={stylesTarefas.data}>{new Date(t.data + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}</span>}
+        <button style={stylesTarefas.btnExcluir} onClick={() => onExcluir(t._id)} title="Excluir">✕</button>
+      </div>
+    </div>
+  )
+}
+
+const stylesTarefas = {
+  tabelaCard: {
+    background: 'var(--card)',
+    border: '1px solid var(--borda)',
+    borderRadius: '12px',
+    overflow: 'hidden',
+  },
+  linha: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: '12px',
+    padding: '12px 18px',
+    minHeight: '48px',
+  },
+  descricao: {
+    fontSize: '0.875rem',
+    color: 'var(--texto)',
+    fontFamily: 'Inter, sans-serif',
+    flex: 1,
+    minWidth: 0,
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+  },
+  metaGroup: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    flexShrink: 0,
+  },
+  badgeOnb: {
+    fontSize: '0.6rem', fontWeight: '700',
+    padding: '2px 7px', borderRadius: '5px',
+    background: 'var(--verde-glow)', color: 'var(--verde)',
+    border: '1px solid rgba(0,177,65,0.2)',
+    whiteSpace: 'nowrap', flexShrink: 0,
+  },
+  badgePrio: {
+    fontSize: '0.65rem', fontWeight: '600',
+    padding: '2px 7px', borderRadius: '5px',
+    whiteSpace: 'nowrap',
+  },
+  resp: {
+    fontSize: '0.75rem',
+    color: 'var(--texto-apagado)',
+    whiteSpace: 'nowrap',
+  },
+  data: {
+    fontSize: '0.72rem',
+    color: 'var(--texto-apagado)',
+    whiteSpace: 'nowrap',
+  },
+  btnInfo: {
+    background: 'none', border: '1px solid rgba(0,177,65,0.2)',
+    borderRadius: '6px', color: 'var(--verde)',
+    fontSize: '0.72rem', cursor: 'pointer',
+    padding: '2px 8px', fontFamily: 'Inter, sans-serif', fontWeight: '600',
+    whiteSpace: 'nowrap',
+  },
+  btnConcluir: {
+    background: 'var(--gradiente-verde)', border: 'none',
+    borderRadius: '6px', color: '#fff',
+    fontSize: '0.75rem', cursor: 'pointer',
+    padding: '4px 10px', fontWeight: '700',
+  },
+  btnExcluir: {
+    background: 'none', border: 'none',
+    color: 'var(--texto-apagado)', fontSize: '11px',
+    cursor: 'pointer', padding: '2px 4px',
+    opacity: 0.5,
+  },
+  check: {
+    width: '18px', height: '18px',
+    borderRadius: '5px', flexShrink: 0,
+    border: '1.5px solid var(--borda)',
+    background: 'none', cursor: 'pointer',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    fontSize: '10px', color: '#fff',
+  },
+  checkFeito: {
+    background: 'var(--verde)',
+    borderColor: 'var(--verde)',
+  },
 }
 
 // ============ HISTÓRICO DE CONQUISTAS ============
@@ -1063,18 +1430,27 @@ export default function DashboardAdmin() {
         api.get('/tarefas'),
         api.get('/usuarios')
       ])
-      setTarefas(rTarefas.data)
+      // Mostrar apenas tarefas onde o titular é responsável ou criou
+      const meuId = usuario?._id || usuario?.id || ''
+      const minhas = rTarefas.data.filter(t =>
+        (t.responsavel?._id === meuId || t.responsavel === meuId) ||
+        (!t.responsavel && (t.criadoPor?._id === meuId || t.criadoPor === meuId))
+      )
+      setTarefas(minhas)
       setFuncionarios(rFunc.data.filter(f => f.cargo !== 'admin'))
     } catch (err) {
       console.error(err)
     }
   }
 
-  useEffect(() => { carregarDados() }, [])
+  useEffect(() => { if (usuario?._id || usuario?.id) carregarDados() }, [usuario?._id, usuario?.id])
 
   // Sidebar dinâmico — cada item só aparece se tiver permissão
   const menuItens = [
     { id: 'inicio', label: 'Início', icone: <Icone.Home size={16} /> },
+
+    // Separador — Escritório
+    { id: '__sep_escritorio', separador: true, label: 'Escritório' },
 
     // Gestão: Setores sempre visível pro titular; Equipe só com permissão
     ...(isTitular || temPermissao('gerenciarEquipe') ? [{
@@ -1091,7 +1467,7 @@ export default function DashboardAdmin() {
       subItens: [
         { id: 'implantacao', label: 'Implantação' },
         { id: 'modelos', label: 'Modelos' },
-        { id: 'checklist', label: 'Checklist' },
+        { id: 'checklist', label: 'Banco de atividades' },
       ]
     }] : []),
 
@@ -1100,11 +1476,19 @@ export default function DashboardAdmin() {
       { id: 'clientes', label: 'Clientes', icone: <Icone.Users size={16} /> }
     ] : []),
 
+    // Separador — Pessoal
+    { id: '__sep_pessoal', separador: true, label: 'Pessoal' },
+
     // Tarefas — sempre visível
     { id: 'tarefas', label: 'Tarefas', icone: <Icone.ClipboardList size={16} /> },
 
     // Anotações — sempre visível
     { id: 'anotacoes', label: 'Anotações', icone: <Icone.Edit size={16} /> },
+
+    // Separador — Análise
+    ...(isTitular || temPermissao('verRelatorios') ? [
+      { id: '__sep_analise', separador: true, label: 'Análise' }
+    ] : []),
 
     // Relatórios
     ...(isTitular || temPermissao('verRelatorios') ? [
@@ -1128,7 +1512,7 @@ export default function DashboardAdmin() {
     if (pagina === 'mural') return <Mural />
     if (pagina === 'implantacao') return <Implantacao />
     if (pagina === 'modelos') return <ModelosOnboarding />
-    if (pagina === 'checklist') return <Checklist />
+    if (pagina === 'checklist') return <BancoAtividades />
     if (pagina === 'setores') return <Setores funcionarios={funcionarios} />
   }
 
@@ -1166,7 +1550,7 @@ const styles = {
   cabecalho: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '32px', flexWrap: 'wrap', gap: '16px' },
   titulo: { fontSize: '1.75rem', color: 'var(--texto)', marginBottom: '4px', letterSpacing: '-0.03em', fontWeight: '700' },
   subtitulo: { color: 'var(--texto-apagado)', fontSize: '0.875rem' },
-  cards: { gap: '16px', marginBottom: '32px' },
+  cards: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '32px' },
   card: {
     background: 'var(--card)',
     border: '1px solid var(--borda)',

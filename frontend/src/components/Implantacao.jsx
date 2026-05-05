@@ -296,6 +296,7 @@ function ModalNovaImplantacao({ fechar, onCriado }) {
 
   const criar = async () => {
     if (!nomeCliente.trim()) return setErro('Nome do cliente é obrigatório.')
+    if (!cnpj.trim()) return setErro('CNPJ é obrigatório.')
     const inicioISO = dataParaISO(inicioServicos)
     if (!inicioISO) return setErro('Data de início dos serviços é obrigatória (DD/MM/AAAA).')
     setCarregando(true); setErro('')
@@ -322,7 +323,7 @@ function ModalNovaImplantacao({ fechar, onCriado }) {
             <input style={s.input} value={nomeCliente} onChange={e => setNomeCliente(e.target.value)} placeholder="Razão social ou nome fantasia" autoFocus />
           </div>
           <div style={s.campo}>
-            <label style={s.label}>CNPJ (opcional)</label>
+            <label style={s.label}>CNPJ</label>
             <input style={s.input} value={cnpj}
               onChange={e => {
                 const v = e.target.value.replace(/\D/g, '').slice(0, 14)

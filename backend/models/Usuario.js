@@ -19,7 +19,8 @@ const usuarioSchema = new mongoose.Schema({
   ativo: { type: Boolean, default: true },
   emailVerificado: { type: Boolean, default: false },
   tokenVerificacao: { type: String, default: null },
-  criadoEm: { type: Date, default: Date.now }
+  criadoEm: { type: Date, default: Date.now },
+  setores: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Setor' }]
 });
 
 // Antes de salvar, criptografa a senha
