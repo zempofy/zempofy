@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useAuth } from '../contexts/AuthContext'
 import Layout from '../components/Layout'
 import api from '../services/api'
@@ -867,7 +868,7 @@ function PopupOnboardingAdmin({ tarefaId, onFechar }) {
   }, [tarefaId])
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)' }}
+    createPortal(<div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)' }}
       onClick={onFechar}>
       <div style={{ background: 'var(--card)', border: '1px solid var(--borda)', borderRadius: '18px', width: '100%', maxWidth: '420px', margin: '0 16px', boxShadow: '0 8px 32px rgba(0,0,0,0.5)', overflow: 'hidden' }}
         onClick={e => e.stopPropagation()}>
@@ -911,7 +912,7 @@ function PopupOnboardingAdmin({ tarefaId, onFechar }) {
           <button style={{ background: 'none', border: '1px solid var(--borda)', borderRadius: '8px', color: 'var(--texto-apagado)', padding: '8px 18px', fontFamily: 'Inter, sans-serif', fontSize: '0.875rem', cursor: 'pointer' }} onClick={onFechar}>Fechar</button>
         </div>
       </div>
-    </div>
+    </div>, document.body)
   )
 }
 
@@ -925,6 +926,7 @@ function PaginaTarefas({ tarefas, funcionarios, recarregar }) {
   const [gerenciarEtiquetas, setGerenciarEtiquetas] = useState(false)
   const [novaEtiqueta, setNovaEtiqueta] = useState('')
   const [idsOnboarding, setIdsOnboarding] = useState(new Set())
+  const [nomeClientePorTarefa, setNomeClientePorTarefa] = useState({})
   const [popupTarefaId, setPopupTarefaId] = useState(null)
   const [etiquetasCustom, setEtiquetasCustom] = useState(() => {
     try { return JSON.parse(localStorage.getItem('zmp_etiquetas') || 'null') || ETIQUETAS_OPCOES } catch { return ETIQUETAS_OPCOES }
@@ -935,14 +937,20 @@ function PaginaTarefas({ tarefas, funcionarios, recarregar }) {
   useEffect(() => {
     api.get('/implantacoes').then(res => {
       const ids = new Set()
+      const nomeMap = {}
       res.data.forEach(imp => {
         imp.etapas?.forEach(etapa => {
           etapa.tarefas?.forEach(t => {
-            if (t.tarefa) ids.add(typeof t.tarefa === 'object' ? t.tarefa._id : t.tarefa)
+            const id = t.tarefa ? (typeof t.tarefa === 'object' ? t.tarefa._id : t.tarefa) : null
+            if (id) {
+              ids.add(id)
+              nomeMap[id] = imp.nomeCliente || '—'
+            }
           })
         })
       })
       setIdsOnboarding(ids)
+      setNomeClientePorTarefa(nomeMap)
     }).catch(() => {})
   }, [tarefas])
 
@@ -1176,6 +1184,7 @@ function PaginaTarefas({ tarefas, funcionarios, recarregar }) {
               <div style={stylesTarefas.tabelaCard}>
                 {onbPendentes.map((t, i) => (
                   <LinhaOnboarding key={t._id} t={t} ultimo={i === onbPendentes.length - 1}
+                    nomeCliente={nomeClientePorTarefa[t._id]}
                     onConcluir={concluir} onPopup={() => setPopupTarefaId(t._id)} />
                 ))}
               </div>
@@ -1210,13 +1219,20 @@ function PaginaTarefas({ tarefas, funcionarios, recarregar }) {
 }
 
 // ── Linha de tarefa de onboarding ──
-function LinhaOnboarding({ t, ultimo, onConcluir, onPopup }) {
+function LinhaOnboarding({ t, ultimo, nomeCliente, onConcluir, onPopup }) {
   const prioridadeCor = { alta: '#f87171', media: '#fbbf24', baixa: '#4ade80' }
   return (
     <div style={{ ...stylesTarefas.linha, borderBottom: ultimo ? 'none' : '1px solid var(--borda)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0 }}>
         <span style={stylesTarefas.badgeOnb}>Onboarding</span>
-        <span style={stylesTarefas.descricao}>{t.descricao}</span>
+        <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
+          <span style={stylesTarefas.descricao}>{t.descricao}</span>
+          {nomeCliente && (
+            <span style={{ fontSize: '0.7rem', color: 'var(--verde)', marginTop: '1px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {nomeCliente}
+            </span>
+          )}
+        </div>
       </div>
       <div style={stylesTarefas.metaGroup}>
         {t.prioridade && (

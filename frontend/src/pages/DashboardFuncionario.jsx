@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useAuth } from '../contexts/AuthContext'
 import Layout from '../components/Layout'
 import api from '../services/api'
@@ -27,7 +28,7 @@ function PopupOnboarding({ tarefaId, onFechar }) {
       .finally(() => setCarregando(false))
   }, [tarefaId])
 
-  return (
+  return createPortal(
     <div style={styles.overlay} onClick={onFechar}>
       <div style={styles.popup} onClick={e => e.stopPropagation()}>
         <div style={styles.popupTopo}>
@@ -100,7 +101,7 @@ function PopupOnboarding({ tarefaId, onFechar }) {
         </div>
       </div>
     </div>
-  )
+  , document.body)
 }
 
 function PaginaMinhasTarefas({ tarefas, recarregar }) {
@@ -112,6 +113,7 @@ function PaginaMinhasTarefas({ tarefas, recarregar }) {
   const [erro, setErro] = useState('')
   const [salvando, setSalvando] = useState(false)
   const [idsOnboarding, setIdsOnboarding] = useState(new Set())
+  const [nomeClientePorTarefa, setNomeClientePorTarefa] = useState({})
   const [popupTarefaId, setPopupTarefaId] = useState(null)
 
   useEffect(() => {
@@ -123,14 +125,20 @@ function PaginaMinhasTarefas({ tarefas, recarregar }) {
   useEffect(() => {
     api.get('/implantacoes').then(res => {
       const ids = new Set()
+      const nomeMap = {}
       res.data.forEach(imp => {
         imp.etapas?.forEach(etapa => {
           etapa.tarefas?.forEach(t => {
-            if (t.tarefa) ids.add(typeof t.tarefa === 'object' ? t.tarefa._id : t.tarefa)
+            const id = t.tarefa ? (typeof t.tarefa === 'object' ? t.tarefa._id : t.tarefa) : null
+            if (id) {
+              ids.add(id)
+              nomeMap[id] = imp.nomeCliente || '—'
+            }
           })
         })
       })
       setIdsOnboarding(ids)
+      setNomeClientePorTarefa(nomeMap)
     }).catch(() => {})
   }, [tarefas])
 
@@ -195,9 +203,16 @@ function PaginaMinhasTarefas({ tarefas, recarregar }) {
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', flexWrap: 'wrap' }}>
           {ehOnboarding(t) && <span style={styles.badgeOnb}>Onboarding</span>}
-          <p style={{ ...styles.tarefaDesc, margin: 0, textDecoration: t.status === 'concluida' ? 'line-through' : 'none' }}>
-            {t.descricao}
-          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+            <p style={{ ...styles.tarefaDesc, margin: 0, textDecoration: t.status === 'concluida' ? 'line-through' : 'none' }}>
+              {t.descricao}
+            </p>
+            {ehOnboarding(t) && nomeClientePorTarefa[t._id] && (
+              <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.5)', marginTop: '2px' }}>
+                {nomeClientePorTarefa[t._id]}
+              </span>
+            )}
+          </div>
         </div>
         <p style={styles.tarefaMeta}>
           {t.local && t.local}
@@ -649,7 +664,7 @@ export default function DashboardFuncionario() {
 
 const styles = {
   // Popup
-  overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)' },
+  overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)' },
   popup: { background: 'var(--card)', border: '1px solid var(--borda)', borderRadius: '18px', width: '100%', maxWidth: '420px', margin: '0 16px', boxShadow: '0 8px 32px rgba(0,0,0,0.5)', overflow: 'hidden' },
   popupTopo: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 22px', borderBottom: '1px solid var(--borda)' },
   popupTitulo: { fontWeight: '700', fontSize: '0.95rem', color: 'var(--texto)', fontFamily: 'Inter, sans-serif' },
