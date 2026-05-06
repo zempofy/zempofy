@@ -24,6 +24,9 @@ const feedbackRoutes = require('./routes/feedback');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Necessário para o rate limit funcionar corretamente atrás do proxy do Render
+app.set('trust proxy', 1);
+
 // ── Origens permitidas ──
 const ORIGENS_PERMITIDAS = [
   'https://zempofy.com.br',
