@@ -1641,7 +1641,10 @@ export default function DashboardAdmin() {
     if (pagina === 'implantacao') return <Implantacao setPagina={setPagina} setClienteDetalheId={setClienteDetalheId} />
     if (pagina === 'modelos') return <ModelosOnboarding />
     if (pagina === 'checklist') return <BancoAtividades />
-    if (pagina === 'setores') return <Setores funcionarios={funcionarios} />
+    if (pagina === 'setores') return <Setores funcionarios={funcionarios} onSalvo={async () => {
+      const r = await api.get('/usuarios')
+      setFuncionarios(r.data)
+    }} />
     if (pagina === 'servicos') return <Servicos />
     if (pagina === 'obrigacoes') return <Obrigacoes />
     if (pagina === 'plano') return <PaginaEmDesenvolvimento titulo="Meu plano" descricao="O gerenciamento de planos e assinaturas estará disponível em breve. Por enquanto, entre em contato para mais informações." />

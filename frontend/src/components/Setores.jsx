@@ -117,7 +117,7 @@ function ModalSetor({ setor, fechar, onSalvo, funcionarios = [] }) {
   )
 }
 
-export default function Setores({ funcionarios = [] }) {
+export default function Setores({ funcionarios = [], onSalvo: onSalvoExterno }) {
   const [setores, setSetores] = useState([])
   const [carregando, setCarregando] = useState(true)
   const [modalAberto, setModalAberto] = useState(false)
@@ -204,7 +204,7 @@ export default function Setores({ funcionarios = [] }) {
         <ModalSetor
           setor={setorEditando}
           fechar={() => { setModalAberto(false); setSetorEditando(null) }}
-          onSalvo={buscar}
+          onSalvo={() => { buscar(); onSalvoExterno && onSalvoExterno(); }}
           funcionarios={funcionarios}
         />
       )}

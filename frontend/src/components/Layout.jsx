@@ -10,7 +10,7 @@ import WidgetFeedback from './WidgetFeedback'
 import { useToast } from './Toast'
 
 function InputSenha({ id, value, onChange, onKeyDown, placeholder, autoFocus }) {
-  const [ver, setVer] = React.useState(false)
+  const [ver, setVer] = useState(false)
   return (
     <div style={{ position: 'relative' }}>
       <input id={id} style={{ background:'var(--input)', border:'1px solid var(--borda)', borderRadius:'10px', padding:'10px 40px 10px 14px', color:'var(--texto)', fontSize:'0.875rem', fontFamily:'Inter,sans-serif', width:'100%', boxSizing:'border-box' }}
@@ -507,6 +507,12 @@ export default function Layout({ children, menuItens, paginaAtual, setPagina }) 
   const isTitular = usuario?.cargo === 'admin'
   const [sidebarAberta, setSidebarAberta] = useState(true)
   const [painelAberto, setPainelAberto] = useState(false)
+
+  useEffect(() => {
+    const fecharEsc = (e) => { if (e.key === 'Escape') { setPainelAberto(false); setPainelConfigAberto(false) } }
+    document.addEventListener('keydown', fecharEsc)
+    return () => document.removeEventListener('keydown', fecharEsc)
+  }, [])
   const [buscaGlobal, setBuscaGlobal] = useState('')
   const [resultadosBusca, setResultadosBusca] = useState([])
   const [buscandoGlobal, setBuscandoGlobal] = useState(false)
@@ -517,6 +523,29 @@ export default function Layout({ children, menuItens, paginaAtual, setPagina }) 
   const [painelConfigAberto, setPainelConfigAberto] = useState(false)
   const [paginaConfig, setPaginaConfig] = useState(null)
   const [novasNotifs, setNovasNotifs] = useState(0)
+
+  // ── Busca global ──
+  const buscarGlobal = async (termo) => {
+    if (!termo || termo.length < 2) { setResultadosBusca([]); return }
+    setBuscandoGlobal(true)
+    try {
+      const [rC, rI] = await Promise.all([
+        api.get('/clientes').catch(() => ({ data: [] })),
+        api.get('/implantacoes').catch(() => ({ data: [] })),
+      ])
+      const t = termo.toLowerCase()
+      const clientes = rC.data
+        .filter(c => (c.razaoSocial || c.nome || '').toLowerCase().includes(t) || (c.nomeFantasia || '').toLowerCase().includes(t) || (c.cnpj || '').includes(t))
+        .slice(0, 4)
+        .map(c => ({ tipo: 'cliente', label: c.razaoSocial || c.nome, sub: c.cnpj || 'Sem CNPJ', pagina: 'clientes' }))
+      const imps = rI.data
+        .filter(i => (i.nomeCliente || '').toLowerCase().includes(t) || (i.cnpj || '').includes(t))
+        .slice(0, 3)
+        .map(i => ({ tipo: 'onboarding', label: i.nomeCliente, sub: 'Onboarding', pagina: 'implantacao' }))
+      setResultadosBusca([...clientes, ...imps])
+    } catch (e) { console.error('Busca:', e) }
+    setBuscandoGlobal(false)
+  }
   const ultimaVezMuralKey = `zempofy_mural_visto_${usuario?.id}`
 
   useEffect(() => {
@@ -646,11 +675,11 @@ export default function Layout({ children, menuItens, paginaAtual, setPagina }) 
             {/* Dropdown simples — só nome e sair */}
             {painelAberto && (
               <>
-                <div onClick={() => setPainelAberto(false)} style={{ position: 'fixed', inset: 0, zIndex: 90 }} />
+                <div onClick={() => setPainelAberto(false)} style={{ position: 'fixed', inset: 0, zIndex: 199 }} />
                 <div style={{
                   position: 'absolute', top: 'calc(100% + 8px)', right: 0,
                   background: '#18181b', border: '1px solid #27272a', borderRadius: '12px',
-                  minWidth: '200px', boxShadow: '0 12px 32px rgba(0,0,0,0.5)', zIndex: 91,
+                  minWidth: '200px', boxShadow: '0 12px 32px rgba(0,0,0,0.5)', zIndex: 200,
                   overflow: 'hidden',
                 }}>
                   <div style={{ padding: '14px 16px', borderBottom: '1px solid #27272a' }}>

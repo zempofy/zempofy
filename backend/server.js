@@ -98,6 +98,7 @@ const verificarOnboardingsParados = async () => {
       .populate('empresa', 'nome alertaOnboardingDias');
     for (const imp of implantacoes) {
       const diasPadrao = imp.empresa?.alertaOnboardingDias || 7;
+      // Usar updatedAt original, ignorando atualizações do campo ultimoAlertaParado
       const ultimaAtt = new Date(imp.updatedAt || imp.criadoEm);
       const diasParado = Math.floor((new Date() - ultimaAtt) / 86400000);
       if (diasParado >= diasPadrao) {
@@ -117,7 +118,7 @@ const verificarOnboardingsParados = async () => {
           empresa: imp.empresa?.nome || '',
         });
         // Registrar envio
-        await Implantacao.findByIdAndUpdate(imp._id, { ultimoAlertaParado: new Date() });
+        await Implantacao.findByIdAndUpdate(imp._id, { $set: { ultimoAlertaParado: new Date() } }, { timestamps: false });
       }
     }
   } catch(e) { console.error('Job onboarding parado:', e.message); }
