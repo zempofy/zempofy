@@ -163,7 +163,7 @@ const enviarResumoPeriodico = async () => {
     const Tarefa = require('./models/Tarefa');
     const { enviarResumo } = require('./services/email');
 
-    const empresas = await Empresa.find({ ativo: true, resumoFrequencia: { $exists: true, $ne: 'nunca' } });
+    const empresas = await Empresa.find({ ativa: true, resumoFrequencia: { $exists: true, $ne: 'nunca' } });
 
     for (const emp of empresas) {
       const freq = emp.resumoFrequencia || 'semanal';

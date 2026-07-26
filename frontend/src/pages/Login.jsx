@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import api from '../services/api'
 
 export default function Login() {
   const { login } = useAuth()
@@ -12,6 +13,19 @@ export default function Login() {
   const [esqueciCarregando, setEsqueciCarregando] = useState(false)
   const [erro, setErro] = useState('')
   const [carregando, setCarregando] = useState(false)
+
+  const enviarEsqueci = async () => {
+    if (!emailEsqueci) return
+    setEsqueciCarregando(true)
+    try {
+      await api.post('/auth/esqueci-senha', { email: emailEsqueci })
+    } catch (err) {
+      // Endpoint sempre retorna sucesso mesmo se o e-mail não existir; erro aqui é só de rede
+    } finally {
+      setEsqueciCarregando(false)
+      setEsqueciEnviado(true)
+    }
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()

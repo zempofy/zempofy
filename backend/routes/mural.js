@@ -38,9 +38,10 @@ router.post('/', autenticar, temPermissao('publicarMural'), async (req, res) => 
 // PUT /api/mural/:id - Editar aviso (só gestores)
 router.put('/:id', autenticar, temPermissao('publicarMural'), async (req, res) => {
   try {
+    const { empresa, autor, _id, reacoes, criadoEm, ...dados } = req.body;
     const aviso = await Aviso.findOneAndUpdate(
       { _id: req.params.id, empresa: req.usuario.empresa._id },
-      req.body,
+      { $set: dados },
       { new: true }
     ).populate('autor', 'nome cargo');
     res.json(aviso);

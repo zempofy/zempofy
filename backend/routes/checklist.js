@@ -1,6 +1,6 @@
 const express = require('express');
 const registrarLog = require('../services/log');
-const { autenticar, apenasAdmin } = require('../middleware/auth');
+const { autenticar, temPermissao } = require('../middleware/auth');
 const AtividadeChecklist = require('../models/AtividadeChecklist');
 
 const router = express.Router();
@@ -39,7 +39,7 @@ router.get('/setor/:setorId', autenticar, async (req, res) => {
 });
 
 // POST /api/checklist
-router.post('/', autenticar, async (req, res) => {
+router.post('/', autenticar, temPermissao('gerenciarBancoAtividades'), async (req, res) => {
   const { descricao, observacoes, setor, responsavelId } = req.body;
   if (!descricao?.trim()) return res.status(400).json({ erro: 'Descrição é obrigatória.' });
   if (!setor) return res.status(400).json({ erro: 'Setor é obrigatório.' });
@@ -61,7 +61,7 @@ router.post('/', autenticar, async (req, res) => {
 });
 
 // PUT /api/checklist/:id
-router.put('/:id', autenticar, async (req, res) => {
+router.put('/:id', autenticar, temPermissao('gerenciarBancoAtividades'), async (req, res) => {
   const { descricao, observacoes, responsavelId } = req.body;
   try {
     const atividade = await populate(
@@ -83,7 +83,7 @@ router.put('/:id', autenticar, async (req, res) => {
 });
 
 // DELETE /api/checklist/:id
-router.delete('/:id', autenticar, async (req, res) => {
+router.delete('/:id', autenticar, temPermissao('gerenciarBancoAtividades'), async (req, res) => {
   try {
     await AtividadeChecklist.findOneAndUpdate(
       { _id: req.params.id, empresa: req.usuario.empresa._id },

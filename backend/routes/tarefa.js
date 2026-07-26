@@ -214,8 +214,9 @@ router.put('/:id', autenticar, async (req, res) => {
   try {
     const filtro = { _id: req.params.id, empresa: req.usuario.empresa._id };
     if (req.usuario.cargo === 'colaborador') filtro.responsavel = req.usuario._id;
+    const { empresa, criadaPor, _id, criadaEm, ...dados } = req.body;
     const tarefa = await populateTarefa(
-      Tarefa.findOneAndUpdate(filtro, req.body, { new: true })
+      Tarefa.findOneAndUpdate(filtro, { $set: dados }, { new: true })
     );
     res.json(tarefa);
   } catch (err) {

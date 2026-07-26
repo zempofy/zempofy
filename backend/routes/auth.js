@@ -140,7 +140,7 @@ router.post('/esqueci-senha', async (req, res) => {
   try {
     const { email } = req.body;
     if (!email) return res.status(400).json({ erro: 'E-mail obrigatório.' });
-    const usuario = await Usuario.findOne({ email: email.toLowerCase() });
+    const usuario = await getUsuario().findOne({ email: email.toLowerCase() });
     // Sempre retorna sucesso pra não revelar se e-mail existe
     if (!usuario) return res.json({ mensagem: 'Se o e-mail estiver cadastrado, você receberá as instruções.' });
 
@@ -168,7 +168,7 @@ router.post('/redefinir-senha', async (req, res) => {
     if (!token || !novaSenha) return res.status(400).json({ erro: 'Dados inválidos.' });
     if (novaSenha.length < 6) return res.status(400).json({ erro: 'Senha deve ter ao menos 6 caracteres.' });
 
-    const usuario = await Usuario.findOne({
+    const usuario = await getUsuario().findOne({
       tokenResetSenha: token,
       tokenResetExpira: { $gt: new Date() }
     });

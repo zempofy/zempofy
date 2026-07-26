@@ -1,6 +1,6 @@
 const express = require('express');
 const registrarLog = require('../services/log');
-const { autenticar } = require('../middleware/auth');
+const { autenticar, temPermissao } = require('../middleware/auth');
 const ImplantacaoModel = require('../models/Implantacao');
 const ModeloOnboarding = require('../models/ModeloOnboarding');
 const AtividadeChecklist = require('../models/AtividadeChecklist');
@@ -82,7 +82,7 @@ router.get('/:id', autenticar, async (req, res) => {
 });
 
 // POST /api/implantacoes - Cria nova implantação e gera tarefas reais para cada colaborador
-router.post('/', autenticar, async (req, res) => {
+router.post('/', autenticar, temPermissao('criarImplantacoes'), async (req, res) => {
   const { nomeCliente, cnpj, modeloId, inicioServicos } = req.body;
   if (!nomeCliente?.trim()) return res.status(400).json({ erro: 'Nome do cliente é obrigatório.' });
   if (!inicioServicos) return res.status(400).json({ erro: 'Data de início dos serviços é obrigatória.' });
@@ -323,7 +323,7 @@ router.patch('/:id/tarefas/:etapaId/:tarefaId/desmarcar', autenticar, async (req
 });
 
 // DELETE /api/implantacoes/:id — exclui a implantação e todas as tarefas geradas por ela
-router.delete('/:id', autenticar, async (req, res) => {
+router.delete('/:id', autenticar, temPermissao('gerenciarOnboarding'), async (req, res) => {
   try {
     const implantacao = await ImplantacaoModel.findOne({
       _id: req.params.id,

@@ -8,7 +8,7 @@ const router = express.Router();
 router.get('/', autenticar, async (req, res) => {
   try {
     const filtro = { empresa: req.usuario.empresa._id };
-    if (req.usuario.cargo === 'funcionario') filtro.usuario = req.usuario._id;
+    if (req.usuario.cargo === 'colaborador') filtro.usuario = req.usuario._id;
 
     // Filtro por usuário específico (admin pode passar ?usuarioId=...)
     if (req.query.usuarioId && req.usuario.cargo === 'admin') {
@@ -56,9 +56,10 @@ router.post('/', autenticar, async (req, res) => {
 router.put('/:id', autenticar, async (req, res) => {
   try {
     const filtro = { _id: req.params.id, empresa: req.usuario.empresa._id };
-    if (req.usuario.cargo === 'funcionario') filtro.usuario = req.usuario._id;
+    if (req.usuario.cargo === 'colaborador') filtro.usuario = req.usuario._id;
 
-    const evento = await Evento.findOneAndUpdate(filtro, req.body, { new: true })
+    const { empresa, usuario, _id, criadoEm, ...dados } = req.body;
+    const evento = await Evento.findOneAndUpdate(filtro, { $set: dados }, { new: true })
       .populate('usuario', 'nome');
     res.json(evento);
   } catch (err) {
@@ -70,7 +71,7 @@ router.put('/:id', autenticar, async (req, res) => {
 router.delete('/:id', autenticar, async (req, res) => {
   try {
     const filtro = { _id: req.params.id, empresa: req.usuario.empresa._id };
-    if (req.usuario.cargo === 'funcionario') filtro.usuario = req.usuario._id;
+    if (req.usuario.cargo === 'colaborador') filtro.usuario = req.usuario._id;
 
     await Evento.findOneAndDelete(filtro);
     res.json({ mensagem: 'Evento excluído.' });

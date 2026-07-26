@@ -1,6 +1,6 @@
 const express = require('express');
 const registrarLog = require('../services/log');
-const { autenticar, apenasAdmin } = require('../middleware/auth');
+const { autenticar, apenasAdmin, temPermissao } = require('../middleware/auth');
 const ModeloOnboarding = require('../models/ModeloOnboarding');
 
 const router = express.Router();
@@ -36,7 +36,7 @@ router.get('/:id', autenticar, async (req, res) => {
 });
 
 // POST /api/modelos-onboarding
-router.post('/', autenticar, apenasAdmin, async (req, res) => {
+router.post('/', autenticar, temPermissao('gerenciarModelos'), async (req, res) => {
   const { nome, descricao, setores } = req.body;
   if (!nome?.trim()) return res.status(400).json({ erro: 'Nome é obrigatório.' });
   try {
@@ -56,9 +56,7 @@ router.post('/', autenticar, apenasAdmin, async (req, res) => {
 });
 
 // PUT /api/modelos-onboarding/:id
-router.put('/:id', autenticar, async (req, res) => {
-  const podeEditar = req.usuario.cargo === 'admin' || req.usuario.permissoes?.gerenciarModelos
-  if (!podeEditar) return res.status(403).json({ erro: 'Sem permissão para editar modelos.' });
+router.put('/:id', autenticar, temPermissao('gerenciarModelos'), async (req, res) => {
   const { nome, descricao, setores } = req.body;
   try {
     const modelo = await populateModelo(

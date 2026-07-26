@@ -6,7 +6,7 @@ const Implantacao = require('../models/Implantacao');
 const Cliente = require('../models/Cliente');
 
 const verificarChave = (req, res, next) => {
-  const chave = req.headers['x-admin-key'] || req.query.key;
+  const chave = req.headers['x-admin-key'];
   if (!chave || chave !== process.env.ADMIN_SECRET_KEY) {
     return res.status(401).json({ erro: 'Acesso negado. Faça login.' });
   }

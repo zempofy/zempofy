@@ -1,6 +1,6 @@
 const express = require('express');
 const registrarLog = require('../services/log');
-const { autenticar } = require('../middleware/auth');
+const { autenticar, temPermissao } = require('../middleware/auth');
 const Cliente = require('../models/Cliente');
 const Implantacao = require('../models/Implantacao');
 
@@ -41,7 +41,7 @@ router.get('/:id', autenticar, async (req, res) => {
 });
 
 // POST /api/clientes
-router.post('/', autenticar, async (req, res) => {
+router.post('/', autenticar, temPermissao('gerenciarClientes'), async (req, res) => {
   const { razaoSocial, cnpj, regime, porte, servicosContratados } = req.body;
   if (!razaoSocial?.trim()) return res.status(400).json({ erro: 'Razão social é obrigatória.' });
   // Clientes criados via onboarding (origem: 'onboarding') não exigem todos os campos
@@ -70,11 +70,12 @@ router.post('/', autenticar, async (req, res) => {
 });
 
 // PUT /api/clientes/:id
-router.put('/:id', autenticar, async (req, res) => {
+router.put('/:id', autenticar, temPermissao('gerenciarClientes'), async (req, res) => {
   try {
+    const { empresa, criadoPor, _id, criadoEm, ...dados } = req.body;
     const cliente = await Cliente.findOneAndUpdate(
       { _id: req.params.id, empresa: req.usuario.empresa._id },
-      req.body,
+      { $set: dados },
       { new: true }
     );
     if (!cliente) return res.status(404).json({ erro: 'Cliente não encontrado.' });
@@ -86,7 +87,7 @@ router.put('/:id', autenticar, async (req, res) => {
 });
 
 // DELETE /api/clientes/:id
-router.delete('/:id', autenticar, async (req, res) => {
+router.delete('/:id', autenticar, temPermissao('gerenciarClientes'), async (req, res) => {
   try {
     const cliente = await Cliente.findOneAndDelete({ _id: req.params.id, empresa: req.usuario.empresa._id });
     if (cliente) registrarLog({ empresa: req.usuario.empresa._id, usuario: req.usuario._id, tipo: 'cliente_excluido', categoria: 'cliente', descricao: 'Removeu o cliente ' + cliente.razaoSocial });
@@ -99,7 +100,7 @@ router.delete('/:id', autenticar, async (req, res) => {
 module.exports = router;
 
 // POST /api/clientes/importar — importar lista de clientes
-router.post('/importar', autenticar, async (req, res) => {
+router.post('/importar', autenticar, temPermissao('gerenciarClientes'), async (req, res) => {
   try {
     const { clientes } = req.body;
     if (!clientes?.length) return res.status(400).json({ erro: 'Nenhum cliente para importar.' });

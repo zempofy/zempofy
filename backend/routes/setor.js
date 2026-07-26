@@ -97,7 +97,7 @@ router.put('/:id', autenticar, apenasAdmin, async (req, res) => {
 // DELETE /api/setores/:id - Desativar setor (soft delete)
 
 // PATCH /api/setores/:id/membros — adiciona ou remove membro
-router.patch('/:id/membros', autenticar, async (req, res) => {
+router.patch('/:id/membros', autenticar, apenasAdmin, async (req, res) => {
   const { usuarioId, acao } = req.body; // acao: 'adicionar' | 'remover'
   if (!usuarioId) return res.status(400).json({ erro: 'usuarioId é obrigatório.' });
   try {
@@ -124,9 +124,24 @@ router.patch('/:id/membros', autenticar, async (req, res) => {
 });
 
 // PATCH /api/setores/:id/membros/remover (compatibilidade)
-router.patch('/:id/membros/remover', autenticar, async (req, res) => {
-  req.body.acao = 'remover';
-  return router.handle(req, res);
+router.patch('/:id/membros/remover', autenticar, apenasAdmin, async (req, res) => {
+  const { usuarioId } = req.body;
+  if (!usuarioId) return res.status(400).json({ erro: 'usuarioId é obrigatório.' });
+  try {
+    const setor = await Setor.findOneAndUpdate(
+      { _id: req.params.id, empresa: req.usuario.empresa._id },
+      { $pull: { membros: usuarioId } },
+      { new: true }
+    ).populate('membros', 'nome email avatar cargo');
+    if (!setor) return res.status(404).json({ erro: 'Setor não encontrado.' });
+
+    const Usuario = require('../models/Usuario');
+    await Usuario.updateOne({ _id: usuarioId }, { $pull: { setores: req.params.id } });
+
+    res.json(setor);
+  } catch (err) {
+    res.status(500).json({ erro: 'Erro ao atualizar membro do setor.' });
+  }
 });
 
 router.delete('/:id', autenticar, apenasAdmin, async (req, res) => {
