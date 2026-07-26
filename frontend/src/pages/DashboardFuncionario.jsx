@@ -370,6 +370,7 @@ function PaginaMinhasTarefas({ tarefas, recarregar, modo = 'onboarding' }) {
 }
 
 function PaginaEquipeColaborador() {
+  const { usuario } = useAuth()
   const [equipe, setEquipe] = useState([])
   const [carregando, setCarregando] = useState(true)
   const [mostrarForm, setMostrarForm] = useState(false)
@@ -500,24 +501,26 @@ function PaginaEquipeColaborador() {
                 Colaborador
               </span>
               {/* Menu "..." */}
-              <div style={{ position: 'relative' }}>
-                <button
-                  style={{ background: 'var(--input)', border: '1px solid var(--borda)', borderRadius: '8px', padding: '6px 10px', color: 'var(--texto-apagado)', fontSize: '1rem', cursor: 'pointer', letterSpacing: '2px', lineHeight: 1 }}
-                  onClick={() => setMenuAberto(menuAberto === f._id ? null : f._id)}
-                >
-                  ···
-                </button>
-                {menuAberto === f._id && (
-                  <div style={{ position: 'absolute', right: 0, zIndex: 10, background: 'var(--card)', border: '1px solid var(--borda)', borderRadius: '10px', overflow: 'hidden', minWidth: '130px', boxShadow: '0 8px 24px rgba(0,0,0,0.4)', ...(i >= equipe.length - 2 ? { bottom: '100%', marginBottom: '4px' } : { top: '100%', marginTop: '4px' }) }}>
-                    <button
-                      style={{ display: 'block', width: '100%', padding: '10px 16px', background: 'none', border: 'none', color: '#f87171', fontSize: '0.85rem', cursor: 'pointer', textAlign: 'left', fontFamily: 'Inter, sans-serif' }}
-                      onClick={() => { setConfirmandoId(f._id); setMenuAberto(null) }}
-                    >
-                      Remover
-                    </button>
-                  </div>
-                )}
-              </div>
+              {f._id !== usuario?.id && (
+                <div style={{ position: 'relative' }}>
+                  <button
+                    style={{ background: 'var(--input)', border: '1px solid var(--borda)', borderRadius: '8px', padding: '6px 10px', color: 'var(--texto-apagado)', fontSize: '1rem', cursor: 'pointer', letterSpacing: '2px', lineHeight: 1 }}
+                    onClick={() => setMenuAberto(menuAberto === f._id ? null : f._id)}
+                  >
+                    ···
+                  </button>
+                  {menuAberto === f._id && (
+                    <div style={{ position: 'absolute', right: 0, zIndex: 10, background: 'var(--card)', border: '1px solid var(--borda)', borderRadius: '10px', overflow: 'hidden', minWidth: '130px', boxShadow: '0 8px 24px rgba(0,0,0,0.4)', ...(i >= equipe.length - 2 ? { bottom: '100%', marginBottom: '4px' } : { top: '100%', marginTop: '4px' }) }}>
+                      <button
+                        style={{ display: 'block', width: '100%', padding: '10px 16px', background: 'none', border: 'none', color: '#f87171', fontSize: '0.85rem', cursor: 'pointer', textAlign: 'left', fontFamily: 'Inter, sans-serif' }}
+                        onClick={() => { setConfirmandoId(f._id); setMenuAberto(null) }}
+                      >
+                        Remover
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           ))}
         </div>

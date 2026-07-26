@@ -517,7 +517,7 @@ function PaginaEquipe({ usuario, equipe, recarregar }) {
                   )}
                 </div>
                 <span style={{ ...styles.badgeCargo, color: 'var(--texto-apagado)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <Icone.User size={12} /> Colaborador
+                  <Icone.User size={12} /> {f.cargo === 'admin' ? 'Titular' : 'Colaborador'}
                 </span>
                 {/* Menu "..." */}
                 <div style={{ position: 'relative' }}>
@@ -538,12 +538,14 @@ function PaginaEquipe({ usuario, equipe, recarregar }) {
                       >
                         Permissões
                       </button>
-                      <button
-                        style={{ ...styles.dropdownItem, color: '#f87171' }}
-                        onClick={() => { setConfirmandoId(f._id); setEditandoPermId(null) }}
-                      >
-                        Remover
-                      </button>
+                      {f._id !== usuario?.id && (
+                        <button
+                          style={{ ...styles.dropdownItem, color: '#f87171' }}
+                          onClick={() => { setConfirmandoId(f._id); setEditandoPermId(null) }}
+                        >
+                          Remover
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>

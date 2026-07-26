@@ -127,6 +127,9 @@ router.put('/:id', autenticar, apenasAdmin, async (req, res) => {
 // DELETE /api/usuarios/:id — só titular remove
 router.delete('/:id', autenticar, apenasAdmin, async (req, res) => {
   try {
+    if (req.params.id === req.usuario._id.toString()) {
+      return res.status(403).json({ erro: 'Você não pode remover a si mesmo.' });
+    }
     const alvo = await Usuario.findOne({ _id: req.params.id, empresa: req.usuario.empresa._id });
     if (!alvo) return res.status(404).json({ erro: 'Usuário não encontrado.' });
     if (alvo.cargo === 'admin') return res.status(403).json({ erro: 'Não é possível remover o titular.' });
