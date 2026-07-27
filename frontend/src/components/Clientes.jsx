@@ -612,7 +612,7 @@ function TelaDetalhe({ clienteId, voltar, onAtualizado, abaInicial = 'info' }) {
       setAba('info')
     } else {
       setSetorAtivo(setor)
-      setAba('demanda')
+      setAba('particularidades')
     }
   }
 
@@ -652,7 +652,7 @@ function TelaDetalhe({ clienteId, voltar, onAtualizado, abaInicial = 'info' }) {
   const st = statusInfo(dados.status)
   const honorarioTotal = dados.servicosContratados?.reduce((a,sv)=>a+(Number(sv.honorarioMensal)||0),0)
   const abas = (setorAtivo && setorTemDemanda(setorAtivo))
-    ? [{id:'demanda',label:'Demanda'},{id:'historico',label:'Histórico'}]
+    ? [{id:'particularidades',label:'Particularidades'},{id:'demanda',label:'Demanda'},{id:'historico',label:'Histórico'}]
     : [{id:'info',label:'Informações'},{id:'servicos',label:'Serviços'},{id:'onboardings',label:'Onboardings'},{id:'obs',label:'Observações'}]
 
   return (
@@ -778,6 +778,12 @@ function TelaDetalhe({ clienteId, voltar, onAtualizado, abaInicial = 'info' }) {
         </div>
       )}
 
+      {aba==='particularidades'&&setorAtivo&&(
+        <AbaParticularidades key={setorAtivo._id} clienteId={clienteId} setor={setorAtivo} clienteAtivo={dados.status!=='inativo'}
+          particularidade={(dados.particularidadesSetor||[]).find(p=>p.setor===setorAtivo._id)}
+          onSalvo={buscar}/>
+      )}
+
       {aba==='demanda'&&setorAtivo&&(
         <AbaDemanda key={setorAtivo._id} clienteId={clienteId} setor={setorAtivo} clienteRegime={dados.regime}
           camposExtras={(dados.camposExtrasDemanda||[]).filter(c=>c.setor===setorAtivo._id)}
@@ -798,7 +804,7 @@ function TelaDetalhe({ clienteId, voltar, onAtualizado, abaInicial = 'info' }) {
             <div style={s.modalTopo}><p style={s.modalTit}>Inativar cliente</p><button style={s.btnX} onClick={()=>setConfirmInativar(false)}>✕</button></div>
             <div style={{ padding:'20px 24px' }}>
               <p style={{ fontSize:'0.875rem', color:'var(--texto)', margin:'0 0 12px', fontFamily:'Inter,sans-serif' }}>Tem certeza que deseja inativar <strong>{nomeCliente}</strong>?</p>
-              <p style={{ fontSize:'0.8rem', color:'var(--texto-apagado)', background:'var(--input)', border:'1px solid var(--borda)', borderRadius:'8px', padding:'10px 12px', margin:0, fontFamily:'Inter,sans-serif', display:'flex', alignItems:'flex-start', gap:'8px' }}><Icone.AlertTriangle size={14} style={{flexShrink:0,marginTop:'1px'}}/> O cadastro e o histórico ficam preservados — dá pra reativar a qualquer momento, mas enquanto inativo não é possível editar os dados.</p>
+              <p style={{ fontSize:'0.8rem', color:'var(--texto-apagado)', background:'var(--input)', border:'1px solid var(--borda)', borderRadius:'8px', padding:'10px 12px', margin:0, fontFamily:'Inter,sans-serif', display:'flex', alignItems:'flex-start', gap:'8px' }}><Icone.AlertTriangle size={14} style={{flexShrink:0,marginTop:'1px'}}/> O cadastro e o histórico do cliente permanecem preservados. A reativação pode ser feita a qualquer momento; enquanto o cliente estiver inativo, a edição dos dados ficará bloqueada.</p>
             </div>
             <div style={s.modalRodape}>
               <button style={s.btnCanc} onClick={()=>setConfirmInativar(false)}>Cancelar</button>
@@ -924,6 +930,45 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
         <button style={s.btnSalv} onClick={salvar} disabled={salvando}>
           {salvando ? 'Salvando...' : 'Salvar'}
         </button>
+      )}
+    </div>
+  )
+}
+
+// ── Particularidades: anotações livres do cliente pra um setor, sem vínculo com competência ──
+function AbaParticularidades({ clienteId, setor, clienteAtivo, particularidade, onSalvo }) {
+  const { mostrar } = useToast()
+  const [texto, setTexto] = useState(particularidade?.texto || '')
+  const [salvando, setSalvando] = useState(false)
+
+  useEffect(() => { setTexto(particularidade?.texto || '') }, [setor._id])
+
+  const salvar = async () => {
+    setSalvando(true)
+    try {
+      await api.put(`/clientes/${clienteId}/particularidades/${setor._id}`, { texto })
+      mostrar('Particularidades salvas!', 'sucesso')
+      onSalvo && onSalvo()
+    } catch (e) { mostrar(e.response?.data?.erro || 'Erro ao salvar.', 'erro') }
+    finally { setSalvando(false) }
+  }
+
+  return (
+    <div>
+      <p style={{ fontSize:'0.8rem', color:'var(--texto-apagado)', marginBottom:'12px' }}>
+        Anotações específicas deste cliente pro setor {setor.nome}
+        {particularidade?.atualizadoPor?.nome && ` · Última edição por ${particularidade.atualizadoPor.nome}`}
+      </p>
+      {clienteAtivo ? (
+        <>
+          <textarea style={{ ...s.inp, minHeight:'140px', resize:'vertical' }} value={texto} onChange={e=>setTexto(e.target.value)}
+            placeholder='Ex: "Sem movimento, mas conferir se teve alguma nota fiscal emitida" ou "Tem vantagem X pelo sindicato"...' />
+          <button style={{ ...s.btnSalv, marginTop:'12px' }} onClick={salvar} disabled={salvando}>{salvando?'Salvando...':'Salvar particularidades'}</button>
+        </>
+      ) : (
+        <div style={{ background:'var(--card)', border:'1px solid var(--borda)', borderRadius:'12px', padding:'16px 20px', whiteSpace:'pre-wrap', fontSize:'0.875rem', color: texto?'var(--texto)':'var(--texto-apagado)' }}>
+          {texto || 'Nenhuma particularidade anotada.'}
+        </div>
       )}
     </div>
   )

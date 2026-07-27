@@ -67,6 +67,14 @@ const clienteSchema = new mongoose.Schema({
     label: { type: String, required: true },
     tipo: { type: String, enum: ['moeda', 'texto'], default: 'moeda' },
   }],
+
+  // Particularidades do cliente por setor (anotações livres, independentes de competência)
+  particularidadesSetor: [{
+    setor: { type: mongoose.Schema.Types.ObjectId, ref: 'Setor', required: true },
+    texto: { type: String, default: '' },
+    atualizadoPor: { type: mongoose.Schema.Types.ObjectId, ref: 'Usuario' },
+    atualizadoEm: { type: Date },
+  }],
 });
 
 module.exports = mongoose.model('Cliente', clienteSchema);
