@@ -592,7 +592,8 @@ function TelaDetalhe({ clienteId, voltar, onAtualizado, abaInicial = 'info' }) {
   const [dados, setDados] = useState(null)
   const [carregando, setCarregando] = useState(true)
   const [editando, setEditando] = useState(false)
-  const [confirmExcluir, setConfirmExcluir] = useState(false)
+  const [confirmInativar, setConfirmInativar] = useState(false)
+  const [mudandoStatus, setMudandoStatus] = useState(false)
   const [aba, setAba] = useState(abaInicial)
   const [setorAtivo, setSetorAtivo] = useState(null)
   const { mostrar } = useToast()
@@ -623,9 +624,25 @@ function TelaDetalhe({ clienteId, voltar, onAtualizado, abaInicial = 'info' }) {
   }
   useEffect(()=>{buscar()},[clienteId])
 
-  const excluir = async () => {
-    try { await api.delete(`/clientes/${clienteId}`); mostrar('Cliente removido.','sucesso'); onAtualizado(); voltar() }
-    catch { mostrar('Erro ao remover.','erro') }
+  const inativar = async () => {
+    setMudandoStatus(true)
+    try {
+      await api.put(`/clientes/${clienteId}`, { status: 'inativo' })
+      mostrar('Cliente inativado.', 'aviso')
+      setConfirmInativar(false)
+      buscar(); onAtualizado()
+    } catch { mostrar('Erro ao inativar.', 'erro') }
+    finally { setMudandoStatus(false) }
+  }
+
+  const reativar = async () => {
+    setMudandoStatus(true)
+    try {
+      await api.put(`/clientes/${clienteId}`, { status: 'ativo' })
+      mostrar('Cliente reativado!', 'sucesso')
+      buscar(); onAtualizado()
+    } catch { mostrar('Erro ao reativar.', 'erro') }
+    finally { setMudandoStatus(false) }
   }
 
   if (carregando) return <p style={{ color:'var(--texto-apagado)' }}>Carregando...</p>
@@ -656,8 +673,14 @@ function TelaDetalhe({ clienteId, voltar, onAtualizado, abaInicial = 'info' }) {
           </div>
           {temPermissao('gerenciarClientes') && (
             <div style={{ display:'flex', gap:'8px', alignItems:'center' }}>
-              <button onClick={()=>setEditando(true)} style={{ ...s.btnAcao, display:'flex', alignItems:'center', gap:'5px' }}><Icone.Edit size={13}/>Editar</button>
-              <button onClick={()=>setConfirmExcluir(true)} style={{ ...s.btnAcao, color:'#f87171', borderColor:'rgba(248,113,113,0.3)', display:'flex', alignItems:'center', gap:'5px' }}><Icone.Trash size={13}/>Remover</button>
+              {dados.status!=='inativo' && (
+                <button onClick={()=>setEditando(true)} style={{ ...s.btnAcao, display:'flex', alignItems:'center', gap:'5px' }}><Icone.Edit size={13}/>Editar</button>
+              )}
+              {dados.status==='inativo' ? (
+                <button onClick={reativar} disabled={mudandoStatus} style={{ ...s.btnAcao, color:'var(--verde)', borderColor:'rgba(0,177,65,0.3)', display:'flex', alignItems:'center', gap:'5px' }}><Icone.CheckCircle size={13}/>{mudandoStatus?'Reativando...':'Reativar'}</button>
+              ) : (
+                <button onClick={()=>setConfirmInativar(true)} style={{ ...s.btnAcao, color:'#f87171', borderColor:'rgba(248,113,113,0.3)', display:'flex', alignItems:'center', gap:'5px' }}><Icone.X size={13}/>Inativar</button>
+              )}
             </div>
           )}
         </div>
@@ -769,17 +792,17 @@ function TelaDetalhe({ clienteId, voltar, onAtualizado, abaInicial = 'info' }) {
 
       {editando&&<div style={{ position:'fixed', inset:0, background:'var(--fundo)', zIndex:9999, padding:'32px', overflowY:'auto' }}><FormCliente cliente={dados} fechar={()=>setEditando(false)} onSalvo={()=>{buscar();onAtualizado()}} /></div>}
 
-      {confirmExcluir&&createPortal(
-        <div style={s.overlay} onClick={()=>setConfirmExcluir(false)}>
+      {confirmInativar&&createPortal(
+        <div style={s.overlay} onClick={()=>setConfirmInativar(false)}>
           <div style={{ ...s.modalPeq }} onClick={e=>e.stopPropagation()}>
-            <div style={s.modalTopo}><p style={s.modalTit}>Remover cliente</p><button style={s.btnX} onClick={()=>setConfirmExcluir(false)}>✕</button></div>
+            <div style={s.modalTopo}><p style={s.modalTit}>Inativar cliente</p><button style={s.btnX} onClick={()=>setConfirmInativar(false)}>✕</button></div>
             <div style={{ padding:'20px 24px' }}>
-              <p style={{ fontSize:'0.875rem', color:'var(--texto)', margin:'0 0 12px', fontFamily:'Inter,sans-serif' }}>Tem certeza que deseja remover <strong>{nomeCliente}</strong>?</p>
-              <p style={{ fontSize:'0.8rem', color:'#fbbf24', background:'rgba(251,191,36,0.08)', border:'1px solid rgba(251,191,36,0.2)', borderRadius:'8px', padding:'10px 12px', margin:0, fontFamily:'Inter,sans-serif' }} style={{ display:'flex', alignItems:'flex-start', gap:'8px' }}><Icone.AlertTriangle size={14} style={{color:'#fbbf24',flexShrink:0,marginTop:'1px'}}/> Esta ação não pode ser desfeita.</p>
+              <p style={{ fontSize:'0.875rem', color:'var(--texto)', margin:'0 0 12px', fontFamily:'Inter,sans-serif' }}>Tem certeza que deseja inativar <strong>{nomeCliente}</strong>?</p>
+              <p style={{ fontSize:'0.8rem', color:'var(--texto-apagado)', background:'var(--input)', border:'1px solid var(--borda)', borderRadius:'8px', padding:'10px 12px', margin:0, fontFamily:'Inter,sans-serif', display:'flex', alignItems:'flex-start', gap:'8px' }}><Icone.AlertTriangle size={14} style={{flexShrink:0,marginTop:'1px'}}/> O cadastro e o histórico ficam preservados — dá pra reativar a qualquer momento, mas enquanto inativo não é possível editar os dados.</p>
             </div>
             <div style={s.modalRodape}>
-              <button style={s.btnCanc} onClick={()=>setConfirmExcluir(false)}>Cancelar</button>
-              <button style={{ ...s.btnSalv, background:'rgba(248,113,113,0.15)', border:'1px solid rgba(248,113,113,0.3)', color:'#f87171' }} onClick={excluir}>Remover</button>
+              <button style={s.btnCanc} onClick={()=>setConfirmInativar(false)}>Cancelar</button>
+              <button style={{ ...s.btnSalv, background:'rgba(248,113,113,0.15)', border:'1px solid rgba(248,113,113,0.3)', color:'#f87171' }} onClick={inativar} disabled={mudandoStatus}>{mudandoStatus?'Inativando...':'Inativar'}</button>
             </div>
           </div>
         </div>, document.body
@@ -993,11 +1016,12 @@ function AbaHistorico({ clienteId, setor, clienteRegime, camposExtras, onCampoCr
 // ── Card do cliente ──
 function CardCliente({ cliente, onClick }) {
   const st = statusInfo(cliente.status)
+  const inativo = cliente.status==='inativo'
   const honorarioTotal = cliente.servicosContratados?.reduce((a,sv)=>a+(Number(sv.honorarioMensal)||0),0)
   const nomeCliente = cliente.razaoSocial||cliente.nome||'—'
   return (
-    <div onClick={onClick} style={{ background:'var(--card)', border:'1px solid var(--borda)', borderRadius:'14px', padding:'20px', cursor:'pointer', position:'relative', transition:'border-color 0.15s, transform 0.1s' }}
-      onMouseEnter={e=>{e.currentTarget.style.borderColor='rgba(0,177,65,0.3)';e.currentTarget.style.transform='translateY(-1px)'}}
+    <div onClick={onClick} style={{ background:'var(--card)', border:'1px solid var(--borda)', borderRadius:'14px', padding:'20px', cursor:'pointer', position:'relative', transition:'border-color 0.15s, transform 0.1s, opacity 0.15s', opacity: inativo?0.55:1 }}
+      onMouseEnter={e=>{e.currentTarget.style.borderColor=inativo?'var(--borda)':'rgba(0,177,65,0.3)';e.currentTarget.style.transform='translateY(-1px)'}}
       onMouseLeave={e=>{e.currentTarget.style.borderColor='var(--borda)';e.currentTarget.style.transform='translateY(0)'}}>
       <div style={{ position:'absolute', top:'14px', right:'14px', width:'10px', height:'10px', borderRadius:'50%', background:st.cor, boxShadow:`0 0 6px ${st.cor}60` }} title={st.label}/>
       <div style={{ display:'flex', alignItems:'center', gap:'12px', marginBottom:'16px' }}>
@@ -1114,6 +1138,9 @@ export default function Clientes({ detalheInicial = null, abaInicial = 'info', o
     const matchSubFiltro = !subFiltroConfig || !subFiltro || c[subFiltroConfig.campo]===subFiltro
     return matchBusca && matchSetor && matchSubFiltro
   }).sort((a,b)=>{
+    const inativoA = a.status==='inativo' ? 1 : 0
+    const inativoB = b.status==='inativo' ? 1 : 0
+    if (inativoA !== inativoB) return inativoA - inativoB
     const nomeA = (a.razaoSocial||a.nome||'').toLowerCase().trim()
     const nomeB = (b.razaoSocial||b.nome||'').toLowerCase().trim()
     return nomeA.localeCompare(nomeB, 'pt-BR', { numeric: true })
