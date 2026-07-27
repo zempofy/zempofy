@@ -780,7 +780,7 @@ function TelaDetalhe({ clienteId, voltar, onAtualizado, abaInicial = 'info' }) {
 
       {aba==='particularidades'&&setorAtivo&&(
         <AbaParticularidades key={setorAtivo._id} clienteId={clienteId} setor={setorAtivo} clienteAtivo={dados.status!=='inativo'}
-          particularidade={(dados.particularidadesSetor||[]).find(p=>p.setor===setorAtivo._id)}
+          particularidades={(dados.particularidadesSetor||[]).filter(p=>p.setor===setorAtivo._id)}
           onSalvo={buscar}/>
       )}
 
@@ -935,19 +935,21 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
   )
 }
 
-// ── Particularidades: anotações livres do cliente pra um setor, sem vínculo com competência ──
-function AbaParticularidades({ clienteId, setor, clienteAtivo, particularidade, onSalvo }) {
+// ── Particularidades: lista de anotações do cliente pra um setor, sem vínculo com competência ──
+function AbaParticularidades({ clienteId, setor, clienteAtivo, particularidades=[], onSalvo }) {
   const { mostrar } = useToast()
-  const [texto, setTexto] = useState(particularidade?.texto || '')
+  const [texto, setTexto] = useState('')
   const [salvando, setSalvando] = useState(false)
 
-  useEffect(() => { setTexto(particularidade?.texto || '') }, [setor._id])
+  const lista = [...particularidades].sort((a,b) => new Date(b.atualizadoEm) - new Date(a.atualizadoEm))
 
   const salvar = async () => {
+    if (!texto.trim()) return
     setSalvando(true)
     try {
-      await api.put(`/clientes/${clienteId}/particularidades/${setor._id}`, { texto })
-      mostrar('Particularidades salvas!', 'sucesso')
+      await api.post(`/clientes/${clienteId}/particularidades/${setor._id}`, { texto: texto.trim() })
+      mostrar('Particularidade adicionada!', 'sucesso')
+      setTexto('')
       onSalvo && onSalvo()
     } catch (e) { mostrar(e.response?.data?.erro || 'Erro ao salvar.', 'erro') }
     finally { setSalvando(false) }
@@ -957,17 +959,26 @@ function AbaParticularidades({ clienteId, setor, clienteAtivo, particularidade, 
     <div>
       <p style={{ fontSize:'0.8rem', color:'var(--texto-apagado)', marginBottom:'12px' }}>
         Anotações específicas deste cliente pro setor {setor.nome}
-        {particularidade?.atualizadoPor?.nome && ` · Última edição por ${particularidade.atualizadoPor.nome}`}
       </p>
-      {clienteAtivo ? (
-        <>
-          <textarea style={{ ...s.inp, minHeight:'140px', resize:'vertical' }} value={texto} onChange={e=>setTexto(e.target.value)}
+      {clienteAtivo && (
+        <div style={{ marginBottom:'22px' }}>
+          <textarea style={{ ...s.inp, minHeight:'70px', resize:'vertical' }} value={texto} onChange={e=>setTexto(e.target.value)}
+            onKeyDown={e=>{ if(e.key==='Enter'&&(e.metaKey||e.ctrlKey)) salvar() }}
             placeholder='Ex: "Sem movimento, mas conferir se teve alguma nota fiscal emitida" ou "Tem vantagem X pelo sindicato"...' />
-          <button style={{ ...s.btnSalv, marginTop:'12px' }} onClick={salvar} disabled={salvando}>{salvando?'Salvando...':'Salvar particularidades'}</button>
-        </>
+          <button style={{ ...s.btnSalv, marginTop:'10px' }} onClick={salvar} disabled={salvando || !texto.trim()}>{salvando?'Salvando...':'+ Adicionar anotação'}</button>
+        </div>
+      )}
+
+      {lista.length === 0 ? (
+        <p style={{ color:'var(--texto-apagado)', fontSize:'0.875rem' }}>Nenhuma particularidade anotada ainda.</p>
       ) : (
-        <div style={{ background:'var(--card)', border:'1px solid var(--borda)', borderRadius:'12px', padding:'16px 20px', whiteSpace:'pre-wrap', fontSize:'0.875rem', color: texto?'var(--texto)':'var(--texto-apagado)' }}>
-          {texto || 'Nenhuma particularidade anotada.'}
+        <div style={{ display:'flex', flexDirection:'column', gap:'10px' }}>
+          {lista.map(p => (
+            <div key={p._id} style={{ background:'var(--card)', border:'1px solid var(--borda)', borderRadius:'12px', padding:'14px 16px' }}>
+              <p style={{ fontSize:'0.875rem', color:'var(--texto)', margin:'0 0 8px', whiteSpace:'pre-wrap', lineHeight:'1.5' }}>{p.texto}</p>
+              <p style={{ fontSize:'0.68rem', color:'var(--texto-apagado)', margin:0 }}>{p.atualizadoPor?.nome||'—'} · {p.atualizadoEm ? new Date(p.atualizadoEm).toLocaleString('pt-BR') : '—'}</p>
+            </div>
+          ))}
         </div>
       )}
     </div>

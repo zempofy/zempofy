@@ -216,29 +216,27 @@ router.post('/:id/campos-extras/:setorId', autenticar, async (req, res) => {
   }
 });
 
-// PUT /api/clientes/:id/particularidades/:setorId — anota particularidades do cliente pra aquele setor
-router.put('/:id/particularidades/:setorId', autenticar, async (req, res) => {
+// POST /api/clientes/:id/particularidades/:setorId — adiciona uma anotação de particularidade (lista, não sobrescreve)
+router.post('/:id/particularidades/:setorId', autenticar, async (req, res) => {
   try {
     if (!temAcessoAoSetor(req.usuario, req.params.setorId)) {
       return res.status(403).json({ erro: 'Você não tem acesso a este setor.' });
     }
+    const { texto } = req.body;
+    if (!texto?.trim()) return res.status(400).json({ erro: 'Escreva algo antes de salvar.' });
+
     const cliente = await Cliente.findOne({ _id: req.params.id, empresa: req.usuario.empresa._id });
     if (!cliente) return res.status(404).json({ erro: 'Cliente não encontrado.' });
     if (cliente.status === 'inativo') return res.status(403).json({ erro: 'Cliente inativo — reative pra poder editar.' });
 
-    const { texto } = req.body;
-    const existente = cliente.particularidadesSetor.find(p => p.setor.toString() === req.params.setorId);
-    if (existente) {
-      existente.texto = texto || '';
-      existente.atualizadoPor = req.usuario._id;
-      existente.atualizadoEm = new Date();
-    } else {
-      cliente.particularidadesSetor.push({ setor: req.params.setorId, texto: texto || '', atualizadoPor: req.usuario._id, atualizadoEm: new Date() });
-    }
+    cliente.particularidadesSetor.push({ setor: req.params.setorId, texto: texto.trim(), atualizadoPor: req.usuario._id, atualizadoEm: new Date() });
     await cliente.save();
 
     const populado = await Cliente.findById(cliente._id).populate('particularidadesSetor.atualizadoPor', 'nome');
-    res.json(populado.particularidadesSetor.find(p => p.setor.toString() === req.params.setorId));
+    const lista = populado.particularidadesSetor
+      .filter(p => p.setor.toString() === req.params.setorId)
+      .sort((a, b) => b.atualizadoEm - a.atualizadoEm);
+    res.status(201).json(lista);
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao salvar particularidades.' });
   }
