@@ -59,6 +59,14 @@ const clienteSchema = new mongoose.Schema({
   setores: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Setor' }],
   origem: { type: String, enum: ['manual', 'onboarding'], default: 'manual' },
   observacoes: { type: String, default: '' },
+
+  // Campos extras da Demanda mensal, criados sob demanda e específicos deste cliente
+  camposExtrasDemanda: [{
+    setor: { type: mongoose.Schema.Types.ObjectId, ref: 'Setor', required: true },
+    id: { type: String, required: true },
+    label: { type: String, required: true },
+    tipo: { type: String, enum: ['moeda', 'texto'], default: 'moeda' },
+  }],
 });
 
 module.exports = mongoose.model('Cliente', clienteSchema);

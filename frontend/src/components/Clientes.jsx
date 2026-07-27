@@ -53,6 +53,41 @@ const PERIODICIDADES = [
   { value:'esporadico', label:'Esporádico' },
 ]
 
+const normalizarNome = (str='') => str.normalize('NFD').replace(/\p{Diacritic}/gu,'').toLowerCase().trim()
+
+// ── Subfiltros por setor (tela de Clientes) ──
+const SUBFILTROS_POR_SETOR = {
+  fiscal: { campo: 'regime', opcoes: REGIMES.filter(r=>r.value!=='outro') },
+}
+
+// ── Config de campos da Demanda mensal por setor/regime ──
+const CONFIG_DEMANDA = {
+  fiscal: {
+    porRegime: {
+      simples_nacional: [
+        { id:'totalVendas', label:'Total de vendas no mês', tipo:'moeda' },
+        { id:'totalServicos', label:'Total de serviços prestados', tipo:'moeda' },
+        { id:'das', label:'Valor do DAS', tipo:'moeda' },
+        { id:'issRetido', label:'ISS Retido', tipo:'moeda' },
+      ],
+      lucro_presumido: [
+        { id:'totalVendas', label:'Total de vendas no mês', tipo:'moeda' },
+        { id:'totalServicos', label:'Total de serviços prestados', tipo:'moeda' },
+        { id:'pis', label:'PIS', tipo:'moeda' },
+        { id:'cofins', label:'COFINS', tipo:'moeda' },
+        { id:'irpj', label:'IRPJ', tipo:'moeda' },
+        { id:'csll', label:'CSLL', tipo:'moeda' },
+        { id:'iss', label:'ISS', tipo:'moeda' },
+        { id:'issProprio', label:'ISS Próprio', tipo:'moeda' },
+        { id:'icmsAntecipado', label:'ICMS Antecipado', tipo:'moeda' },
+        { id:'icmsProprio', label:'ICMS Próprio', tipo:'moeda' },
+      ],
+      // lucro_real e mei: definir campos quando for a vez
+    }
+  }
+  // contabil, dp, financeiro: adicionar aqui quando escopo fechar
+}
+
 const labelRegime = (v) => REGIMES.find(r=>r.value===v)?.label || v
 const labelPorte = (v) => PORTES.find(r=>r.value===v)?.label || v
 const labelPeriodicidade = (v) => PERIODICIDADES.find(p=>p.value===v)?.label || v
@@ -545,7 +580,21 @@ function TelaDetalhe({ clienteId, voltar, onAtualizado, abaInicial = 'info' }) {
   const [editando, setEditando] = useState(false)
   const [confirmExcluir, setConfirmExcluir] = useState(false)
   const [aba, setAba] = useState(abaInicial)
+  const [setorAtivo, setSetorAtivo] = useState(null)
   const { mostrar } = useToast()
+
+  const setorTemDemanda = (setor) => !!CONFIG_DEMANDA[normalizarNome(setor?.nome||'')]
+
+  const clicarSetor = (setor) => {
+    if (!setorTemDemanda(setor)) return
+    if (setorAtivo?._id === setor._id) {
+      setSetorAtivo(null)
+      setAba('info')
+    } else {
+      setSetorAtivo(setor)
+      setAba('demanda')
+    }
+  }
 
   const buscar = async () => {
     setCarregando(true)
@@ -566,7 +615,9 @@ function TelaDetalhe({ clienteId, voltar, onAtualizado, abaInicial = 'info' }) {
   const nomeCliente = dados.razaoSocial||dados.nome||'—'
   const st = statusInfo(dados.status)
   const honorarioTotal = dados.servicosContratados?.reduce((a,sv)=>a+(Number(sv.honorarioMensal)||0),0)
-  const abas = [{id:'info',label:'Informações'},{id:'servicos',label:'Serviços'},{id:'onboardings',label:'Onboardings'},{id:'obs',label:'Observações'}]
+  const abas = (setorAtivo && setorTemDemanda(setorAtivo))
+    ? [{id:'demanda',label:'Demanda'},{id:'historico',label:'Histórico'}]
+    : [{id:'info',label:'Informações'},{id:'servicos',label:'Serviços'},{id:'onboardings',label:'Onboardings'},{id:'obs',label:'Observações'}]
 
   return (
     <div>
@@ -591,12 +642,22 @@ function TelaDetalhe({ clienteId, voltar, onAtualizado, abaInicial = 'info' }) {
         </div>
         {/* Linha 2: setores + separador + status + origem */}
         <div style={{ display:'flex', alignItems:'center', gap:'6px', flexWrap:'wrap' }}>
-          {dados.setores?.filter(s=>s.nome).map(setor=>(
-            <span key={setor._id||setor} style={{ display:'inline-flex', alignItems:'center', gap:'5px', padding:'3px 9px', borderRadius:'99px', background:'var(--input)', border:'1px solid var(--borda)', fontSize:'0.72rem', fontWeight:'600', color:'var(--texto-apagado)', fontFamily:'Inter,sans-serif' }}>
-              <div style={{ width:'7px', height:'7px', borderRadius:'50%', background:setor.cor||'var(--verde)', flexShrink:0 }}/>
-              {setor.nome}
-            </span>
-          ))}
+          {dados.setores?.filter(s=>s.nome).map(setor=>{
+            const clicavel = setorTemDemanda(setor)
+            const selecionado = setorAtivo?._id === setor._id
+            return (
+              <button key={setor._id||setor} onClick={()=>clicarSetor(setor)} title={clicavel?'Ver demanda deste setor':undefined} style={{
+                display:'inline-flex', alignItems:'center', gap:'5px', padding:'3px 9px', borderRadius:'99px',
+                background: selecionado ? 'rgba(0,177,65,0.12)' : 'var(--input)',
+                border: `1px solid ${selecionado ? 'rgba(0,177,65,0.35)' : 'var(--borda)'}`,
+                fontSize:'0.72rem', fontWeight:'600', color: selecionado ? 'var(--verde)' : 'var(--texto-apagado)',
+                fontFamily:'Inter,sans-serif', cursor: clicavel?'pointer':'default',
+              }}>
+                <div style={{ width:'7px', height:'7px', borderRadius:'50%', background:setor.cor||'var(--verde)', flexShrink:0 }}/>
+                {setor.nome}
+              </button>
+            )
+          })}
           {dados.setores?.filter(s=>s.nome).length>0&&<div style={{ width:'1px', height:'14px', background:'var(--borda)', flexShrink:0, margin:'0 2px' }}/>}
           <span style={{ display:'inline-flex', alignItems:'center', gap:'4px', padding:'3px 9px', borderRadius:'99px', fontSize:'0.72rem', fontWeight:'600', fontFamily:'Inter,sans-serif', background:st.bg, color:st.cor }}>{st.label}</span>
           {dados.onboardings?.some(o=>o.status!=='concluida') ? (
@@ -673,6 +734,17 @@ function TelaDetalhe({ clienteId, voltar, onAtualizado, abaInicial = 'info' }) {
         </div>
       )}
 
+      {aba==='demanda'&&setorAtivo&&(
+        <AbaDemanda key={setorAtivo._id} clienteId={clienteId} setor={setorAtivo} clienteRegime={dados.regime}
+          camposExtras={(dados.camposExtrasDemanda||[]).filter(c=>c.setor===setorAtivo._id)}
+          onCampoCriado={buscar}/>
+      )}
+
+      {aba==='historico'&&setorAtivo&&(
+        <AbaHistorico key={setorAtivo._id} clienteId={clienteId} setor={setorAtivo} clienteRegime={dados.regime}
+          camposExtras={(dados.camposExtrasDemanda||[]).filter(c=>c.setor===setorAtivo._id)}/>
+      )}
+
       {editando&&<div style={{ position:'fixed', inset:0, background:'var(--fundo)', zIndex:9999, padding:'32px', overflowY:'auto' }}><FormCliente cliente={dados} fechar={()=>setEditando(false)} onSalvo={()=>{buscar();onAtualizado()}} /></div>}
 
       {confirmExcluir&&createPortal(
@@ -690,6 +762,157 @@ function TelaDetalhe({ clienteId, voltar, onAtualizado, abaInicial = 'info' }) {
           </div>
         </div>, document.body
       )}
+    </div>
+  )
+}
+
+// ── Demanda mensal (mês corrente, editável) ──
+function AbaDemanda({ clienteId, setor, clienteRegime, camposExtras=[], onCampoCriado }) {
+  const { mostrar } = useToast()
+  const [carregando, setCarregando] = useState(true)
+  const [salvando, setSalvando] = useState(false)
+  const [lancamento, setLancamento] = useState(null)
+  const [valores, setValores] = useState({})
+  const [criandoCampo, setCriandoCampo] = useState(false)
+  const [novoLabel, setNovoLabel] = useState('')
+  const [novoTipo, setNovoTipo] = useState('moeda')
+  const [criando, setCriando] = useState(false)
+
+  const config = CONFIG_DEMANDA[normalizarNome(setor.nome)]
+  const camposBase = config?.porRegime?.[clienteRegime] || []
+  const campos = [...camposBase, ...camposExtras]
+
+  useEffect(() => {
+    setCarregando(true)
+    api.get(`/clientes/${clienteId}/lancamentos/${setor._id}/atual`)
+      .then(r => { setLancamento(r.data); setValores(r.data?.dados || {}) })
+      .catch(() => mostrar('Erro ao carregar demanda.', 'erro'))
+      .finally(() => setCarregando(false))
+  }, [clienteId, setor._id])
+
+  const setValor = (id, v) => setValores(vs => ({ ...vs, [id]: v }))
+
+  const salvar = async () => {
+    setSalvando(true)
+    try {
+      const r = await api.post(`/clientes/${clienteId}/lancamentos/${setor._id}/atual`, { dados: valores })
+      setLancamento(r.data)
+      mostrar('Demanda salva!', 'sucesso')
+    } catch (e) { mostrar(e.response?.data?.erro || 'Erro ao salvar demanda.', 'erro') }
+    finally { setSalvando(false) }
+  }
+
+  const criarCampo = async () => {
+    if (!novoLabel.trim()) return
+    setCriando(true)
+    try {
+      await api.post(`/clientes/${clienteId}/campos-extras/${setor._id}`, { label: novoLabel.trim(), tipo: novoTipo })
+      setNovoLabel(''); setNovoTipo('moeda'); setCriandoCampo(false)
+      mostrar('Campo criado!', 'sucesso')
+      onCampoCriado && onCampoCriado()
+    } catch (e) { mostrar(e.response?.data?.erro || 'Erro ao criar campo.', 'erro') }
+    finally { setCriando(false) }
+  }
+
+  if (carregando) return <p style={{ color:'var(--texto-apagado)' }}>Carregando...</p>
+
+  if (!clienteRegime) return <p style={{ color:'var(--texto-apagado)', fontSize:'0.875rem' }}>Este cliente não tem regime tributário definido — edite o cadastro pra habilitar a demanda deste setor.</p>
+
+  return (
+    <div>
+      <p style={{ fontSize:'0.8rem', color:'var(--texto-apagado)', marginBottom:'16px' }}>
+        Competência {lancamento?.competencia}{lancamento?.fechado ? ' · Fechada' : ''}
+      </p>
+      {campos.length === 0 && <p style={{ color:'var(--texto-apagado)', fontSize:'0.875rem', marginBottom:'16px' }}>Nenhum campo configurado ainda para o regime "{labelRegime(clienteRegime)}". Adicione um campo abaixo.</p>}
+      {campos.length > 0 && (
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))', gap:'14px', marginBottom:'20px' }}>
+          {campos.map(c => (
+            <Campo key={c.id} label={c.label}>
+              {c.tipo === 'moeda' ? (
+                <input style={s.inp}
+                  value={valores[c.id] ? Number(valores[c.id]).toLocaleString('pt-BR',{minimumFractionDigits:2}) : ''}
+                  onChange={e => { const nums = e.target.value.replace(/\D/g,''); setValor(c.id, nums ? parseInt(nums,10)/100 : '') }}
+                  placeholder="0,00" disabled={lancamento?.fechado} />
+              ) : (
+                <input style={s.inp} value={valores[c.id]||''} onChange={e=>setValor(c.id, e.target.value)} disabled={lancamento?.fechado} />
+              )}
+            </Campo>
+          ))}
+        </div>
+      )}
+
+      {criandoCampo ? (
+        <div style={{ display:'flex', gap:'10px', alignItems:'flex-end', marginBottom:'20px', flexWrap:'wrap', border:'1px dashed var(--borda)', borderRadius:'10px', padding:'14px' }}>
+          <div style={{ flex:1, minWidth:'180px' }}>
+            <Campo label="Nome do campo">
+              <input style={s.inp} value={novoLabel} onChange={e=>setNovoLabel(e.target.value)} placeholder="Ex: Diferencial de alíquota" autoFocus onKeyDown={e=>e.key==='Enter'&&criarCampo()} />
+            </Campo>
+          </div>
+          <div style={{ width:'140px' }}>
+            <Campo label="Tipo">
+              <select style={s.inp} value={novoTipo} onChange={e=>setNovoTipo(e.target.value)}>
+                <option value="moeda">Valor (R$)</option>
+                <option value="texto">Texto</option>
+              </select>
+            </Campo>
+          </div>
+          <button style={s.btnSalv} onClick={criarCampo} disabled={criando}>{criando?'Criando...':'Adicionar'}</button>
+          <button style={s.btnCanc} onClick={()=>{setCriandoCampo(false);setNovoLabel('')}}>Cancelar</button>
+        </div>
+      ) : (
+        <button onClick={()=>setCriandoCampo(true)} disabled={lancamento?.fechado} style={{ background:'none', border:'1px dashed var(--borda)', borderRadius:'10px', color:'var(--texto-apagado)', padding:'10px', cursor:'pointer', fontFamily:'Inter,sans-serif', fontSize:'0.82rem', width:'100%', marginBottom:'20px' }}>
+          + Adicionar campo
+        </button>
+      )}
+
+      <button style={s.btnSalv} onClick={salvar} disabled={salvando || lancamento?.fechado}>
+        {salvando ? 'Salvando...' : 'Salvar demanda'}
+      </button>
+    </div>
+  )
+}
+
+// ── Histórico de competências (somente leitura) ──
+function AbaHistorico({ clienteId, setor, clienteRegime, camposExtras=[] }) {
+  const { mostrar } = useToast()
+  const [carregando, setCarregando] = useState(true)
+  const [lista, setLista] = useState([])
+  const [expandido, setExpandido] = useState(null)
+
+  const config = CONFIG_DEMANDA[normalizarNome(setor.nome)]
+
+  useEffect(() => {
+    setCarregando(true)
+    api.get(`/clientes/${clienteId}/lancamentos/${setor._id}`)
+      .then(r => setLista(r.data))
+      .catch(() => mostrar('Erro ao carregar histórico.', 'erro'))
+      .finally(() => setCarregando(false))
+  }, [clienteId, setor._id])
+
+  if (carregando) return <p style={{ color:'var(--texto-apagado)' }}>Carregando...</p>
+  if (!lista.length) return <p style={{ color:'var(--texto-apagado)', fontSize:'0.875rem' }}>Nenhuma competência anterior registrada.</p>
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:'10px' }}>
+      {lista.map(l => {
+        const campos = [...(config?.porRegime?.[clienteRegime] || []), ...camposExtras]
+        const aberto = expandido === l._id
+        return (
+          <div key={l._id} style={{ background:'var(--card)', border:'1px solid var(--borda)', borderRadius:'12px', overflow:'hidden' }}>
+            <button onClick={()=>setExpandido(aberto?null:l._id)} style={{ width:'100%', display:'flex', justifyContent:'space-between', alignItems:'center', padding:'14px 18px', background:'none', border:'none', cursor:'pointer', textAlign:'left' }}>
+              <span style={{ fontWeight:'600', color:'var(--texto)', fontSize:'0.9rem' }}>{l.competencia}</span>
+              <span style={{ fontSize:'0.72rem', color:'var(--texto-apagado)' }}>{l.preenchidoPor?.nome ? `Por ${l.preenchidoPor.nome}` : ''}</span>
+            </button>
+            {aberto && (
+              <div style={{ padding:'0 18px 16px', display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))', gap:'10px' }}>
+                {campos.length ? campos.map(c => (
+                  <InfoLinha key={c.id} label={c.label} valor={c.tipo==='moeda' ? formatMoeda(l.dados?.[c.id]) : (l.dados?.[c.id]||'—')} />
+                )) : <p style={{ color:'var(--texto-apagado)', fontSize:'0.8rem' }}>Sem campos configurados pro regime desta competência.</p>}
+              </div>
+            )}
+          </div>
+        )
+      })}
     </div>
   )
 }
@@ -763,6 +986,7 @@ export default function Clientes({ detalheInicial = null, abaInicial = 'info', o
   const [carregando, setCarregando] = useState(true)
   const [busca, setBusca] = useState('')
   const [filtroSetor, setFiltroSetor] = useState(null)
+  const [subFiltro, setSubFiltro] = useState(null)
   const [formAberto, setFormAberto] = useState(false)
   const [importarAberto, setImportarAberto] = useState(false)
   const [detalheId, setDetalheId] = useState(() => {
@@ -804,12 +1028,17 @@ export default function Clientes({ detalheInicial = null, abaInicial = 'info', o
     finally { setCarregando(false) }
   }
   useEffect(()=>{carregar()},[])
+  useEffect(()=>{ setSubFiltro(null) }, [filtroSetor])
+
+  const setorFiltroAtivo = filtroSetor ? setoresList.find(x=>x._id===filtroSetor) : null
+  const subFiltroConfig = setorFiltroAtivo ? SUBFILTROS_POR_SETOR[normalizarNome(setorFiltroAtivo.nome)] : null
 
   const filtrados = clientes.filter(c=>{
     const nome = c.razaoSocial||c.nome||''
     const matchBusca = nome.toLowerCase().includes(busca.toLowerCase()) || c.nomeFantasia?.toLowerCase().includes(busca.toLowerCase()) || c.cnpj?.includes(busca)
     const matchSetor = !filtroSetor || c.setores?.some(s=>(s._id||s)===filtroSetor)
-    return matchBusca && matchSetor
+    const matchSubFiltro = !subFiltroConfig || !subFiltro || c[subFiltroConfig.campo]===subFiltro
+    return matchBusca && matchSetor && matchSubFiltro
   }).sort((a,b)=>{
     const nomeA = (a.razaoSocial||a.nome||'').toLowerCase().trim()
     const nomeB = (b.razaoSocial||b.nome||'').toLowerCase().trim()
@@ -850,6 +1079,20 @@ export default function Clientes({ detalheInicial = null, abaInicial = 'info', o
           </div>
         )}
       </div>
+
+      {/* Subfiltro (ex: Regime quando setor Fiscal está selecionado) */}
+      {subFiltroConfig && (
+        <div style={{ display:'flex', gap:'6px', flexWrap:'wrap', marginBottom:'20px' }}>
+          <button onClick={()=>setSubFiltro(null)} style={{ padding:'5px 12px', borderRadius:'7px', fontSize:'0.72rem', fontWeight:'600', cursor:'pointer', fontFamily:'Inter,sans-serif', border:`1px solid ${!subFiltro?'rgba(0,177,65,0.3)':'var(--borda)'}`, background:!subFiltro?'rgba(0,177,65,0.08)':'transparent', color:!subFiltro?'var(--verde)':'var(--texto-apagado)' }}>
+            Todos
+          </button>
+          {subFiltroConfig.opcoes.map(op=>(
+            <button key={op.value} onClick={()=>setSubFiltro(subFiltro===op.value?null:op.value)} style={{ padding:'5px 12px', borderRadius:'7px', fontSize:'0.72rem', fontWeight:'600', cursor:'pointer', fontFamily:'Inter,sans-serif', border:`1px solid ${subFiltro===op.value?'rgba(0,177,65,0.3)':'var(--borda)'}`, background:subFiltro===op.value?'rgba(0,177,65,0.08)':'transparent', color:subFiltro===op.value?'var(--verde)':'var(--texto-apagado)' }}>
+              {op.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Grid */}
       {carregando?<p style={{ color:'var(--texto-apagado)' }}>Carregando...</p>

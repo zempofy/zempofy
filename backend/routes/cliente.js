@@ -3,6 +3,7 @@ const registrarLog = require('../services/log');
 const { autenticar, temPermissao } = require('../middleware/auth');
 const Cliente = require('../models/Cliente');
 const Implantacao = require('../models/Implantacao');
+const LancamentoSetor = require('../models/LancamentoSetor');
 
 const router = express.Router();
 
@@ -94,6 +95,121 @@ router.delete('/:id', autenticar, temPermissao('gerenciarClientes'), async (req,
     res.json({ mensagem: 'Cliente removido.' });
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao remover cliente.' });
+  }
+});
+
+// ── Demanda mensal por setor ──
+const competenciaAtual = () => new Date().toISOString().slice(0, 7); // "YYYY-MM"
+
+const podeEditarSetor = (usuario, setorId) => {
+  if (usuario.cargo === 'admin') return true;
+  return usuario.setores?.some(s => s.toString() === setorId);
+};
+
+const comFechado = (doc) => {
+  if (!doc) return doc;
+  const obj = doc.toObject ? doc.toObject() : doc;
+  return { ...obj, fechado: obj.competencia !== competenciaAtual() };
+};
+
+// GET /api/clientes/:id/lancamentos/:setorId — histórico (competências anteriores), mais recente primeiro
+router.get('/:id/lancamentos/:setorId', autenticar, async (req, res) => {
+  try {
+    const cliente = await Cliente.findOne({ _id: req.params.id, empresa: req.usuario.empresa._id });
+    if (!cliente) return res.status(404).json({ erro: 'Cliente não encontrado.' });
+
+    const lancamentos = await LancamentoSetor.find({
+      cliente: req.params.id,
+      setor: req.params.setorId,
+      empresa: req.usuario.empresa._id,
+      competencia: { $ne: competenciaAtual() },
+    }).sort({ competencia: -1 }).populate('preenchidoPor', 'nome');
+
+    res.json(lancamentos.map(comFechado));
+  } catch (err) {
+    res.status(500).json({ erro: 'Erro ao buscar histórico.' });
+  }
+});
+
+// GET /api/clientes/:id/lancamentos/:setorId/atual — lançamento do mês corrente (ou vazio)
+router.get('/:id/lancamentos/:setorId/atual', autenticar, async (req, res) => {
+  try {
+    const cliente = await Cliente.findOne({ _id: req.params.id, empresa: req.usuario.empresa._id });
+    if (!cliente) return res.status(404).json({ erro: 'Cliente não encontrado.' });
+
+    const competencia = competenciaAtual();
+    const lancamento = await LancamentoSetor.findOne({
+      cliente: req.params.id,
+      setor: req.params.setorId,
+      competencia,
+      empresa: req.usuario.empresa._id,
+    }).populate('preenchidoPor', 'nome');
+
+    res.json(lancamento ? comFechado(lancamento) : { cliente: req.params.id, setor: req.params.setorId, competencia, dados: {}, fechado: false });
+  } catch (err) {
+    res.status(500).json({ erro: 'Erro ao buscar lançamento.' });
+  }
+});
+
+// POST /api/clientes/:id/lancamentos/:setorId/atual — cria ou atualiza o lançamento do mês corrente
+router.post('/:id/lancamentos/:setorId/atual', autenticar, async (req, res) => {
+  try {
+    if (!podeEditarSetor(req.usuario, req.params.setorId)) {
+      return res.status(403).json({ erro: 'Você não tem acesso a este setor.' });
+    }
+    const cliente = await Cliente.findOne({ _id: req.params.id, empresa: req.usuario.empresa._id });
+    if (!cliente) return res.status(404).json({ erro: 'Cliente não encontrado.' });
+
+    const competencia = competenciaAtual();
+    const existente = await LancamentoSetor.findOne({
+      cliente: req.params.id, setor: req.params.setorId, competencia, empresa: req.usuario.empresa._id,
+    });
+    if (existente?.fechado) return res.status(403).json({ erro: 'Esta competência já está fechada.' });
+
+    const { dados } = req.body;
+    const lancamento = await LancamentoSetor.findOneAndUpdate(
+      { cliente: req.params.id, setor: req.params.setorId, competencia, empresa: req.usuario.empresa._id },
+      { $set: { dados: dados || {}, preenchidoPor: req.usuario._id, preenchidoEm: new Date() } },
+      { new: true, upsert: true }
+    ).populate('preenchidoPor', 'nome');
+
+    res.json(comFechado(lancamento));
+  } catch (err) {
+    res.status(500).json({ erro: 'Erro ao salvar lançamento.' });
+  }
+});
+
+// POST /api/clientes/:id/campos-extras/:setorId — cria um campo personalizado de Demanda, específico deste cliente
+router.post('/:id/campos-extras/:setorId', autenticar, async (req, res) => {
+  try {
+    if (!podeEditarSetor(req.usuario, req.params.setorId)) {
+      return res.status(403).json({ erro: 'Você não tem acesso a este setor.' });
+    }
+    const { label, tipo } = req.body;
+    if (!label?.trim()) return res.status(400).json({ erro: 'Nome do campo é obrigatório.' });
+
+    const cliente = await Cliente.findOne({ _id: req.params.id, empresa: req.usuario.empresa._id });
+    if (!cliente) return res.status(404).json({ erro: 'Cliente não encontrado.' });
+
+    const slug = label.trim().toLowerCase()
+      .normalize('NFD').replace(/[̀-ͯ]/g, '')
+      .replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'campo';
+    const existentesSetor = cliente.camposExtrasDemanda.filter(c => c.setor.toString() === req.params.setorId);
+    let id = slug;
+    let n = 1;
+    while (existentesSetor.some(c => c.id === id)) { n++; id = `${slug}_${n}`; }
+
+    cliente.camposExtrasDemanda.push({
+      setor: req.params.setorId,
+      id,
+      label: label.trim(),
+      tipo: tipo === 'texto' ? 'texto' : 'moeda',
+    });
+    await cliente.save();
+
+    res.status(201).json(cliente.camposExtrasDemanda);
+  } catch (err) {
+    res.status(500).json({ erro: 'Erro ao criar campo.' });
   }
 });
 
