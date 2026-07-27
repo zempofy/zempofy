@@ -8,7 +8,6 @@ const lancamentoSetorSchema = new mongoose.Schema({
   dados: { type: Object, default: {} },
   preenchidoPor: { type: mongoose.Schema.Types.ObjectId, ref: 'Usuario' },
   preenchidoEm: { type: Date },
-  fechado: { type: Boolean, default: false },
 });
 
 lancamentoSetorSchema.index({ cliente: 1, setor: 1, competencia: 1 }, { unique: true });

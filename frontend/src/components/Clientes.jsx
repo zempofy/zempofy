@@ -69,6 +69,7 @@ const CONFIG_DEMANDA = {
         { id:'totalServicos', label:'Total de serviços prestados', tipo:'moeda' },
         { id:'das', label:'Valor do DAS', tipo:'moeda' },
         { id:'issRetido', label:'ISS Retido', tipo:'moeda' },
+        { id:'icmsAntecipado', label:'ICMS Antecipado', tipo:'moeda' },
       ],
       lucro_presumido: [
         { id:'totalVendas', label:'Total de vendas no mês', tipo:'moeda' },
@@ -82,7 +83,19 @@ const CONFIG_DEMANDA = {
         { id:'icmsAntecipado', label:'ICMS Antecipado', tipo:'moeda' },
         { id:'icmsProprio', label:'ICMS Próprio', tipo:'moeda' },
       ],
-      // lucro_real e mei: definir campos quando for a vez
+      lucro_real: [
+        { id:'totalVendas', label:'Total de vendas no mês', tipo:'moeda' },
+        { id:'totalServicos', label:'Total de serviços prestados', tipo:'moeda' },
+        { id:'pis', label:'PIS', tipo:'moeda' },
+        { id:'cofins', label:'COFINS', tipo:'moeda' },
+        { id:'irpj', label:'IRPJ', tipo:'moeda' },
+        { id:'csll', label:'CSLL', tipo:'moeda' },
+        { id:'iss', label:'ISS', tipo:'moeda' },
+        { id:'issProprio', label:'ISS Próprio', tipo:'moeda' },
+        { id:'icmsAntecipado', label:'ICMS Antecipado', tipo:'moeda' },
+        { id:'icmsProprio', label:'ICMS Próprio', tipo:'moeda' },
+      ],
+      // mei: definir campos quando for a vez
     }
   }
   // contabil, dp, financeiro: adicionar aqui quando escopo fechar
@@ -742,7 +755,8 @@ function TelaDetalhe({ clienteId, voltar, onAtualizado, abaInicial = 'info' }) {
 
       {aba==='historico'&&setorAtivo&&(
         <AbaHistorico key={setorAtivo._id} clienteId={clienteId} setor={setorAtivo} clienteRegime={dados.regime}
-          camposExtras={(dados.camposExtrasDemanda||[]).filter(c=>c.setor===setorAtivo._id)}/>
+          camposExtras={(dados.camposExtrasDemanda||[]).filter(c=>c.setor===setorAtivo._id)}
+          onCampoCriado={buscar}/>
       )}
 
       {editando&&<div style={{ position:'fixed', inset:0, background:'var(--fundo)', zIndex:9999, padding:'32px', overflowY:'auto' }}><FormCliente cliente={dados} fechar={()=>setEditando(false)} onSalvo={()=>{buscar();onAtualizado()}} /></div>}
@@ -766,8 +780,12 @@ function TelaDetalhe({ clienteId, voltar, onAtualizado, abaInicial = 'info' }) {
   )
 }
 
-// ── Demanda mensal (mês corrente, editável) ──
-function AbaDemanda({ clienteId, setor, clienteRegime, camposExtras=[], onCampoCriado }) {
+const competenciaAtual = () => new Date().toISOString().slice(0,7)
+const INICIO_DEMANDA_ANO = 2026
+const MESES_LABEL = ['01 - Janeiro','02 - Fevereiro','03 - Março','04 - Abril','05 - Maio','06 - Junho','07 - Julho','08 - Agosto','09 - Setembro','10 - Outubro','11 - Novembro','12 - Dezembro']
+
+// ── Formulário de uma competência (mês atual ou mês passado, se quem vê tiver permissão) ──
+function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, camposExtras=[], onCampoCriado }) {
   const { mostrar } = useToast()
   const [carregando, setCarregando] = useState(true)
   const [salvando, setSalvando] = useState(false)
@@ -784,21 +802,22 @@ function AbaDemanda({ clienteId, setor, clienteRegime, camposExtras=[], onCampoC
 
   useEffect(() => {
     setCarregando(true)
-    api.get(`/clientes/${clienteId}/lancamentos/${setor._id}/atual`)
+    api.get(`/clientes/${clienteId}/lancamentos/${setor._id}/${competencia}`)
       .then(r => { setLancamento(r.data); setValores(r.data?.dados || {}) })
-      .catch(() => mostrar('Erro ao carregar demanda.', 'erro'))
+      .catch(() => mostrar('Erro ao carregar dados.', 'erro'))
       .finally(() => setCarregando(false))
-  }, [clienteId, setor._id])
+  }, [clienteId, setor._id, competencia])
 
   const setValor = (id, v) => setValores(vs => ({ ...vs, [id]: v }))
+  const podeEditar = !!lancamento?.podeEditar
 
   const salvar = async () => {
     setSalvando(true)
     try {
-      const r = await api.post(`/clientes/${clienteId}/lancamentos/${setor._id}/atual`, { dados: valores })
+      const r = await api.post(`/clientes/${clienteId}/lancamentos/${setor._id}/${competencia}`, { dados: valores })
       setLancamento(r.data)
-      mostrar('Demanda salva!', 'sucesso')
-    } catch (e) { mostrar(e.response?.data?.erro || 'Erro ao salvar demanda.', 'erro') }
+      mostrar('Dados salvos!', 'sucesso')
+    } catch (e) { mostrar(e.response?.data?.erro || 'Erro ao salvar.', 'erro') }
     finally { setSalvando(false) }
   }
 
@@ -821,27 +840,32 @@ function AbaDemanda({ clienteId, setor, clienteRegime, camposExtras=[], onCampoC
   return (
     <div>
       <p style={{ fontSize:'0.8rem', color:'var(--texto-apagado)', marginBottom:'16px' }}>
-        Competência {lancamento?.competencia}{lancamento?.fechado ? ' · Fechada' : ''}
+        Competência {competencia}{!podeEditar ? ' · Somente leitura' : ''}
+        {lancamento?.preenchidoPor?.nome && ` · Preenchido por ${lancamento.preenchidoPor.nome}`}
       </p>
-      {campos.length === 0 && <p style={{ color:'var(--texto-apagado)', fontSize:'0.875rem', marginBottom:'16px' }}>Nenhum campo configurado ainda para o regime "{labelRegime(clienteRegime)}". Adicione um campo abaixo.</p>}
+      {campos.length === 0 && <p style={{ color:'var(--texto-apagado)', fontSize:'0.875rem', marginBottom:'16px' }}>Nenhum campo configurado ainda para o regime "{labelRegime(clienteRegime)}"{podeEditar?'. Adicione um campo abaixo.':'.'}</p>}
       {campos.length > 0 && (
         <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))', gap:'14px', marginBottom:'20px' }}>
           {campos.map(c => (
             <Campo key={c.id} label={c.label}>
-              {c.tipo === 'moeda' ? (
-                <input style={s.inp}
-                  value={valores[c.id] ? Number(valores[c.id]).toLocaleString('pt-BR',{minimumFractionDigits:2}) : ''}
-                  onChange={e => { const nums = e.target.value.replace(/\D/g,''); setValor(c.id, nums ? parseInt(nums,10)/100 : '') }}
-                  placeholder="0,00" disabled={lancamento?.fechado} />
+              {podeEditar ? (
+                c.tipo === 'moeda' ? (
+                  <input style={s.inp}
+                    value={valores[c.id] ? Number(valores[c.id]).toLocaleString('pt-BR',{minimumFractionDigits:2}) : ''}
+                    onChange={e => { const nums = e.target.value.replace(/\D/g,''); setValor(c.id, nums ? parseInt(nums,10)/100 : '') }}
+                    placeholder="0,00" />
+                ) : (
+                  <input style={s.inp} value={valores[c.id]||''} onChange={e=>setValor(c.id, e.target.value)} />
+                )
               ) : (
-                <input style={s.inp} value={valores[c.id]||''} onChange={e=>setValor(c.id, e.target.value)} disabled={lancamento?.fechado} />
+                <div style={{ ...s.inp, background:'var(--card)', color:'var(--texto)' }}>{c.tipo==='moeda' ? formatMoeda(valores[c.id]) : (valores[c.id]||'—')}</div>
               )}
             </Campo>
           ))}
         </div>
       )}
 
-      {criandoCampo ? (
+      {podeEditar && (criandoCampo ? (
         <div style={{ display:'flex', gap:'10px', alignItems:'flex-end', marginBottom:'20px', flexWrap:'wrap', border:'1px dashed var(--borda)', borderRadius:'10px', padding:'14px' }}>
           <div style={{ flex:1, minWidth:'180px' }}>
             <Campo label="Nome do campo">
@@ -860,59 +884,100 @@ function AbaDemanda({ clienteId, setor, clienteRegime, camposExtras=[], onCampoC
           <button style={s.btnCanc} onClick={()=>{setCriandoCampo(false);setNovoLabel('')}}>Cancelar</button>
         </div>
       ) : (
-        <button onClick={()=>setCriandoCampo(true)} disabled={lancamento?.fechado} style={{ background:'none', border:'1px dashed var(--borda)', borderRadius:'10px', color:'var(--texto-apagado)', padding:'10px', cursor:'pointer', fontFamily:'Inter,sans-serif', fontSize:'0.82rem', width:'100%', marginBottom:'20px' }}>
+        <button onClick={()=>setCriandoCampo(true)} style={{ background:'none', border:'1px dashed var(--borda)', borderRadius:'10px', color:'var(--texto-apagado)', padding:'10px', cursor:'pointer', fontFamily:'Inter,sans-serif', fontSize:'0.82rem', width:'100%', marginBottom:'20px' }}>
           + Adicionar campo
         </button>
-      )}
+      ))}
 
-      <button style={s.btnSalv} onClick={salvar} disabled={salvando || lancamento?.fechado}>
-        {salvando ? 'Salvando...' : 'Salvar demanda'}
-      </button>
+      {podeEditar && (
+        <button style={s.btnSalv} onClick={salvar} disabled={salvando}>
+          {salvando ? 'Salvando...' : 'Salvar'}
+        </button>
+      )}
     </div>
   )
 }
 
-// ── Histórico de competências (somente leitura) ──
-function AbaHistorico({ clienteId, setor, clienteRegime, camposExtras=[] }) {
+// ── Demanda mensal (atalho pro mês corrente) ──
+function AbaDemanda({ clienteId, setor, clienteRegime, camposExtras, onCampoCriado }) {
+  return <FormularioCompetencia clienteId={clienteId} setor={setor} clienteRegime={clienteRegime} competencia={competenciaAtual()} camposExtras={camposExtras} onCampoCriado={onCampoCriado}/>
+}
+
+// ── Histórico: pastas de ano → mês → dados daquele mês ──
+function AbaHistorico({ clienteId, setor, clienteRegime, camposExtras, onCampoCriado }) {
   const { mostrar } = useToast()
   const [carregando, setCarregando] = useState(true)
-  const [lista, setLista] = useState([])
-  const [expandido, setExpandido] = useState(null)
+  const [lancamentos, setLancamentos] = useState([])
+  const [anoSelecionado, setAnoSelecionado] = useState(null)
+  const [mesSelecionado, setMesSelecionado] = useState(null)
 
-  const config = CONFIG_DEMANDA[normalizarNome(setor.nome)]
-
-  useEffect(() => {
+  const carregarLista = () => {
     setCarregando(true)
     api.get(`/clientes/${clienteId}/lancamentos/${setor._id}`)
-      .then(r => setLista(r.data))
+      .then(r => setLancamentos(r.data))
       .catch(() => mostrar('Erro ao carregar histórico.', 'erro'))
       .finally(() => setCarregando(false))
-  }, [clienteId, setor._id])
+  }
+  useEffect(() => { carregarLista() }, [clienteId, setor._id])
 
   if (carregando) return <p style={{ color:'var(--texto-apagado)' }}>Carregando...</p>
-  if (!lista.length) return <p style={{ color:'var(--texto-apagado)', fontSize:'0.875rem' }}>Nenhuma competência anterior registrada.</p>
+
+  const preenchidos = new Set(lancamentos.map(l => l.competencia))
+  const atual = competenciaAtual()
+  const anoAtual = Number(atual.slice(0,4))
+  const mesAtualNum = Number(atual.slice(5,7))
+
+  const btnPasta = { display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'8px', padding:'20px 12px', background:'var(--card)', border:'1px solid var(--borda)', borderRadius:'12px', cursor:'pointer', fontFamily:'Inter,sans-serif', fontSize:'0.82rem', fontWeight:'600', color:'var(--texto)' }
+  const btnVoltar = { background:'none', border:'none', color:'var(--texto-apagado)', cursor:'pointer', fontFamily:'Inter,sans-serif', fontSize:'0.82rem', padding:'0 0 16px', display:'flex', alignItems:'center', gap:'6px' }
+
+  // Nível 3 — dados do mês selecionado
+  if (mesSelecionado) {
+    const [ano, mes] = mesSelecionado.split('-')
+    return (
+      <div>
+        <button onClick={()=>setMesSelecionado(null)} style={btnVoltar}><Icone.ChevronLeft size={14}/> {MESES_LABEL[Number(mes)-1]} de {ano}</button>
+        <FormularioCompetencia clienteId={clienteId} setor={setor} clienteRegime={clienteRegime} competencia={mesSelecionado}
+          camposExtras={camposExtras} onCampoCriado={()=>{ onCampoCriado&&onCampoCriado(); carregarLista() }}/>
+      </div>
+    )
+  }
+
+  // Nível 2 — meses do ano selecionado
+  if (anoSelecionado) {
+    const ultimoMes = anoSelecionado === anoAtual ? mesAtualNum : 12
+    return (
+      <div>
+        <button onClick={()=>setAnoSelecionado(null)} style={btnVoltar}><Icone.ChevronLeft size={14}/> Anos</button>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(140px,1fr))', gap:'12px' }}>
+          {MESES_LABEL.slice(0, ultimoMes).map((label, i) => {
+            const mm = String(i+1).padStart(2,'0')
+            const competencia = `${anoSelecionado}-${mm}`
+            const preenchido = preenchidos.has(competencia)
+            return (
+              <button key={competencia} onClick={()=>setMesSelecionado(competencia)} style={btnPasta}>
+                <Icone.FolderOpen size={22} style={{ color: preenchido?'var(--verde)':'var(--texto-apagado)' }}/>
+                <span>{label}</span>
+                {preenchido && <span style={{ display:'flex', alignItems:'center', gap:'3px', fontSize:'0.65rem', color:'var(--verde)', fontWeight:'700' }}><Icone.Check size={10}/> Preenchido</span>}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+    )
+  }
+
+  // Nível 1 — anos
+  const anos = []
+  for (let a = INICIO_DEMANDA_ANO; a <= anoAtual; a++) anos.push(a)
 
   return (
-    <div style={{ display:'flex', flexDirection:'column', gap:'10px' }}>
-      {lista.map(l => {
-        const campos = [...(config?.porRegime?.[clienteRegime] || []), ...camposExtras]
-        const aberto = expandido === l._id
-        return (
-          <div key={l._id} style={{ background:'var(--card)', border:'1px solid var(--borda)', borderRadius:'12px', overflow:'hidden' }}>
-            <button onClick={()=>setExpandido(aberto?null:l._id)} style={{ width:'100%', display:'flex', justifyContent:'space-between', alignItems:'center', padding:'14px 18px', background:'none', border:'none', cursor:'pointer', textAlign:'left' }}>
-              <span style={{ fontWeight:'600', color:'var(--texto)', fontSize:'0.9rem' }}>{l.competencia}</span>
-              <span style={{ fontSize:'0.72rem', color:'var(--texto-apagado)' }}>{l.preenchidoPor?.nome ? `Por ${l.preenchidoPor.nome}` : ''}</span>
-            </button>
-            {aberto && (
-              <div style={{ padding:'0 18px 16px', display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))', gap:'10px' }}>
-                {campos.length ? campos.map(c => (
-                  <InfoLinha key={c.id} label={c.label} valor={c.tipo==='moeda' ? formatMoeda(l.dados?.[c.id]) : (l.dados?.[c.id]||'—')} />
-                )) : <p style={{ color:'var(--texto-apagado)', fontSize:'0.8rem' }}>Sem campos configurados pro regime desta competência.</p>}
-              </div>
-            )}
-          </div>
-        )
-      })}
+    <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(140px,1fr))', gap:'12px' }}>
+      {anos.map(a => (
+        <button key={a} onClick={()=>setAnoSelecionado(a)} style={btnPasta}>
+          <Icone.FolderOpen size={24}/>
+          <span>{a}</span>
+        </button>
+      ))}
     </div>
   )
 }

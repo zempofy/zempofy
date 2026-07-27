@@ -101,18 +101,14 @@ router.delete('/:id', autenticar, temPermissao('gerenciarClientes'), async (req,
 // ── Demanda mensal por setor ──
 const competenciaAtual = () => new Date().toISOString().slice(0, 7); // "YYYY-MM"
 
-const podeEditarSetor = (usuario, setorId) => {
+// Mês corrente: quem tem o setor (ou admin) edita. Mês fechado (passado): só o titular edita.
+const podeEditarCompetencia = (usuario, setorId, competencia) => {
   if (usuario.cargo === 'admin') return true;
+  if (competencia !== competenciaAtual()) return false;
   return usuario.setores?.some(s => s.toString() === setorId);
 };
 
-const comFechado = (doc) => {
-  if (!doc) return doc;
-  const obj = doc.toObject ? doc.toObject() : doc;
-  return { ...obj, fechado: obj.competencia !== competenciaAtual() };
-};
-
-// GET /api/clientes/:id/lancamentos/:setorId — histórico (competências anteriores), mais recente primeiro
+// GET /api/clientes/:id/lancamentos/:setorId — lista os lançamentos já salvos (pra montar as pastas de ano/mês)
 router.get('/:id/lancamentos/:setorId', autenticar, async (req, res) => {
   try {
     const cliente = await Cliente.findOne({ _id: req.params.id, empresa: req.usuario.empresa._id });
@@ -122,49 +118,47 @@ router.get('/:id/lancamentos/:setorId', autenticar, async (req, res) => {
       cliente: req.params.id,
       setor: req.params.setorId,
       empresa: req.usuario.empresa._id,
-      competencia: { $ne: competenciaAtual() },
     }).sort({ competencia: -1 }).populate('preenchidoPor', 'nome');
 
-    res.json(lancamentos.map(comFechado));
+    res.json(lancamentos);
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao buscar histórico.' });
   }
 });
 
-// GET /api/clientes/:id/lancamentos/:setorId/atual — lançamento do mês corrente (ou vazio)
-router.get('/:id/lancamentos/:setorId/atual', autenticar, async (req, res) => {
+// GET /api/clientes/:id/lancamentos/:setorId/:competencia — lançamento de uma competência específica (ou vazio)
+router.get('/:id/lancamentos/:setorId/:competencia', autenticar, async (req, res) => {
   try {
+    const { competencia } = req.params;
+    if (!/^\d{4}-\d{2}$/.test(competencia)) return res.status(400).json({ erro: 'Competência inválida.' });
+
     const cliente = await Cliente.findOne({ _id: req.params.id, empresa: req.usuario.empresa._id });
     if (!cliente) return res.status(404).json({ erro: 'Cliente não encontrado.' });
 
-    const competencia = competenciaAtual();
     const lancamento = await LancamentoSetor.findOne({
-      cliente: req.params.id,
-      setor: req.params.setorId,
-      competencia,
-      empresa: req.usuario.empresa._id,
+      cliente: req.params.id, setor: req.params.setorId, competencia, empresa: req.usuario.empresa._id,
     }).populate('preenchidoPor', 'nome');
 
-    res.json(lancamento ? comFechado(lancamento) : { cliente: req.params.id, setor: req.params.setorId, competencia, dados: {}, fechado: false });
+    const base = lancamento ? lancamento.toObject() : { cliente: req.params.id, setor: req.params.setorId, competencia, dados: {}, preenchidoPor: null, preenchidoEm: null };
+    res.json({ ...base, preenchido: !!lancamento, podeEditar: podeEditarCompetencia(req.usuario, req.params.setorId, competencia) });
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao buscar lançamento.' });
   }
 });
 
-// POST /api/clientes/:id/lancamentos/:setorId/atual — cria ou atualiza o lançamento do mês corrente
-router.post('/:id/lancamentos/:setorId/atual', autenticar, async (req, res) => {
+// POST /api/clientes/:id/lancamentos/:setorId/:competencia — cria ou atualiza o lançamento daquela competência
+router.post('/:id/lancamentos/:setorId/:competencia', autenticar, async (req, res) => {
   try {
-    if (!podeEditarSetor(req.usuario, req.params.setorId)) {
-      return res.status(403).json({ erro: 'Você não tem acesso a este setor.' });
+    const { competencia } = req.params;
+    if (!/^\d{4}-\d{2}$/.test(competencia)) return res.status(400).json({ erro: 'Competência inválida.' });
+    if (competencia > competenciaAtual()) return res.status(400).json({ erro: 'Não é possível lançar uma competência futura.' });
+
+    if (!podeEditarCompetencia(req.usuario, req.params.setorId, competencia)) {
+      return res.status(403).json({ erro: competencia === competenciaAtual() ? 'Você não tem acesso a este setor.' : 'Esta competência já está fechada — só o titular pode editar.' });
     }
+
     const cliente = await Cliente.findOne({ _id: req.params.id, empresa: req.usuario.empresa._id });
     if (!cliente) return res.status(404).json({ erro: 'Cliente não encontrado.' });
-
-    const competencia = competenciaAtual();
-    const existente = await LancamentoSetor.findOne({
-      cliente: req.params.id, setor: req.params.setorId, competencia, empresa: req.usuario.empresa._id,
-    });
-    if (existente?.fechado) return res.status(403).json({ erro: 'Esta competência já está fechada.' });
 
     const { dados } = req.body;
     const lancamento = await LancamentoSetor.findOneAndUpdate(
@@ -173,7 +167,7 @@ router.post('/:id/lancamentos/:setorId/atual', autenticar, async (req, res) => {
       { new: true, upsert: true }
     ).populate('preenchidoPor', 'nome');
 
-    res.json(comFechado(lancamento));
+    res.json({ ...lancamento.toObject(), preenchido: true, podeEditar: true });
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao salvar lançamento.' });
   }
@@ -182,7 +176,8 @@ router.post('/:id/lancamentos/:setorId/atual', autenticar, async (req, res) => {
 // POST /api/clientes/:id/campos-extras/:setorId — cria um campo personalizado de Demanda, específico deste cliente
 router.post('/:id/campos-extras/:setorId', autenticar, async (req, res) => {
   try {
-    if (!podeEditarSetor(req.usuario, req.params.setorId)) {
+    const temSetor = req.usuario.cargo === 'admin' || req.usuario.setores?.some(s => s.toString() === req.params.setorId);
+    if (!temSetor) {
       return res.status(403).json({ erro: 'Você não tem acesso a este setor.' });
     }
     const { label, tipo } = req.body;
