@@ -15,7 +15,7 @@ router.get('/', autenticar, async (req, res) => {
   try {
     const atividades = await populate(
       AtividadeChecklist.find({ empresa: req.usuario.empresa._id, ativo: true })
-    ).sort({ criadoEm: 1 });
+    ).sort({ criadoEm: 1 }).lean();
     res.json(atividades);
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao buscar atividades.' });
@@ -31,7 +31,7 @@ router.get('/setor/:setorId', autenticar, async (req, res) => {
         setor: req.params.setorId,
         ativo: true
       })
-    ).sort({ criadoEm: 1 });
+    ).sort({ criadoEm: 1 }).lean();
     res.json(atividades);
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao buscar atividades do setor.' });
@@ -52,7 +52,7 @@ router.post('/', autenticar, temPermissao('gerenciarBancoAtividades'), async (re
       empresa: req.usuario.empresa._id,
       criadoPor: req.usuario._id,
     });
-    const populada = await populate(AtividadeChecklist.findById(atividade._id));
+    const populada = await populate(AtividadeChecklist.findById(atividade._id)).lean();
     registrarLog({ empresa: req.usuario.empresa._id, usuario: req.usuario._id, tipo: 'atividade_criada', categoria: 'atividade', descricao: 'Criou a atividade ' + descricao });
     res.status(201).json(populada);
   } catch (err) {

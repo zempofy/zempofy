@@ -19,12 +19,20 @@ const populateImplantacao = (q) => q
   .populate('modelo', 'nome')
   .populate('criadoPor', 'nome');
 
+// Versão enxuta pra listagem — sem os populates aninhados de etapas.tarefas
+// (a tela de lista só usa status/contagem de etapas; os detalhes de cada
+// tarefa só são carregados quando abre uma implantação específica)
+const populateImplantacaoLista = (q) => q
+  .populate('etapas.setor', 'nome cor')
+  .populate('modelo', 'nome')
+  .populate('criadoPor', 'nome');
+
 // GET /api/implantacoes
 router.get('/', autenticar, async (req, res) => {
   try {
-    const implantacoes = await populateImplantacao(
+    const implantacoes = await populateImplantacaoLista(
       ImplantacaoModel.find({ empresa: req.usuario.empresa._id, status: { $ne: 'cancelada' } })
-    ).sort({ criadoEm: -1 });
+    ).sort({ criadoEm: -1 }).lean();
     res.json(implantacoes);
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao buscar implantações.' });
@@ -39,14 +47,15 @@ router.get('/por-tarefa/:tarefaId', autenticar, async (req, res) => {
       'etapas.tarefas.tarefa': req.params.tarefaId
     })
     .populate('criadoPor', 'nome')
-    .populate('modelo', 'nome');
+    .populate('modelo', 'nome')
+    .lean();
     if (!implantacao) return res.status(404).json({ erro: 'Implantação não encontrada.' });
     // Buscar observacoes da tarefa específica
     let observacoesTarefa = '';
     for (const etapa of implantacao.etapas) {
       const tf = etapa.tarefas.find(t => t.tarefa?.toString() === req.params.tarefaId);
       if (tf) {
-        const tarefaDoc = await Tarefa.findById(req.params.tarefaId).select('observacoes');
+        const tarefaDoc = await Tarefa.findById(req.params.tarefaId).select('observacoes').lean();
         observacoesTarefa = tarefaDoc?.observacoes || '';
         break;
       }
@@ -73,7 +82,7 @@ router.get('/:id', autenticar, async (req, res) => {
   try {
     const implantacao = await populateImplantacao(
       ImplantacaoModel.findOne({ _id: req.params.id, empresa: req.usuario.empresa._id })
-    );
+    ).lean();
     if (!implantacao) return res.status(404).json({ erro: 'Implantação não encontrada.' });
     res.json(implantacao);
   } catch (err) {
@@ -93,7 +102,7 @@ router.post('/', autenticar, temPermissao('criarImplantacoes'), async (req, res)
       const modelo = await ModeloOnboarding.findOne({
         _id: modeloId,
         empresa: req.usuario.empresa._id
-      });
+      }).lean();
       if (!modelo) return res.status(404).json({ erro: 'Modelo não encontrado.' });
 
       const setoresOrdenados = [...modelo.setores].sort((a, b) => a.ordem - b.ordem);
@@ -102,14 +111,14 @@ router.post('/', autenticar, temPermissao('criarImplantacoes'), async (req, res)
         const s = setoresOrdenados[idx];
 
         // Busca o setor para pegar o primeiro membro
-        const setorCompleto = await Setor.findById(s.setor);
+        const setorCompleto = await Setor.findById(s.setor).lean();
         const responsavelId = setorCompleto?.membros?.[0] || req.usuario._id;
 
         // Busca as atividades do checklist pelos IDs salvos no modelo
         const atividades = await AtividadeChecklist.find({
           _id: { $in: s.tarefas },
           ativo: true
-        });
+        }).lean();
 
         // Cria uma Tarefa real no banco para cada atividade
         const tarefasCriadas = await Promise.all(
@@ -146,7 +155,7 @@ router.post('/', autenticar, temPermissao('criarImplantacoes'), async (req, res)
       criadoPor: req.usuario._id
     });
 
-    const populada = await populateImplantacao(ImplantacaoModel.findById(implantacao._id));
+    const populada = await populateImplantacao(ImplantacaoModel.findById(implantacao._id)).lean();
     res.status(201).json(populada);
     registrarLog({ empresa: req.usuario.empresa._id, usuario: req.usuario._id, tipo: 'implantacao_criada', categoria: 'onboarding', descricao: `Criou a implantação de ${nomeCliente.trim()}`, meta: { nomeCliente } });
 
@@ -158,7 +167,7 @@ router.post('/', autenticar, temPermissao('criarImplantacoes'), async (req, res)
         implantacao.etapas?.map(e => e.setor?.toString()).filter(Boolean) || []
       )];
 
-      const clienteExistente = await Cliente.findOne({ empresa: req.usuario.empresa._id, cnpj: { $regex: cnpjLimpo } });
+      const clienteExistente = await Cliente.findOne({ empresa: req.usuario.empresa._id, cnpj: { $regex: cnpjLimpo } }).lean();
       if (!clienteExistente) {
         await Cliente.create({
           razaoSocial: nomeCliente.trim(),
@@ -201,7 +210,7 @@ router.post('/', autenticar, temPermissao('criarImplantacoes'), async (req, res)
         // Busca e-mails de todos os responsáveis via tarefas criadas
         const tarefasPopuladas = await Tarefa.find({
           _id: { $in: tarefaIds }
-        }).populate('responsavel', 'email nome');
+        }).populate('responsavel', 'email nome').lean();
 
         const emailsEnvolvidos = [...new Set(
           tarefasPopuladas
@@ -222,10 +231,10 @@ router.post('/', autenticar, temPermissao('criarImplantacoes'), async (req, res)
         // E-mail 2: avisa o responsável da primeira etapa que é a vez dele
         const primeiraEtapa = implantacao.etapas.find(e => e.status === 'em_andamento');
         if (primeiraEtapa) {
-          const setorDaPrimeira = await Setor.findById(primeiraEtapa.setor);
+          const setorDaPrimeira = await Setor.findById(primeiraEtapa.setor).lean();
           const tarefasDaPrimeira = await Tarefa.find({
             _id: { $in: primeiraEtapa.tarefas.map(t => t.tarefa) }
-          }).populate('responsavel', 'email');
+          }).populate('responsavel', 'email').lean();
           const emailsPrimeira = [...new Set(
             tarefasDaPrimeira.map(t => t.responsavel?.email).filter(Boolean)
           )];
@@ -284,7 +293,7 @@ router.patch('/:id/tarefas/:etapaId/:tarefaId/concluir', autenticar, async (req,
     }
 
     await implantacao.save();
-    const populada = await populateImplantacao(ImplantacaoModel.findById(implantacao._id));
+    const populada = await populateImplantacao(ImplantacaoModel.findById(implantacao._id)).lean();
     res.json(populada);
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao concluir tarefa.' });
@@ -315,7 +324,7 @@ router.patch('/:id/tarefas/:etapaId/:tarefaId/desmarcar', autenticar, async (req
     }
 
     await implantacao.save();
-    const populada = await populateImplantacao(ImplantacaoModel.findById(implantacao._id));
+    const populada = await populateImplantacao(ImplantacaoModel.findById(implantacao._id)).lean();
     res.json(populada);
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao desmarcar tarefa.' });
@@ -328,7 +337,7 @@ router.delete('/:id', autenticar, temPermissao('gerenciarOnboarding'), async (re
     const implantacao = await ImplantacaoModel.findOne({
       _id: req.params.id,
       empresa: req.usuario.empresa._id
-    });
+    }).lean();
     if (!implantacao) return res.status(404).json({ erro: 'Implantação não encontrada.' });
 
     // Coleta todos os IDs de tarefas geradas e exclui do banco

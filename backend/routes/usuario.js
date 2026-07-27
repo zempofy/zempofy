@@ -15,7 +15,7 @@ router.put('/meu-perfil', autenticar, async (req, res) => {
     const atualizacao = {}
     if (nome?.trim()) atualizacao.nome = nome.trim()
     if (email) {
-      const emailExiste = await Usuario.findOne({ email, _id: { $ne: req.usuario._id } });
+      const emailExiste = await Usuario.findOne({ email, _id: { $ne: req.usuario._id } }).lean();
       if (emailExiste) return res.status(400).json({ erro: 'E-mail já está em uso.' });
       atualizacao.email = email
     }
@@ -54,7 +54,7 @@ router.put('/minha-senha', autenticar, async (req, res) => {
 // GET /api/usuarios
 router.get('/', autenticar, async (req, res) => {
   try {
-    const usuarios = await Usuario.find({ empresa: req.usuario.empresa._id, ativo: true }).select('-senha').populate('setores', 'nome cor');
+    const usuarios = await Usuario.find({ empresa: req.usuario.empresa._id, ativo: true }).select('-senha').populate('setores', 'nome cor').lean();
     res.json(usuarios);
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao buscar usuários.' });
@@ -70,7 +70,7 @@ router.post('/', autenticar, async (req, res) => {
   if (!nome || !email || !senha) return res.status(400).json({ erro: 'Preencha todos os campos.' });
   if (!setores || setores.length === 0) return res.status(400).json({ erro: 'Selecione pelo menos um setor.' });
   try {
-    const emailExiste = await Usuario.findOne({ email });
+    const emailExiste = await Usuario.findOne({ email }).lean();
     if (emailExiste) return res.status(400).json({ erro: 'E-mail já em uso.' });
     const tokenVerif = crypto.randomBytes(32).toString('hex');
     const usuario = await Usuario.create({
@@ -88,7 +88,7 @@ router.post('/', autenticar, async (req, res) => {
     setImmediate(async () => {
       try {
         const Empresa = require('../models/Empresa');
-        const empresa = await Empresa.findById(req.usuario.empresa._id).select('nome');
+        const empresa = await Empresa.findById(req.usuario.empresa._id).select('nome').lean();
         await enviarBoasVindas({
           destinatario: email,
           nome,
@@ -109,7 +109,7 @@ router.post('/', autenticar, async (req, res) => {
 router.put('/:id', autenticar, apenasAdmin, async (req, res) => {
   const { nome, email, permissoes, setores } = req.body;
   try {
-    const alvo = await Usuario.findOne({ _id: req.params.id, empresa: req.usuario.empresa._id });
+    const alvo = await Usuario.findOne({ _id: req.params.id, empresa: req.usuario.empresa._id }).lean();
     if (!alvo) return res.status(404).json({ erro: 'Usuário não encontrado.' });
     if (alvo.cargo === 'admin') return res.status(403).json({ erro: 'Não é possível editar o titular.' });
     const atualizacao = {};
@@ -130,7 +130,7 @@ router.delete('/:id', autenticar, apenasAdmin, async (req, res) => {
     if (req.params.id === req.usuario._id.toString()) {
       return res.status(403).json({ erro: 'Você não pode remover a si mesmo.' });
     }
-    const alvo = await Usuario.findOne({ _id: req.params.id, empresa: req.usuario.empresa._id });
+    const alvo = await Usuario.findOne({ _id: req.params.id, empresa: req.usuario.empresa._id }).lean();
     if (!alvo) return res.status(404).json({ erro: 'Usuário não encontrado.' });
     if (alvo.cargo === 'admin') return res.status(403).json({ erro: 'Não é possível remover o titular.' });
     await Usuario.findByIdAndUpdate(req.params.id, { ativo: false });

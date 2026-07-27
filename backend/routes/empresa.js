@@ -7,7 +7,7 @@ const router = express.Router();
 // GET /api/empresa - Dados da empresa do usuário logado
 router.get('/', autenticar, async (req, res) => {
   try {
-    const empresa = await Empresa.findById(req.usuario.empresa._id);
+    const empresa = await Empresa.findById(req.usuario.empresa._id).lean();
     res.json(empresa);
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao buscar empresa.' });

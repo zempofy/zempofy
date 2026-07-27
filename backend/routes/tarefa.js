@@ -44,10 +44,10 @@ async function sincronizarImplantacao(tarefaId, novoStatus, usuarioId) {
             try {
               const Setor = require('../models/Setor');
               const Usuario = require('../models/Usuario');
-              const setorProximo = await Setor.findById(proxima.setor);
+              const setorProximo = await Setor.findById(proxima.setor).lean();
               const tarefasProximas = await Tarefa.find({
                 _id: { $in: proxima.tarefas.map(t => t.tarefa) }
-              }).populate('responsavel', 'email nome');
+              }).populate('responsavel', 'email nome').lean();
 
               // Emails dos responsáveis das tarefas
               let emailsProximos = [...new Set(
@@ -59,7 +59,7 @@ async function sincronizarImplantacao(tarefaId, novoStatus, usuarioId) {
                 const membros = await Usuario.find({
                   _id: { $in: setorProximo.membros },
                   ativo: true,
-                }).select('email');
+                }).select('email').lean();
                 emailsProximos = membros.map(m => m.email).filter(Boolean);
               }
 
@@ -114,7 +114,7 @@ router.get('/', autenticar, async (req, res) => {
     if (req.usuario.cargo === 'colaborador') filtro.responsavel = req.usuario._id;
 
     // Buscar IDs de tarefas que estão em etapas BLOQUEADAS — não devem aparecer
-    const implantacoes = await Implantacao.find({ empresa: req.usuario.empresa._id, status: { $ne: 'cancelada' } });
+    const implantacoes = await Implantacao.find({ empresa: req.usuario.empresa._id, status: { $ne: 'cancelada' } }).lean();
     const idsBloqueadas = new Set();
     implantacoes.forEach(imp => {
       imp.etapas.forEach(etapa => {
@@ -131,7 +131,7 @@ router.get('/', autenticar, async (req, res) => {
       filtro._id = { $nin: [...idsBloqueadas] };
     }
 
-    const tarefas = await populateTarefa(Tarefa.find(filtro)).sort({ criadaEm: -1 });
+    const tarefas = await populateTarefa(Tarefa.find(filtro)).sort({ criadaEm: -1 }).lean();
     res.json(tarefas);
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao buscar tarefas.' });
@@ -143,7 +143,7 @@ router.get('/:id/subtarefas', autenticar, async (req, res) => {
   try {
     const subtarefas = await populateTarefa(
       Tarefa.find({ tarefaMae: req.params.id, empresa: req.usuario.empresa._id })
-    ).sort({ criadaEm: 1 });
+    ).sort({ criadaEm: 1 }).lean();
     res.json(subtarefas);
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao buscar subtarefas.' });
@@ -158,7 +158,7 @@ router.get('/historico/conquistas', autenticar, async (req, res) => {
       status: 'concluida',
     };
     if (req.usuario.cargo === 'colaborador') filtro.responsavel = req.usuario._id;
-    const tarefas = await populateTarefa(Tarefa.find(filtro)).sort({ concluidaEm: -1 }).limit(100);
+    const tarefas = await populateTarefa(Tarefa.find(filtro)).sort({ concluidaEm: -1 }).limit(100).lean();
     res.json(tarefas);
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao buscar histórico.' });
@@ -181,7 +181,7 @@ router.post('/', autenticar, async (req, res) => {
       criadaPor: req.usuario._id,
       empresa: req.usuario.empresa._id
     });
-    const populada = await populateTarefa(Tarefa.findById(tarefa._id));
+    const populada = await populateTarefa(Tarefa.findById(tarefa._id)).lean();
     res.status(201).json(populada);
 
     // Dispara e-mail se tarefa foi atribuída a outro colaborador
@@ -189,7 +189,7 @@ router.post('/', autenticar, async (req, res) => {
     if (ehOutraPessoa) {
       setImmediate(async () => {
         try {
-          const resp = await Usuario.findById(responsavel).select('email');
+          const resp = await Usuario.findById(responsavel).select('email').lean();
           if (resp?.email) {
             await enviarTarefaAtribuida({
               destinatario: resp.email,

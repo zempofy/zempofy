@@ -10,7 +10,7 @@ router.get('/', autenticar, async (req, res) => {
     const anotacoes = await Anotacao.find({
       usuario: req.usuario._id,
       empresa: req.usuario.empresa._id
-    }).sort({ fixada: -1, atualizadaEm: -1 });
+    }).sort({ fixada: -1, atualizadaEm: -1 }).lean();
     res.json(anotacoes);
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao buscar anotações.' });

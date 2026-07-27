@@ -12,7 +12,7 @@ router.get('/', autenticar, async (req, res) => {
   try {
     const clientes = await Cliente.find({ empresa: req.usuario.empresa._id })
       .populate('criadoPor', 'nome')
-      .populate('setores', 'nome cor').sort({ criadoEm: -1 });
+      .populate('setores', 'nome cor').sort({ criadoEm: -1 }).lean();
     res.json(clientes);
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao buscar clientes.' });
@@ -24,7 +24,7 @@ router.get('/:id', autenticar, async (req, res) => {
   try {
     const cliente = await Cliente.findOne({ _id: req.params.id, empresa: req.usuario.empresa._id })
       .populate('criadoPor', 'nome').populate('setores', 'nome cor')
-      .populate('particularidadesSetor.atualizadoPor', 'nome');
+      .populate('particularidadesSetor.atualizadoPor', 'nome').lean();
     if (!cliente) return res.status(404).json({ erro: 'Cliente não encontrado.' });
 
     // Buscar onboardings vinculados ao CNPJ do cliente
@@ -34,9 +34,10 @@ router.get('/:id', autenticar, async (req, res) => {
           .select('nomeCliente status criadoEm etapas')
           .populate('modelo', 'nome')
           .sort({ criadoEm: -1 })
+          .lean()
       : [];
 
-    res.json({ ...cliente.toObject(), onboardings });
+    res.json({ ...cliente, onboardings });
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao buscar cliente.' });
   }
@@ -55,7 +56,7 @@ router.post('/', autenticar, temPermissao('gerenciarClientes'), async (req, res)
   try {
     if (cnpj) {
       const cnpjLimpo = cnpj.replace(/\D/g, '');
-      const existe = await Cliente.findOne({ empresa: req.usuario.empresa._id, cnpj: { $regex: cnpjLimpo } });
+      const existe = await Cliente.findOne({ empresa: req.usuario.empresa._id, cnpj: { $regex: cnpjLimpo } }).lean();
       if (existe) return res.status(400).json({ erro: 'Já existe um cliente com esse CNPJ.' });
     }
     const cliente = await Cliente.create({
@@ -116,14 +117,14 @@ const temAcessoAoSetor = (usuario, setorId) =>
 // GET /api/clientes/:id/lancamentos/:setorId — lista os lançamentos já salvos (pra montar as pastas de ano/mês)
 router.get('/:id/lancamentos/:setorId', autenticar, async (req, res) => {
   try {
-    const cliente = await Cliente.findOne({ _id: req.params.id, empresa: req.usuario.empresa._id });
+    const cliente = await Cliente.findOne({ _id: req.params.id, empresa: req.usuario.empresa._id }).lean();
     if (!cliente) return res.status(404).json({ erro: 'Cliente não encontrado.' });
 
     const lancamentos = await LancamentoSetor.find({
       cliente: req.params.id,
       setor: req.params.setorId,
       empresa: req.usuario.empresa._id,
-    }).sort({ competencia: -1 }).populate('preenchidoPor', 'nome');
+    }).sort({ competencia: -1 }).populate('preenchidoPor', 'nome').lean();
 
     res.json(lancamentos);
   } catch (err) {
@@ -137,14 +138,14 @@ router.get('/:id/lancamentos/:setorId/:competencia', autenticar, async (req, res
     const { competencia } = req.params;
     if (!/^\d{4}-\d{2}$/.test(competencia)) return res.status(400).json({ erro: 'Competência inválida.' });
 
-    const cliente = await Cliente.findOne({ _id: req.params.id, empresa: req.usuario.empresa._id });
+    const cliente = await Cliente.findOne({ _id: req.params.id, empresa: req.usuario.empresa._id }).lean();
     if (!cliente) return res.status(404).json({ erro: 'Cliente não encontrado.' });
 
     const lancamento = await LancamentoSetor.findOne({
       cliente: req.params.id, setor: req.params.setorId, competencia, empresa: req.usuario.empresa._id,
-    }).populate('preenchidoPor', 'nome');
+    }).populate('preenchidoPor', 'nome').lean();
 
-    const base = lancamento ? lancamento.toObject() : { cliente: req.params.id, setor: req.params.setorId, competencia, dados: {}, preenchidoPor: null, preenchidoEm: null };
+    const base = lancamento || { cliente: req.params.id, setor: req.params.setorId, competencia, dados: {}, preenchidoPor: null, preenchidoEm: null };
     res.json({ ...base, preenchido: !!lancamento, podeEditar: podeEditarCompetencia(req.usuario, req.params.setorId, competencia, cliente.status !== 'inativo') });
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao buscar lançamento.' });
@@ -158,7 +159,7 @@ router.post('/:id/lancamentos/:setorId/:competencia', autenticar, async (req, re
     if (!/^\d{4}-\d{2}$/.test(competencia)) return res.status(400).json({ erro: 'Competência inválida.' });
     if (competencia > competenciaAtual()) return res.status(400).json({ erro: 'Não é possível lançar uma competência futura.' });
 
-    const cliente = await Cliente.findOne({ _id: req.params.id, empresa: req.usuario.empresa._id });
+    const cliente = await Cliente.findOne({ _id: req.params.id, empresa: req.usuario.empresa._id }).lean();
     if (!cliente) return res.status(404).json({ erro: 'Cliente não encontrado.' });
 
     if (!podeEditarCompetencia(req.usuario, req.params.setorId, competencia, cliente.status !== 'inativo')) {
@@ -232,7 +233,7 @@ router.post('/:id/particularidades/:setorId', autenticar, async (req, res) => {
     cliente.particularidadesSetor.push({ setor: req.params.setorId, texto: texto.trim(), atualizadoPor: req.usuario._id, atualizadoEm: new Date() });
     await cliente.save();
 
-    const populado = await Cliente.findById(cliente._id).populate('particularidadesSetor.atualizadoPor', 'nome');
+    const populado = await Cliente.findById(cliente._id).populate('particularidadesSetor.atualizadoPor', 'nome').lean();
     const lista = populado.particularidadesSetor
       .filter(p => p.setor.toString() === req.params.setorId)
       .sort((a, b) => b.atualizadoEm - a.atualizadoEm);
@@ -258,7 +259,7 @@ router.post('/importar', autenticar, temPermissao('gerenciarClientes'), async (r
         // Verificar duplicata por CNPJ
         if (c.cnpj) {
           const cnpjLimpo = c.cnpj.replace(/\D/g, '');
-          const existe = await Cliente.findOne({ empresa: req.usuario.empresa._id, cnpj: { $regex: cnpjLimpo } });
+          const existe = await Cliente.findOne({ empresa: req.usuario.empresa._id, cnpj: { $regex: cnpjLimpo } }).lean();
           if (existe) { resultados.ignorados++; resultados.erros.push(`${c.razaoSocial}: CNPJ já cadastrado`); continue; }
         }
         await Cliente.create({

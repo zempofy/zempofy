@@ -19,7 +19,7 @@ router.get('/', autenticar, async (req, res) => {
     const setores = await Setor.find({
       empresa: req.usuario.empresa._id,
       ativo: true
-    }).populate('membros', 'nome email avatar cargo').sort({ padrao: -1, criadoEm: 1 });
+    }).populate('membros', 'nome email avatar cargo').sort({ padrao: -1, criadoEm: 1 }).lean();
     res.json(setores);
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao buscar setores.' });
@@ -38,7 +38,7 @@ router.post('/inicializar', autenticar, async (req, res) => {
       padrao: true
     }));
     await Setor.insertMany(setores);
-    const criados = await Setor.find({ empresa: req.usuario.empresa._id });
+    const criados = await Setor.find({ empresa: req.usuario.empresa._id }).lean();
     res.status(201).json(criados);
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao inicializar setores.' });
@@ -57,7 +57,7 @@ router.post('/', autenticar, apenasAdmin, async (req, res) => {
       empresa: req.usuario.empresa._id,
       padrao: false
     });
-    const populado = await Setor.findById(setor._id).populate('membros', 'nome email avatar cargo');
+    const populado = await Setor.findById(setor._id).populate('membros', 'nome email avatar cargo').lean();
     res.status(201).json(populado);
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao criar setor.' });
@@ -69,7 +69,7 @@ router.put('/:id', autenticar, apenasAdmin, async (req, res) => {
   const { nome, cor, membros } = req.body;
   try {
     const Usuario = require('../models/Usuario');
-    const setorAntigo = await Setor.findOne({ _id: req.params.id, empresa: req.usuario.empresa._id });
+    const setorAntigo = await Setor.findOne({ _id: req.params.id, empresa: req.usuario.empresa._id }).lean();
     const membrosAntigos = setorAntigo?.membros?.map(m => m.toString()) || [];
     const membrosNovos = (membros || []).map(m => m.toString());
 

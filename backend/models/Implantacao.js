@@ -26,7 +26,7 @@ const implantacaoSchema = new mongoose.Schema({
   modelo: { type: mongoose.Schema.Types.ObjectId, ref: 'ModeloOnboarding' },
   etapas: [etapaSchema],
   status: { type: String, enum: ['em_andamento', 'concluida', 'cancelada'], default: 'em_andamento' },
-  empresa: { type: mongoose.Schema.Types.ObjectId, ref: 'Empresa', required: true },
+  empresa: { type: mongoose.Schema.Types.ObjectId, ref: 'Empresa', required: true, index: true },
   criadoPor: { type: mongoose.Schema.Types.ObjectId, ref: 'Usuario', required: true },
   concluidaEm: { type: Date },
   criadoEm: { type: Date, default: Date.now }

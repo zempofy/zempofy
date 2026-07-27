@@ -15,12 +15,12 @@ const verificarChave = (req, res, next) => {
 
 router.get('/', verificarChave, async (req, res) => {
   try {
-    const empresas = await Empresa.find().sort({ criadaEm: -1 });
+    const empresas = await Empresa.find().sort({ criadaEm: -1 }).lean();
 
     const dados = await Promise.all(empresas.map(async (emp) => {
       const [usuarios, implantacoes, clientes] = await Promise.all([
-        Usuario.find({ empresa: emp._id, ativo: true }).select('nome email cargo ultimoAcesso emailVerificado setores'),
-        Implantacao.find({ empresa: emp._id, status: { $ne: 'cancelada' } }),
+        Usuario.find({ empresa: emp._id, ativo: true }).select('nome email cargo ultimoAcesso emailVerificado setores').lean(),
+        Implantacao.find({ empresa: emp._id, status: { $ne: 'cancelada' } }).lean(),
         Cliente.countDocuments({ empresa: emp._id }),
       ]);
 

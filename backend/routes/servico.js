@@ -7,7 +7,7 @@ const router = express.Router();
 // GET /api/servicos
 router.get('/', autenticar, async (req, res) => {
   try {
-    const servicos = await Servico.find({ empresa: req.usuario.empresa._id }).sort({ criadoEm: 1 });
+    const servicos = await Servico.find({ empresa: req.usuario.empresa._id }).sort({ criadoEm: 1 }).lean();
     res.json(servicos);
   } catch { res.status(500).json({ erro: 'Erro ao buscar serviços.' }); }
 });
@@ -17,7 +17,7 @@ router.post('/', autenticar, async (req, res) => {
   const { nome, descricao } = req.body;
   if (!nome?.trim()) return res.status(400).json({ erro: 'Nome é obrigatório.' });
   try {
-    const existe = await Servico.findOne({ empresa: req.usuario.empresa._id, nome: { $regex: `^${nome.trim()}$`, $options: 'i' } });
+    const existe = await Servico.findOne({ empresa: req.usuario.empresa._id, nome: { $regex: `^${nome.trim()}$`, $options: 'i' } }).lean();
     if (existe) return res.status(400).json({ erro: 'Já existe um serviço com esse nome.' });
     const servico = await Servico.create({ nome: nome.trim(), descricao: descricao?.trim() || '', empresa: req.usuario.empresa._id, criadoPor: req.usuario._id });
     res.status(201).json(servico);

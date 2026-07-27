@@ -29,7 +29,7 @@ router.post('/cadastro', async (req, res) => {
 
   try {
     // Verificar se email já existe
-    const emailExiste = await getUsuario().findOne({ email });
+    const emailExiste = await getUsuario().findOne({ email }).lean();
     if (emailExiste) {
       return res.status(400).json({ erro: 'Este e-mail já está em uso.' });
     }
@@ -41,7 +41,7 @@ router.post('/cadastro', async (req, res) => {
       .replace(/^-|-$/g, '');
 
     // Garantir slug único
-    const slugExiste = await Empresa.findOne({ slug });
+    const slugExiste = await Empresa.findOne({ slug }).lean();
     if (slugExiste) slug = `${slug}-${Date.now()}`;
 
     // Criar empresa
@@ -194,7 +194,7 @@ router.get('/verificar-email', async (req, res) => {
   const { token } = req.query;
   if (!token) return res.status(400).json({ erro: 'Token inválido.' });
   try {
-    const usuario = await getUsuario().findOne({ tokenVerificacao: token });
+    const usuario = await getUsuario().findOne({ tokenVerificacao: token }).lean();
     if (!usuario) return res.status(400).json({ erro: 'Token inválido ou expirado.' });
     await getUsuario().findByIdAndUpdate(usuario._id, { emailVerificado: true, tokenVerificacao: null });
     res.json({ mensagem: 'E-mail verificado com sucesso!' });

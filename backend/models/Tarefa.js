@@ -16,7 +16,7 @@ const tarefaSchema = new mongoose.Schema({
   setor: { type: mongoose.Schema.Types.ObjectId, ref: 'Setor', default: null },
   responsavel: { type: mongoose.Schema.Types.ObjectId, ref: 'Usuario', required: true },
   criadaPor: { type: mongoose.Schema.Types.ObjectId, ref: 'Usuario', required: true },
-  empresa: { type: mongoose.Schema.Types.ObjectId, ref: 'Empresa', required: true },
+  empresa: { type: mongoose.Schema.Types.ObjectId, ref: 'Empresa', required: true, index: true },
   criadaEm: { type: Date, default: Date.now }
 });
 

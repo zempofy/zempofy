@@ -17,7 +17,8 @@ router.get('/', autenticar, async (req, res) => {
 
     const eventos = await Evento.find(filtro)
       .populate('usuario', 'nome')
-      .sort({ data: 1, horaInicio: 1 });
+      .sort({ data: 1, horaInicio: 1 })
+      .lean();
 
     res.json(eventos);
   } catch (err) {

@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 const clienteSchema = new mongoose.Schema({
-  empresa: { type: mongoose.Schema.Types.ObjectId, ref: 'Empresa', required: true },
+  empresa: { type: mongoose.Schema.Types.ObjectId, ref: 'Empresa', required: true, index: true },
   criadoPor: { type: mongoose.Schema.Types.ObjectId, ref: 'Usuario', required: true },
   criadoEm: { type: Date, default: Date.now },
   status: { type: String, enum: ['ativo', 'inativo', 'encerramento'], default: 'ativo' },

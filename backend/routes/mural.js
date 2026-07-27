@@ -9,7 +9,8 @@ router.get('/', autenticar, async (req, res) => {
   try {
     const avisos = await Aviso.find({ empresa: req.usuario.empresa._id })
       .populate('autor', 'nome cargo')
-      .sort({ fixado: -1, criadoEm: -1 });
+      .sort({ fixado: -1, criadoEm: -1 })
+      .lean();
     res.json(avisos);
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao buscar avisos.' });

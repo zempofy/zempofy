@@ -12,7 +12,7 @@ router.get('/contatos', autenticar, async (req, res) => {
       empresa: req.usuario.empresa._id,
       _id: { $ne: req.usuario._id },
       ativo: true
-    }).select('nome cargo');
+    }).select('nome cargo').lean();
 
     // Para cada contato, pega o número de mensagens não lidas
     const contatosComInfo = await Promise.all(contatos.map(async (c) => {
@@ -30,7 +30,7 @@ router.get('/contatos', autenticar, async (req, res) => {
           { de: req.usuario._id, para: c._id },
           { de: c._id, para: req.usuario._id }
         ]
-      }).sort({ criadaEm: -1 });
+      }).sort({ criadaEm: -1 }).lean();
 
       return {
         _id: c._id,
@@ -71,7 +71,7 @@ router.get('/:usuarioId', autenticar, async (req, res) => {
       _id: outroId,
       empresa: req.usuario.empresa._id,
       ativo: true
-    });
+    }).lean();
     if (!outro) return res.status(404).json({ erro: 'Usuário não encontrado.' });
 
     // Busca mensagens entre os dois (só eles podem ver)
@@ -85,7 +85,8 @@ router.get('/:usuarioId', autenticar, async (req, res) => {
     })
     .populate('de', 'nome')
     .sort({ criadaEm: 1 })
-    .limit(100);
+    .limit(100)
+    .lean();
 
     // Marca como lidas as mensagens recebidas
     await Mensagem.updateMany(
@@ -112,7 +113,7 @@ router.post('/:usuarioId', autenticar, async (req, res) => {
       _id: outroId,
       empresa: req.usuario.empresa._id,
       ativo: true
-    });
+    }).lean();
     if (!outro) return res.status(404).json({ erro: 'Usuário não encontrado.' });
 
     const mensagem = await Mensagem.create({

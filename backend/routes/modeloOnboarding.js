@@ -15,7 +15,7 @@ router.get('/', autenticar, async (req, res) => {
   try {
     const modelos = await populateModelo(
       ModeloOnboarding.find({ empresa: req.usuario.empresa._id, ativo: true })
-    ).sort({ criadoEm: -1 });
+    ).sort({ criadoEm: -1 }).lean();
     res.json(modelos);
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao buscar modelos.' });
@@ -27,7 +27,7 @@ router.get('/:id', autenticar, async (req, res) => {
   try {
     const modelo = await populateModelo(
       ModeloOnboarding.findOne({ _id: req.params.id, empresa: req.usuario.empresa._id })
-    );
+    ).lean();
     if (!modelo) return res.status(404).json({ erro: 'Modelo não encontrado.' });
     res.json(modelo);
   } catch (err) {
@@ -47,7 +47,7 @@ router.post('/', autenticar, temPermissao('gerenciarModelos'), async (req, res) 
       empresa: req.usuario.empresa._id,
       criadoPor: req.usuario._id
     });
-    const populado = await populateModelo(ModeloOnboarding.findById(modelo._id));
+    const populado = await populateModelo(ModeloOnboarding.findById(modelo._id)).lean();
     registrarLog({ empresa: req.usuario.empresa._id, usuario: req.usuario._id, tipo: 'modelo_criado', descricao: 'Criou o modelo ' + nome, meta: { nome } });
     res.status(201).json(populado);
   } catch (err) {

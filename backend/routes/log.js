@@ -18,7 +18,8 @@ router.get('/', autenticar, async (req, res) => {
     const logs = await Log.find(filtro)
       .populate('usuario', 'nome avatar')
       .sort({ criadoEm: -1 })
-      .limit(Number(limite));
+      .limit(Number(limite))
+      .lean();
 
     res.json(logs);
   } catch (err) {
