@@ -110,6 +110,7 @@ router.post('/login', async (req, res) => {
         cargo: usuario.cargo,
         avatar: usuario.avatar || '',
         permissoes: usuario.permissoes || {},
+        setores: usuario.setores || [],
         emailVerificado: usuario.emailVerificado || false,
         empresa: { id: usuario.empresa._id, nome: usuario.empresa.nome }
       }
@@ -130,6 +131,7 @@ router.get('/me', autenticar, (req, res) => {
     cargo: u.cargo,
     avatar: u.avatar || '',
     permissoes: u.permissoes || {},
+    setores: u.setores || [],
     emailVerificado: u.emailVerificado || false,
     empresa: { id: u.empresa._id, nome: u.empresa.nome }
   });

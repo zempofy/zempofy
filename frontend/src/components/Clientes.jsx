@@ -4,6 +4,7 @@ import api from '../services/api'
 import { useToast } from './Toast'
 import Icone from './Icones'
 import ImportarClientes from './ImportarClientes'
+import { useAuth } from '../contexts/AuthContext'
 
 // ── Máscaras ──
 const mascaraCNPJ = (v) => v.replace(/\D/g,'').slice(0,14)
@@ -595,8 +596,13 @@ function TelaDetalhe({ clienteId, voltar, onAtualizado, abaInicial = 'info' }) {
   const [aba, setAba] = useState(abaInicial)
   const [setorAtivo, setSetorAtivo] = useState(null)
   const { mostrar } = useToast()
+  const { usuario, temPermissao } = useAuth()
 
-  const setorTemDemanda = (setor) => !!CONFIG_DEMANDA[normalizarNome(setor?.nome||'')]
+  // Só tem acesso à Demanda/Histórico do setor quem está naquele setor (ou é titular) — e o setor precisa ter escopo fechado (CONFIG_DEMANDA)
+  const setorTemDemanda = (setor) => {
+    if (!CONFIG_DEMANDA[normalizarNome(setor?.nome||'')]) return false
+    return usuario?.cargo === 'admin' || usuario?.setores?.includes(setor._id)
+  }
 
   const clicarSetor = (setor) => {
     if (!setorTemDemanda(setor)) return
@@ -648,10 +654,12 @@ function TelaDetalhe({ clienteId, voltar, onAtualizado, abaInicial = 'info' }) {
               {dados.nomeFantasia&&dados.nomeFantasia!==nomeCliente&&<p style={{ fontSize:'0.78rem', color:'var(--texto-apagado)', margin:'2px 0 0', fontFamily:'Inter,sans-serif' }}>{dados.nomeFantasia}</p>}
             </div>
           </div>
-          <div style={{ display:'flex', gap:'8px', alignItems:'center' }}>
-            <button onClick={()=>setEditando(true)} style={{ ...s.btnAcao, display:'flex', alignItems:'center', gap:'5px' }}><Icone.Edit size={13}/>Editar</button>
-            <button onClick={()=>setConfirmExcluir(true)} style={{ ...s.btnAcao, color:'#f87171', borderColor:'rgba(248,113,113,0.3)', display:'flex', alignItems:'center', gap:'5px' }}><Icone.Trash size={13}/>Remover</button>
-          </div>
+          {temPermissao('gerenciarClientes') && (
+            <div style={{ display:'flex', gap:'8px', alignItems:'center' }}>
+              <button onClick={()=>setEditando(true)} style={{ ...s.btnAcao, display:'flex', alignItems:'center', gap:'5px' }}><Icone.Edit size={13}/>Editar</button>
+              <button onClick={()=>setConfirmExcluir(true)} style={{ ...s.btnAcao, color:'#f87171', borderColor:'rgba(248,113,113,0.3)', display:'flex', alignItems:'center', gap:'5px' }}><Icone.Trash size={13}/>Remover</button>
+            </div>
+          )}
         </div>
         {/* Linha 2: setores + separador + status + origem */}
         <div style={{ display:'flex', alignItems:'center', gap:'6px', flexWrap:'wrap' }}>
@@ -1070,6 +1078,7 @@ export default function Clientes({ detalheInicial = null, abaInicial = 'info', o
     }
   }, [detalheInicial])
   const { mostrar } = useToast()
+  const { temPermissao } = useAuth()
 
   const carregar = async () => {
     setCarregando(true)
@@ -1121,10 +1130,12 @@ export default function Clientes({ detalheInicial = null, abaInicial = 'info', o
           <h1 style={{ fontSize:'1.5rem', fontWeight:'700', color:'var(--texto)', margin:0, letterSpacing:'-0.03em' }}>Clientes</h1>
           <p style={{ fontSize:'0.82rem', color:'var(--texto-apagado)', marginTop:'5px' }}>{clientes.length} cliente(s) cadastrado(s)</p>
         </div>
-        <div style={{ display:'flex', gap:'8px' }}>
-          <button onClick={()=>setImportarAberto(true)} style={{ ...s.btnPrimario, background:'none', border:'1px solid var(--borda)', color:'var(--texto)', boxShadow:'none', display:'flex', alignItems:'center', gap:'6px' }}><Icone.Upload size={14}/> Importar</button>
-          <button onClick={()=>setFormAberto(true)} style={{ ...s.btnPrimario, display:'flex', alignItems:'center', gap:'6px' }}><Icone.Plus size={14}/> Novo cliente</button>
-        </div>
+        {temPermissao('gerenciarClientes') && (
+          <div style={{ display:'flex', gap:'8px' }}>
+            <button onClick={()=>setImportarAberto(true)} style={{ ...s.btnPrimario, background:'none', border:'1px solid var(--borda)', color:'var(--texto)', boxShadow:'none', display:'flex', alignItems:'center', gap:'6px' }}><Icone.Upload size={14}/> Importar</button>
+            <button onClick={()=>setFormAberto(true)} style={{ ...s.btnPrimario, display:'flex', alignItems:'center', gap:'6px' }}><Icone.Plus size={14}/> Novo cliente</button>
+          </div>
+        )}
       </div>
 
       {/* Busca + filtro por setor */}
@@ -1165,7 +1176,7 @@ export default function Clientes({ detalheInicial = null, abaInicial = 'info', o
         <div style={{ textAlign:'center', padding:'60px 0', color:'var(--texto-apagado)' }}>
           {busca||filtroSetor?<p>Nenhum cliente encontrado.</p>:<>
             <p style={{ marginBottom:'12px', fontSize:'0.9rem' }}>Nenhum cliente cadastrado ainda.</p>
-            <button onClick={()=>setFormAberto(true)} style={s.btnPrimario}>Cadastrar primeiro cliente</button>
+            {temPermissao('gerenciarClientes') && <button onClick={()=>setFormAberto(true)} style={s.btnPrimario}>Cadastrar primeiro cliente</button>}
           </>}
         </div>
       ):(

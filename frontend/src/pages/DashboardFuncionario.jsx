@@ -563,16 +563,12 @@ export default function DashboardFuncionario() {
   const menuItens = [
     { id: 'inicio', label: 'Início', icone: <Icone.Home size={16} /> },
 
-    // Escritório — só Implantação e Clientes no sidebar (configs vão pelo painel de configurações)
+    // Escritório — Clientes sempre visível (acesso de visualização pra todos); Onboarding só com permissão
+    { id: '__sep_escritorio', separador: true, label: 'Escritório' },
     ...(temPermissao('criarImplantacoes') || temPermissao('gerenciarOnboarding') ? [
-      { id: '__sep_escritorio', separador: true, label: 'Escritório' },
       { id: 'implantacao', label: 'Onboarding', icone: <Icone.ClipboardList size={16} /> },
     ] : []),
-
-    ...(temPermissao('gerenciarClientes') ? [
-      ...(!temPermissao('criarImplantacoes') && !temPermissao('gerenciarOnboarding') ? [{ id: '__sep_escritorio', separador: true, label: 'Escritório' }] : []),
-      { id: 'clientes', label: 'Clientes', icone: <Icone.Users size={16} /> }
-    ] : []),
+    { id: 'clientes', label: 'Clientes', icone: <Icone.Users size={16} /> },
 
     // Separador Pessoal — sempre visível
     { id: '__sep_pessoal', separador: true, label: 'Pessoal' },
