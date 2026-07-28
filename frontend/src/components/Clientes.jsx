@@ -133,9 +133,9 @@ const CONFIG_DEMANDA = {
         ativoQuando: ['pro_labore','ambos'],
         campos: [
           { id:'valorProLabore', label:'Valor do pró-labore', tipo:'moeda' },
-          { id:'inssProLabore', label:'INSS retido (11%)', tipo:'moeda' },
-          { id:'irrfProLabore', label:'IRRF retido', tipo:'moeda' },
-          { id:'guiaPaga', label:'Guia paga (até dia 20)', tipo:'booleano' },
+          { id:'inssProLabore', label:'INSS (11%)', tipo:'moeda' },
+          { id:'irrfProLabore', label:'IRRF', tipo:'moeda' },
+          // campo 'guiaPaga' removido (27/07/2026) — vencimento é fixo dia 20, não há o que rastrear
         ]
       }
     },
@@ -144,27 +144,37 @@ const CONFIG_DEMANDA = {
   // contabil, financeiro: adicionar aqui quando escopo fechar
 }
 
-// Monta a lista de campos fixos pra um setor, dado o contexto (regime do cliente,
-// situação respondida, competência sendo vista). Suporta os dois formatos de config:
-// porRegime (Fiscal) e modulos com ativoQuando/camposSazonais (DP e futuros setores).
-const camposFixosDoSetor = (config, { regime, situacao, competencia }) => {
+// Monta os blocos (cartões com título) de campos fixos pra um setor, dado o contexto
+// (regime do cliente, situação respondida, competência sendo vista). Suporta os dois
+// formatos de config: porRegime (Fiscal, um bloco só) e modulos com
+// ativoQuando/camposSazonais (DP e futuros setores, um bloco por módulo ativo).
+const ICONE_BLOCO = { fiscal: 'BarChart', clt: 'UsersThree', proLabore: 'CreditCard' }
+const TITULO_MODULO = { clt: 'CLT', proLabore: 'Pró-labore' }
+
+const blocosFixosDoSetor = (config, { regime, situacao, competencia }) => {
   if (!config) return []
-  if (config.porRegime) return config.porRegime[regime] || []
+  if (config.porRegime) {
+    const campos = config.porRegime[regime] || []
+    return campos.length ? [{ chave:'fiscal', titulo:`Faturamento e imposto — ${labelRegime(regime)}`, campos }] : []
+  }
   if (config.modulos) {
-    const campos = []
-    Object.values(config.modulos).forEach(mod => {
+    const blocos = []
+    Object.entries(config.modulos).forEach(([chave, mod]) => {
       if (!mod.ativoQuando.includes(situacao)) return
-      campos.push(...mod.campos)
+      const campos = [...mod.campos]
       if (mod.camposSazonais) {
         const mes = Number(competencia.slice(5,7))
         if (mod.camposSazonais.meses.includes(mes)) campos.push(...mod.camposSazonais.campos)
       }
+      blocos.push({ chave, titulo: TITULO_MODULO[chave] || chave, campos })
     })
-    if (config.observacoesCompartilhadas) campos.push({ id:'observacoesGerais', label:'Observações', tipo:'texto' })
-    return campos
+    return blocos
   }
   return []
 }
+
+const MESES_NOME = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
+const nomeMes = (competencia) => MESES_NOME[Number(competencia.slice(5,7))-1]
 
 const labelRegime = (v) => REGIMES.find(r=>r.value===v)?.label || v
 const labelPorte = (v) => PORTES.find(r=>r.value===v)?.label || v
@@ -934,7 +944,7 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
   const config = CONFIG_DEMANDA[normalizarNome(setor.nome)]
   const situacao = configSetor?.situacao
   const camposExtras = configSetor?.camposExtras || []
-  const campos = [...camposFixosDoSetor(config, { regime: clienteRegime, situacao, competencia }), ...camposExtras]
+  const blocos = blocosFixosDoSetor(config, { regime: clienteRegime, situacao, competencia })
 
   useEffect(() => {
     setCarregando(true)
@@ -1001,22 +1011,80 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
     return <p style={{ color:'var(--texto-apagado)', fontSize:'0.875rem' }}>Ainda não foi respondida a pergunta inicial deste setor pra este cliente.</p>
   }
 
+  const pillInfo = config?.porRegime
+    ? { label:'Regime', valor: labelRegime(clienteRegime), hint:'editar no cadastro do cliente' }
+    : (config?.perguntaInicial && situacao
+        ? { label:'Situação', valor: config.perguntaInicial.opcoes.find(o=>o.valor===situacao)?.label || situacao, hint: null }
+        : null)
+
   return (
     <div>
-      <p style={{ fontSize:'0.8rem', color:'var(--texto-apagado)', marginBottom:'16px' }}>
-        Competência {competencia}{!podeEditar ? ' · Somente leitura' : ''}
-        {lancamento?.preenchidoPor?.nome && ` · Preenchido por ${lancamento.preenchidoPor.nome}`}
-      </p>
-      {campos.length === 0 && <p style={{ color:'var(--texto-apagado)', fontSize:'0.875rem', marginBottom:'16px' }}>Nenhum campo configurado ainda{podeEditar?'. Adicione um campo abaixo.':'.'}</p>}
-      {campos.length > 0 && (
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))', gap:'14px', marginBottom:'20px' }}>
-          {campos.map(c => (
-            <Campo key={c.id} label={c.label}>
-              <CampoValor tipo={c.tipo} valor={valores[c.id]} onChange={v=>setValor(c.id, v)} disabled={!podeEditar} />
-            </Campo>
-          ))}
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:'10px', marginBottom:'18px' }}>
+        <p style={{ fontSize:'0.8rem', color:'var(--texto-apagado)', margin:0 }}>
+          Competência {competencia}{!podeEditar ? ' · Somente leitura' : ''}
+          {lancamento?.preenchidoPor?.nome && ` · Preenchido por ${lancamento.preenchidoPor.nome}`}
+        </p>
+        {pillInfo && (
+          <div style={{ display:'flex', alignItems:'center', gap:'6px', background:'var(--input)', border:'1px solid var(--borda)', borderRadius:'99px', padding:'5px 12px' }}>
+            <span style={{ fontSize:'0.72rem', color:'var(--texto-apagado)' }}>{pillInfo.label}:</span>
+            <span style={{ fontSize:'0.72rem', color:'var(--texto)', fontWeight:'600' }}>{pillInfo.valor}</span>
+            {pillInfo.hint && <span style={{ fontSize:'0.65rem', color:'var(--texto-apagado)' }}>· {pillInfo.hint}</span>}
+          </div>
+        )}
+      </div>
+
+      {blocos.length === 0 && camposExtras.length === 0 && (
+        <p style={{ color:'var(--texto-apagado)', fontSize:'0.875rem', marginBottom:'16px' }}>Nenhum campo configurado ainda{podeEditar?'. Adicione um campo abaixo.':'.'}</p>
+      )}
+
+      {blocos.map(bloco => {
+        const IconeBloco = Icone[ICONE_BLOCO[bloco.chave]] || Icone.FileText
+        return (
+          <div key={bloco.chave} style={{ background:'var(--card)', border:'1px solid var(--borda)', borderRadius:'14px', padding:'18px', marginBottom:'14px' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:'8px', marginBottom:'16px' }}>
+              <div style={{ width:'26px', height:'26px', borderRadius:'7px', background:'rgba(0,177,65,0.12)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                <IconeBloco size={14} style={{ color:'var(--verde)' }}/>
+              </div>
+              <p style={{ fontSize:'0.82rem', fontWeight:'700', color:'var(--texto)', margin:0 }}>{bloco.titulo}</p>
+            </div>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))', gap:'14px' }}>
+              {bloco.campos.map(c => (
+                <Campo key={c.id} label={c.label}>
+                  <CampoValor tipo={c.tipo} valor={valores[c.id]} onChange={v=>setValor(c.id, v)} disabled={!podeEditar} />
+                </Campo>
+              ))}
+            </div>
+          </div>
+        )
+      })}
+
+      {camposExtras.length > 0 && (
+        <div style={{ background:'var(--card)', border:'1px solid var(--borda)', borderRadius:'14px', padding:'18px', marginBottom:'14px' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:'8px', marginBottom:'16px' }}>
+            <div style={{ width:'26px', height:'26px', borderRadius:'7px', background:'rgba(0,177,65,0.12)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+              <Icone.Plus size={14} style={{ color:'var(--verde)' }}/>
+            </div>
+            <p style={{ fontSize:'0.82rem', fontWeight:'700', color:'var(--texto)', margin:0 }}>Campos adicionais</p>
+          </div>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))', gap:'14px' }}>
+            {camposExtras.map(c => (
+              <Campo key={c.id} label={c.label}>
+                <CampoValor tipo={c.tipo} valor={valores[c.id]} onChange={v=>setValor(c.id, v)} disabled={!podeEditar} />
+              </Campo>
+            ))}
+          </div>
         </div>
       )}
+
+      <div style={{ marginBottom:'20px' }}>
+        <Campo label="Observações">
+          {podeEditar ? (
+            <textarea style={{ ...s.inp, minHeight:'56px', resize:'vertical' }} value={valores.observacoesGerais||''} onChange={e=>setValor('observacoesGerais', e.target.value)} placeholder="Opcional" />
+          ) : (
+            <div style={{ ...s.inp, background:'var(--card)', color:'var(--texto)', minHeight:'20px' }}>{valores.observacoesGerais || '—'}</div>
+          )}
+        </Campo>
+      </div>
 
       {podeEditar && (criandoCampo ? (
         <div style={{ display:'flex', gap:'10px', alignItems:'flex-end', marginBottom:'20px', flexWrap:'wrap', border:'1px dashed var(--borda)', borderRadius:'10px', padding:'14px' }}>
@@ -1046,7 +1114,7 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
 
       {podeEditar && (
         <button style={s.btnSalv} onClick={salvar} disabled={salvando}>
-          {salvando ? 'Salvando...' : 'Salvar'}
+          {salvando ? 'Salvando...' : `Salvar demanda de ${nomeMes(competencia)}`}
         </button>
       )}
     </div>
