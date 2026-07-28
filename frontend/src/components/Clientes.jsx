@@ -665,7 +665,7 @@ function FormCliente({ cliente, fechar, onSalvo }) {
 function BarraSetoresCliente({ setores, setorAtivo, setorClicavel, onInformacoes, onSetor }) {
   const containerRef = useRef(null)
   const itemRefs = useRef({})
-  const [highlight, setHighlight] = useState({ left:0, width:0, opacity:0 })
+  const [highlight, setHighlight] = useState({ left:0, width:0, opacity:0, cor:'var(--texto-apagado)' })
 
   const itens = [{ chave:'__info__', label:'Informações', setor:null }, ...setores.map(s=>({ chave:s._id, label:s.nome, setor:s }))]
   const chaveAtiva = setorAtivo ? setorAtivo._id : '__info__'
@@ -676,15 +676,16 @@ function BarraSetoresCliente({ setores, setorAtivo, setorClicavel, onInformacoes
     if (!container || !ativo) return
     const cRect = container.getBoundingClientRect()
     const aRect = ativo.getBoundingClientRect()
-    setHighlight({ left: aRect.left - cRect.left, width: aRect.width, opacity: 1 })
+    const item = itens.find(i=>i.chave===chaveAtiva)
+    setHighlight({ left: aRect.left - cRect.left, width: aRect.width, opacity: 1, cor: item?.setor?.cor || 'var(--texto-apagado)' })
   }, [chaveAtiva, setores.length])
 
   return (
-    <div ref={containerRef} style={{ position:'relative', display:'flex', background:'var(--input)', border:'1px solid var(--borda)', borderRadius:'12px', padding:'4px', marginBottom:'16px', overflowX:'auto' }}>
+    <div ref={containerRef} style={{ position:'relative', display:'inline-flex', maxWidth:'100%', background:'var(--input)', border:'1px solid var(--borda)', borderRadius:'12px', padding:'4px', marginBottom:'16px', overflowX:'auto' }}>
       <div style={{
         position:'absolute', top:'4px', bottom:'4px', left:`${highlight.left}px`, width:`${highlight.width}px`,
-        background:'var(--card)', borderRadius:'8px', boxShadow:'0 1px 4px rgba(0,0,0,0.3)', opacity:highlight.opacity,
-        transition:'left 0.28s cubic-bezier(.4,0,.2,1), width 0.28s cubic-bezier(.4,0,.2,1), opacity 0.15s',
+        background:'var(--card)', border:`1px solid ${highlight.cor}`, borderRadius:'9px', opacity:highlight.opacity,
+        transition:'left 0.28s cubic-bezier(.4,0,.2,1), width 0.28s cubic-bezier(.4,0,.2,1), opacity 0.15s, border-color 0.2s',
       }}/>
       {itens.map(item => {
         const ehAtivo = item.chave === chaveAtiva
@@ -694,9 +695,9 @@ function BarraSetoresCliente({ setores, setorAtivo, setorClicavel, onInformacoes
             ref={el => { itemRefs.current[item.chave] = el }}
             onClick={() => item.setor ? onSetor(item.setor) : onInformacoes()}
             style={{
-              position:'relative', zIndex:1, flex:1, padding:'8px 12px', border:'none', background:'none',
-              cursor: clicavel ? 'pointer' : 'default', fontFamily:'Inter,sans-serif', fontSize:'0.78rem', fontWeight:'600',
-              whiteSpace:'nowrap', color: ehAtivo ? (item.setor?.cor || 'var(--texto)') : 'var(--texto-apagado)',
+              position:'relative', zIndex:1, width:'76px', flexShrink:0, padding:'8px 6px', border:'none', background:'none',
+              cursor: clicavel ? 'pointer' : 'default', fontFamily:'Inter,sans-serif', fontSize:'0.72rem', fontWeight:'600', lineHeight:'1.25',
+              whiteSpace:'normal', textAlign:'center', color: ehAtivo ? (item.setor?.cor || 'var(--texto)') : 'var(--texto-apagado)',
               transition:'color 0.2s',
             }}>
             {item.label}
@@ -815,25 +816,8 @@ function TelaDetalhe({ clienteId, voltar, onAtualizado, abaInicial = 'info' }) {
           />
         )}
 
-        {/* Linha 2: setores + separador + status + origem */}
+        {/* Linha 2: status + origem */}
         <div style={{ display:'flex', alignItems:'center', gap:'6px', flexWrap:'wrap' }}>
-          {dados.setores?.filter(s=>s.nome).map(setor=>{
-            const clicavel = setorTemDemanda(setor)
-            const selecionado = setorAtivo?._id === setor._id
-            return (
-              <button key={setor._id||setor} onClick={()=>clicarSetor(setor)} title={clicavel?'Ver demanda deste setor':undefined} style={{
-                display:'inline-flex', alignItems:'center', gap:'5px', padding:'3px 9px', borderRadius:'99px',
-                background: selecionado ? 'rgba(0,177,65,0.12)' : 'var(--input)',
-                border: `1px solid ${selecionado ? 'rgba(0,177,65,0.35)' : 'var(--borda)'}`,
-                fontSize:'0.72rem', fontWeight:'600', color: selecionado ? 'var(--verde)' : 'var(--texto-apagado)',
-                fontFamily:'Inter,sans-serif', cursor: clicavel?'pointer':'default',
-              }}>
-                <div style={{ width:'7px', height:'7px', borderRadius:'50%', background:setor.cor||'var(--verde)', flexShrink:0 }}/>
-                {setor.nome}
-              </button>
-            )
-          })}
-          {dados.setores?.filter(s=>s.nome).length>0&&<div style={{ width:'1px', height:'14px', background:'var(--borda)', flexShrink:0, margin:'0 2px' }}/>}
           <span style={{ display:'inline-flex', alignItems:'center', gap:'4px', padding:'3px 9px', borderRadius:'99px', fontSize:'0.72rem', fontWeight:'600', fontFamily:'Inter,sans-serif', background:st.bg, color:st.cor }}>{st.label}</span>
           {dados.onboardings?.some(o=>o.status!=='concluida') ? (
             <span style={{ display:'inline-flex', alignItems:'center', gap:'4px', padding:'3px 9px', borderRadius:'99px', fontSize:'0.72rem', fontWeight:'600', background:'rgba(0,177,65,0.08)', color:'var(--verde)', fontFamily:'Inter,sans-serif' }}>
