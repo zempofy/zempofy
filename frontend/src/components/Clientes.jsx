@@ -661,6 +661,52 @@ function FormCliente({ cliente, fechar, onSalvo }) {
   )
 }
 
+// ── Barra de navegação de setores (segmented control com highlight deslizante) ──
+function BarraSetoresCliente({ setores, setorAtivo, setorClicavel, onInformacoes, onSetor }) {
+  const containerRef = useRef(null)
+  const itemRefs = useRef({})
+  const [highlight, setHighlight] = useState({ left:0, width:0, opacity:0 })
+
+  const itens = [{ chave:'__info__', label:'Informações', setor:null }, ...setores.map(s=>({ chave:s._id, label:s.nome, setor:s }))]
+  const chaveAtiva = setorAtivo ? setorAtivo._id : '__info__'
+
+  useEffect(() => {
+    const container = containerRef.current
+    const ativo = itemRefs.current[chaveAtiva]
+    if (!container || !ativo) return
+    const cRect = container.getBoundingClientRect()
+    const aRect = ativo.getBoundingClientRect()
+    setHighlight({ left: aRect.left - cRect.left, width: aRect.width, opacity: 1 })
+  }, [chaveAtiva, setores.length])
+
+  return (
+    <div ref={containerRef} style={{ position:'relative', display:'flex', background:'var(--input)', border:'1px solid var(--borda)', borderRadius:'12px', padding:'4px', marginBottom:'16px', overflowX:'auto' }}>
+      <div style={{
+        position:'absolute', top:'4px', bottom:'4px', left:`${highlight.left}px`, width:`${highlight.width}px`,
+        background:'var(--card)', borderRadius:'8px', boxShadow:'0 1px 4px rgba(0,0,0,0.3)', opacity:highlight.opacity,
+        transition:'left 0.28s cubic-bezier(.4,0,.2,1), width 0.28s cubic-bezier(.4,0,.2,1), opacity 0.15s',
+      }}/>
+      {itens.map(item => {
+        const ehAtivo = item.chave === chaveAtiva
+        const clicavel = !item.setor || setorClicavel(item.setor)
+        return (
+          <button key={item.chave}
+            ref={el => { itemRefs.current[item.chave] = el }}
+            onClick={() => item.setor ? onSetor(item.setor) : onInformacoes()}
+            style={{
+              position:'relative', zIndex:1, flex:1, padding:'8px 12px', border:'none', background:'none',
+              cursor: clicavel ? 'pointer' : 'default', fontFamily:'Inter,sans-serif', fontSize:'0.78rem', fontWeight:'600',
+              whiteSpace:'nowrap', color: ehAtivo ? (item.setor?.cor || 'var(--texto)') : 'var(--texto-apagado)',
+              transition:'color 0.2s',
+            }}>
+            {item.label}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
 // ── Tela de detalhe ──
 function TelaDetalhe({ clienteId, voltar, onAtualizado, abaInicial = 'info' }) {
   const [dados, setDados] = useState(null)
@@ -758,6 +804,17 @@ function TelaDetalhe({ clienteId, voltar, onAtualizado, abaInicial = 'info' }) {
             </div>
           )}
         </div>
+
+        {dados.setores?.filter(s=>s.nome).length>0 && (
+          <BarraSetoresCliente
+            setores={dados.setores.filter(s=>s.nome)}
+            setorAtivo={setorAtivo}
+            setorClicavel={setorTemDemanda}
+            onInformacoes={()=>{ setSetorAtivo(null); setAba('info') }}
+            onSetor={clicarSetor}
+          />
+        )}
+
         {/* Linha 2: setores + separador + status + origem */}
         <div style={{ display:'flex', alignItems:'center', gap:'6px', flexWrap:'wrap' }}>
           {dados.setores?.filter(s=>s.nome).map(setor=>{
