@@ -18,6 +18,7 @@ import PaginaInicio from '../components/PaginaInicio'
 import Servicos from '../components/Servicos'
 import Clientes from '../components/Clientes'
 import Setores from '../components/Setores'
+import CRM from '../components/CRM'
 
 // ── Popup com informações da implantação ──
 function PopupOnboarding({ tarefaId, onFechar }) {
@@ -545,6 +546,7 @@ export default function DashboardFuncionario() {
   const { usuario, temPermissao } = useAuth()
   const [pagina, setPagina] = useState('inicio')
   const [clienteDetalheId, setClienteDetalheId] = useState(null)
+  const [nomeNovoOnboarding, setNomeNovoOnboarding] = useState('')
   const [tarefas, setTarefas] = useState([])
 
   const carregarDados = async () => {
@@ -569,6 +571,7 @@ export default function DashboardFuncionario() {
       { id: 'implantacao', label: 'Onboarding', icone: <Icone.ClipboardList size={16} /> },
     ] : []),
     { id: 'clientes', label: 'Clientes', icone: <Icone.Users size={16} /> },
+    { id: 'crm', label: 'CRM', icone: <Icone.Users size={16} /> },
 
     // Separador Pessoal — sempre visível
     { id: '__sep_pessoal', separador: true, label: 'Pessoal' },
@@ -597,7 +600,8 @@ export default function DashboardFuncionario() {
       {pagina === 'tarefas-onboarding' && <PaginaMinhasTarefas tarefas={tarefas} recarregar={carregarDados} modo="onboarding" />}
       {pagina === 'tarefas-minhas' && <PaginaMinhasTarefas tarefas={tarefas} recarregar={carregarDados} modo="minhas" />}
       {pagina === 'agenda' && <Agenda cargo="funcionario" usuarioAtualId={usuario?.id} />}
-      {pagina === 'implantacao' && <Implantacao setPagina={setPagina} setClienteDetalheId={setClienteDetalheId} />}
+      {pagina === 'implantacao' && <Implantacao setPagina={setPagina} setClienteDetalheId={setClienteDetalheId} nomeNovoOnboarding={nomeNovoOnboarding} onNomeNovoOnboardingUsado={()=>setNomeNovoOnboarding('')} />}
+      {pagina === 'crm' && <CRM onIniciarOnboarding={(lead)=>{ setNomeNovoOnboarding(lead.nomeEmpresa || lead.nome); setPagina('implantacao') }} />}
       {pagina === 'modelos' && <ModelosOnboarding />}
       {pagina === 'checklist' && <BancoAtividades />}
       {pagina === 'clientes' && <Clientes detalheInicial={clienteDetalheId} abaInicial="onboardings" onDetalheAberto={()=>setClienteDetalheId(null)} />}

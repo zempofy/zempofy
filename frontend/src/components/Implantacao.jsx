@@ -346,8 +346,8 @@ const dataParaISO = (v) => {
   return `${nums.slice(4)}-${nums.slice(2,4)}-${nums.slice(0,2)}`
 }
 
-function ModalNovaImplantacao({ fechar, onCriado }) {
-  const [nomeCliente, setNomeCliente] = useState('')
+function ModalNovaImplantacao({ fechar, onCriado, nomeInicial = '' }) {
+  const [nomeCliente, setNomeCliente] = useState(nomeInicial)
   const [cnpj, setCnpj] = useState('')
   const [modeloId, setModeloId] = useState('')
   const [modelos, setModelos] = useState([])
@@ -432,12 +432,23 @@ function ModalNovaImplantacao({ fechar, onCriado }) {
 }
 
 // ── Tela principal ──
-export default function Implantacao({ setPagina, setClienteDetalheId }) {
+export default function Implantacao({ setPagina, setClienteDetalheId, nomeNovoOnboarding, onNomeNovoOnboardingUsado }) {
   const [implantacoes, setImplantacoes] = useState([])
   const [carregando, setCarregando] = useState(true)
   const [busca, setBusca] = useState('')
   const [concluídosAbertos, setConcluídosAbertos] = useState(false)
   const [modalAberto, setModalAberto] = useState(false)
+  const [nomeParaNovaImplantacao, setNomeParaNovaImplantacao] = useState('')
+
+  // Veio do CRM com um nome de lead pra pré-preencher — abre o modal de nova implantação já com ele.
+  // Guarda numa variável local (não depende mais do prop) pra não perder o valor se o pai limpar o estado dele.
+  useEffect(() => {
+    if (nomeNovoOnboarding) {
+      setNomeParaNovaImplantacao(nomeNovoOnboarding)
+      setModalAberto(true)
+      onNomeNovoOnboardingUsado && onNomeNovoOnboardingUsado()
+    }
+  }, [nomeNovoOnboarding])
 
   // ── Tour ──
   const [tourAtivo, setTourAtivo] = useState(false)
@@ -643,7 +654,11 @@ export default function Implantacao({ setPagina, setClienteDetalheId }) {
         )}
 
       {modalAberto && (
-        <ModalNovaImplantacao fechar={() => setModalAberto(false)} onCriado={buscar} />
+        <ModalNovaImplantacao
+          fechar={() => { setModalAberto(false); setNomeParaNovaImplantacao('') }}
+          onCriado={buscar}
+          nomeInicial={nomeParaNovaImplantacao}
+        />
       )}
     </div>
   )

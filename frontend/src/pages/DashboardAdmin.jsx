@@ -1564,6 +1564,7 @@ export default function DashboardAdmin() {
   const isTitular = usuario?.cargo === 'admin'
   const [pagina, setPagina] = useState('inicio')
   const [clienteDetalheId, setClienteDetalheId] = useState(null)
+  const [nomeNovoOnboarding, setNomeNovoOnboarding] = useState('')
   const [tarefas, setTarefas] = useState([])
   const [funcionarios, setFuncionarios] = useState([])
 
@@ -1629,7 +1630,7 @@ export default function DashboardAdmin() {
   ]
 
   const renderPagina = () => {
-    if (pagina === 'crm') return <CRM />
+    if (pagina === 'crm') return <CRM onIniciarOnboarding={(lead)=>{ setNomeNovoOnboarding(lead.nomeEmpresa || lead.nome); setPagina('implantacao') }} />
     if (pagina === 'alertas-onboarding') return <ConfigAlertas />
     if (pagina === 'inicio') return <PaginaInicio usuario={usuario} setPagina={setPagina} isTitular={true} temPermissao={temPermissao} />
     if (pagina === 'equipe') return <PaginaEquipe usuario={usuario} equipe={funcionarios} recarregar={carregarDados} />
@@ -1640,7 +1641,7 @@ export default function DashboardAdmin() {
     if (pagina === 'chat') return <Chat setPagina={setPagina} />
     if (pagina === 'anotacoes') return <Anotacoes />
     if (pagina === 'mural') return <Mural />
-    if (pagina === 'implantacao') return <Implantacao setPagina={setPagina} setClienteDetalheId={setClienteDetalheId} />
+    if (pagina === 'implantacao') return <Implantacao setPagina={setPagina} setClienteDetalheId={setClienteDetalheId} nomeNovoOnboarding={nomeNovoOnboarding} onNomeNovoOnboardingUsado={()=>setNomeNovoOnboarding('')} />
     if (pagina === 'modelos') return <ModelosOnboarding />
     if (pagina === 'checklist') return <BancoAtividades />
     if (pagina === 'setores') return <Setores funcionarios={funcionarios} onSalvo={async () => {
