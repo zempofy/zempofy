@@ -4,6 +4,7 @@ const { autenticar, temPermissao } = require('../middleware/auth');
 const Cliente = require('../models/Cliente');
 const Implantacao = require('../models/Implantacao');
 const LancamentoSetor = require('../models/LancamentoSetor');
+const Setor = require('../models/Setor');
 
 const router = express.Router();
 
@@ -114,6 +115,16 @@ const podeEditarCompetencia = (usuario, setorId, competencia, clienteAtivo) => {
 const temAcessoAoSetor = (usuario, setorId) =>
   usuario.cargo === 'admin' || usuario.setores?.some(s => s.toString() === setorId);
 
+// Mesma normalização usada no frontend (CONFIG_DEMANDA é chaveado por nome de setor normalizado)
+const normalizarNome = (str = '') => str.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().trim();
+
+// Garante que cliente.configSetores[setorNome] exista antes de gravar nele
+const garantirConfigSetor = (cliente, setorNome) => {
+  if (!cliente.configSetores) cliente.configSetores = {};
+  if (!cliente.configSetores[setorNome]) cliente.configSetores[setorNome] = { situacao: null, camposExtras: [] };
+  return cliente.configSetores[setorNome];
+};
+
 // GET /api/clientes/:id/lancamentos/:setorId — lista os lançamentos já salvos (pra montar as pastas de ano/mês)
 router.get('/:id/lancamentos/:setorId', autenticar, async (req, res) => {
   try {
@@ -191,29 +202,65 @@ router.post('/:id/campos-extras/:setorId', autenticar, async (req, res) => {
     const { label, tipo } = req.body;
     if (!label?.trim()) return res.status(400).json({ erro: 'Nome do campo é obrigatório.' });
 
+    const setor = await Setor.findById(req.params.setorId).select('nome').lean();
+    if (!setor) return res.status(404).json({ erro: 'Setor não encontrado.' });
+    const setorNome = normalizarNome(setor.nome);
+
     const cliente = await Cliente.findOne({ _id: req.params.id, empresa: req.usuario.empresa._id });
     if (!cliente) return res.status(404).json({ erro: 'Cliente não encontrado.' });
     if (cliente.status === 'inativo') return res.status(403).json({ erro: 'Cliente inativo — reative pra poder editar.' });
 
+    const configSetor = garantirConfigSetor(cliente, setorNome);
+
     const slug = label.trim().toLowerCase()
       .normalize('NFD').replace(/[̀-ͯ]/g, '')
       .replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'campo';
-    const existentesSetor = cliente.camposExtrasDemanda.filter(c => c.setor.toString() === req.params.setorId);
     let id = slug;
     let n = 1;
-    while (existentesSetor.some(c => c.id === id)) { n++; id = `${slug}_${n}`; }
+    while (configSetor.camposExtras.some(c => c.id === id)) { n++; id = `${slug}_${n}`; }
 
-    cliente.camposExtrasDemanda.push({
-      setor: req.params.setorId,
+    const tiposValidos = ['moeda', 'texto', 'numero', 'booleano'];
+    configSetor.camposExtras.push({
       id,
       label: label.trim(),
-      tipo: tipo === 'texto' ? 'texto' : 'moeda',
+      tipo: tiposValidos.includes(tipo) ? tipo : 'moeda',
     });
+
+    cliente.markModified('configSetores');
     await cliente.save();
 
-    res.status(201).json(cliente.camposExtrasDemanda);
+    res.status(201).json(cliente.configSetores[setorNome]);
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao criar campo.' });
+  }
+});
+
+// PATCH /api/clientes/:id/config-setor/:setorId — salva a "situação" (resposta da pergunta inicial) do setor pra este cliente
+router.patch('/:id/config-setor/:setorId', autenticar, async (req, res) => {
+  try {
+    if (!temAcessoAoSetor(req.usuario, req.params.setorId)) {
+      return res.status(403).json({ erro: 'Você não tem acesso a este setor.' });
+    }
+    const { situacao } = req.body;
+    if (!situacao) return res.status(400).json({ erro: 'Situação é obrigatória.' });
+
+    const setor = await Setor.findById(req.params.setorId).select('nome').lean();
+    if (!setor) return res.status(404).json({ erro: 'Setor não encontrado.' });
+    const setorNome = normalizarNome(setor.nome);
+
+    const cliente = await Cliente.findOne({ _id: req.params.id, empresa: req.usuario.empresa._id });
+    if (!cliente) return res.status(404).json({ erro: 'Cliente não encontrado.' });
+    if (cliente.status === 'inativo') return res.status(403).json({ erro: 'Cliente inativo — reative pra poder editar.' });
+
+    const configSetor = garantirConfigSetor(cliente, setorNome);
+    configSetor.situacao = situacao;
+
+    cliente.markModified('configSetores');
+    await cliente.save();
+
+    res.json(cliente.configSetores[setorNome]);
+  } catch (err) {
+    res.status(500).json({ erro: 'Erro ao salvar configuração do setor.' });
   }
 });
 

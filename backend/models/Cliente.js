@@ -60,13 +60,10 @@ const clienteSchema = new mongoose.Schema({
   origem: { type: String, enum: ['manual', 'onboarding'], default: 'manual' },
   observacoes: { type: String, default: '' },
 
-  // Campos extras da Demanda mensal, criados sob demanda e específicos deste cliente
-  camposExtrasDemanda: [{
-    setor: { type: mongoose.Schema.Types.ObjectId, ref: 'Setor', required: true },
-    id: { type: String, required: true },
-    label: { type: String, required: true },
-    tipo: { type: String, enum: ['moeda', 'texto'], default: 'moeda' },
-  }],
+  // Config por setor deste cliente: resposta da "pergunta inicial" do setor (situação) +
+  // campos customizados criados na Demanda, específicos deste cliente.
+  // Formato: { [setorNomeNormalizado]: { situacao: String, camposExtras: [{id,label,tipo}] } }
+  configSetores: { type: Object, default: {} },
 
   // Particularidades do cliente por setor (anotações livres, independentes de competência)
   particularidadesSetor: [{

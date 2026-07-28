@@ -98,8 +98,72 @@ const CONFIG_DEMANDA = {
       ],
       // mei: definir campos quando for a vez
     }
+  },
+
+  dp: {
+    perguntaInicial: {
+      pergunta: 'Em qual situação essa empresa se encaixa?',
+      opcoes: [
+        { valor:'pro_labore', label:'Só pró-labore' },
+        { valor:'clt', label:'Somente CLT' },
+        { valor:'ambos', label:'CLT + Pró-labore' },
+      ]
+    },
+    modulos: {
+      clt: {
+        ativoQuando: ['clt','ambos'],
+        campos: [
+          { id:'funcionariosAtivos', label:'Funcionários ativos no mês', tipo:'numero' },
+          { id:'folhaProcessada', label:'Folha de pagamento processada', tipo:'booleano' },
+          { id:'admissoes', label:'Nº de admissões no mês', tipo:'numero' },
+          { id:'rescisoes', label:'Nº de rescisões no mês', tipo:'numero' },
+          { id:'ferias', label:'Nº de férias programadas/pagas no mês', tipo:'numero' },
+          { id:'esocialEnviado', label:'eSocial enviado', tipo:'booleano' },
+          { id:'fgtsInssRecolhidos', label:'FGTS/INSS recolhidos', tipo:'booleano' },
+        ],
+        camposSazonais: {
+          meses: [11,12],
+          campos: [
+            { id:'decimoTerceiroParcela1', label:'13º salário — 1ª parcela', tipo:'moeda' },
+            { id:'decimoTerceiroParcela2', label:'13º salário — 2ª parcela', tipo:'moeda' },
+          ]
+        }
+      },
+      proLabore: {
+        ativoQuando: ['pro_labore','ambos'],
+        campos: [
+          { id:'valorProLabore', label:'Valor do pró-labore', tipo:'moeda' },
+          { id:'inssProLabore', label:'INSS retido (11%)', tipo:'moeda' },
+          { id:'irrfProLabore', label:'IRRF retido', tipo:'moeda' },
+          { id:'guiaPaga', label:'Guia paga (até dia 20)', tipo:'booleano' },
+        ]
+      }
+    },
+    observacoesCompartilhadas: true
   }
-  // contabil, dp, financeiro: adicionar aqui quando escopo fechar
+  // contabil, financeiro: adicionar aqui quando escopo fechar
+}
+
+// Monta a lista de campos fixos pra um setor, dado o contexto (regime do cliente,
+// situação respondida, competência sendo vista). Suporta os dois formatos de config:
+// porRegime (Fiscal) e modulos com ativoQuando/camposSazonais (DP e futuros setores).
+const camposFixosDoSetor = (config, { regime, situacao, competencia }) => {
+  if (!config) return []
+  if (config.porRegime) return config.porRegime[regime] || []
+  if (config.modulos) {
+    const campos = []
+    Object.values(config.modulos).forEach(mod => {
+      if (!mod.ativoQuando.includes(situacao)) return
+      campos.push(...mod.campos)
+      if (mod.camposSazonais) {
+        const mes = Number(competencia.slice(5,7))
+        if (mod.camposSazonais.meses.includes(mes)) campos.push(...mod.camposSazonais.campos)
+      }
+    })
+    if (config.observacoesCompartilhadas) campos.push({ id:'observacoesGerais', label:'Observações', tipo:'texto' })
+    return campos
+  }
+  return []
 }
 
 const labelRegime = (v) => REGIMES.find(r=>r.value===v)?.label || v
@@ -786,14 +850,14 @@ function TelaDetalhe({ clienteId, voltar, onAtualizado, abaInicial = 'info' }) {
 
       {aba==='demanda'&&setorAtivo&&(
         <AbaDemanda key={setorAtivo._id} clienteId={clienteId} setor={setorAtivo} clienteRegime={dados.regime}
-          camposExtras={(dados.camposExtrasDemanda||[]).filter(c=>c.setor===setorAtivo._id)}
-          onCampoCriado={buscar}/>
+          configSetor={dados.configSetores?.[normalizarNome(setorAtivo.nome)]}
+          onAtualizado={buscar}/>
       )}
 
       {aba==='historico'&&setorAtivo&&(
         <AbaHistorico key={setorAtivo._id} clienteId={clienteId} setor={setorAtivo} clienteRegime={dados.regime}
-          camposExtras={(dados.camposExtrasDemanda||[]).filter(c=>c.setor===setorAtivo._id)}
-          onCampoCriado={buscar}/>
+          configSetor={dados.configSetores?.[normalizarNome(setorAtivo.nome)]}
+          onAtualizado={buscar}/>
       )}
 
       {editando&&<div style={{ position:'fixed', inset:0, background:'var(--fundo)', zIndex:9999, padding:'32px', overflowY:'auto' }}><FormCliente cliente={dados} fechar={()=>setEditando(false)} onSalvo={()=>{buscar();onAtualizado()}} /></div>}
@@ -821,8 +885,41 @@ const competenciaAtual = () => new Date().toISOString().slice(0,7)
 const INICIO_DEMANDA_ANO = 2026
 const MESES_LABEL = ['01 - Janeiro','02 - Fevereiro','03 - Março','04 - Abril','05 - Maio','06 - Junho','07 - Julho','08 - Agosto','09 - Setembro','10 - Outubro','11 - Novembro','12 - Dezembro']
 
+// Renderiza o valor de um campo — editável (input por tipo) ou só leitura
+function CampoValor({ tipo, valor, onChange, disabled }) {
+  if (disabled) {
+    if (tipo === 'moeda') return <div style={{ ...s.inp, background:'var(--card)', color:'var(--texto)' }}>{formatMoeda(valor)}</div>
+    if (tipo === 'booleano') return <div style={{ ...s.inp, background:'var(--card)', color:'var(--texto)' }}>{valor===true?'Sim':valor===false?'Não':'—'}</div>
+    return <div style={{ ...s.inp, background:'var(--card)', color:'var(--texto)' }}>{(valor===0?'0':valor)||'—'}</div>
+  }
+  if (tipo === 'moeda') {
+    return <input style={s.inp}
+      value={valor ? Number(valor).toLocaleString('pt-BR',{minimumFractionDigits:2}) : ''}
+      onChange={e => { const nums = e.target.value.replace(/\D/g,''); onChange(nums ? parseInt(nums,10)/100 : '') }}
+      placeholder="0,00" />
+  }
+  if (tipo === 'numero') {
+    return <input style={s.inp} type="number" value={valor ?? ''} onChange={e=>onChange(e.target.value===''?'':Number(e.target.value))} />
+  }
+  if (tipo === 'booleano') {
+    return (
+      <div style={{ display:'flex', gap:'8px' }}>
+        {[{v:true,l:'Sim'},{v:false,l:'Não'}].map(op=>(
+          <button key={String(op.v)} type="button" onClick={()=>onChange(op.v)} style={{
+            flex:1, padding:'9px', borderRadius:'8px', cursor:'pointer', fontFamily:'Inter,sans-serif', fontSize:'0.85rem', fontWeight:'600',
+            border:`1px solid ${valor===op.v?'rgba(0,177,65,0.3)':'var(--borda)'}`,
+            background: valor===op.v?'rgba(0,177,65,0.08)':'var(--input)',
+            color: valor===op.v?'var(--verde)':'var(--texto-apagado)',
+          }}>{op.l}</button>
+        ))}
+      </div>
+    )
+  }
+  return <input style={s.inp} value={valor||''} onChange={e=>onChange(e.target.value)} />
+}
+
 // ── Formulário de uma competência (mês atual ou mês passado, se quem vê tiver permissão) ──
-function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, camposExtras=[], onCampoCriado }) {
+function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, configSetor, onAtualizado }) {
   const { mostrar } = useToast()
   const [carregando, setCarregando] = useState(true)
   const [salvando, setSalvando] = useState(false)
@@ -832,10 +929,12 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
   const [novoLabel, setNovoLabel] = useState('')
   const [novoTipo, setNovoTipo] = useState('moeda')
   const [criando, setCriando] = useState(false)
+  const [respondendo, setRespondendo] = useState(false)
 
   const config = CONFIG_DEMANDA[normalizarNome(setor.nome)]
-  const camposBase = config?.porRegime?.[clienteRegime] || []
-  const campos = [...camposBase, ...camposExtras]
+  const situacao = configSetor?.situacao
+  const camposExtras = configSetor?.camposExtras || []
+  const campos = [...camposFixosDoSetor(config, { regime: clienteRegime, situacao, competencia }), ...camposExtras]
 
   useEffect(() => {
     setCarregando(true)
@@ -865,14 +964,42 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
       await api.post(`/clientes/${clienteId}/campos-extras/${setor._id}`, { label: novoLabel.trim(), tipo: novoTipo })
       setNovoLabel(''); setNovoTipo('moeda'); setCriandoCampo(false)
       mostrar('Campo criado!', 'sucesso')
-      onCampoCriado && onCampoCriado()
+      onAtualizado && onAtualizado()
     } catch (e) { mostrar(e.response?.data?.erro || 'Erro ao criar campo.', 'erro') }
     finally { setCriando(false) }
   }
 
+  const responderPergunta = async (valor) => {
+    setRespondendo(true)
+    try {
+      await api.patch(`/clientes/${clienteId}/config-setor/${setor._id}`, { situacao: valor })
+      onAtualizado && onAtualizado()
+    } catch (e) { mostrar(e.response?.data?.erro || 'Erro ao salvar.', 'erro') }
+    finally { setRespondendo(false) }
+  }
+
   if (carregando) return <p style={{ color:'var(--texto-apagado)' }}>Carregando...</p>
 
-  if (!clienteRegime) return <p style={{ color:'var(--texto-apagado)', fontSize:'0.875rem' }}>Este cliente não tem regime tributário definido — edite o cadastro pra habilitar a demanda deste setor.</p>
+  if (config?.porRegime && !clienteRegime) return <p style={{ color:'var(--texto-apagado)', fontSize:'0.875rem' }}>Este cliente não tem regime tributário definido — edite o cadastro pra habilitar a demanda deste setor.</p>
+
+  if (config?.perguntaInicial && !situacao && podeEditar) {
+    return (
+      <div>
+        <p style={{ fontSize:'0.95rem', fontWeight:'600', color:'var(--texto)', marginBottom:'14px' }}>{config.perguntaInicial.pergunta}</p>
+        <div style={{ display:'flex', flexDirection:'column', gap:'8px', maxWidth:'320px' }}>
+          {config.perguntaInicial.opcoes.map(op=>(
+            <button key={op.valor} onClick={()=>responderPergunta(op.valor)} disabled={respondendo} style={{
+              padding:'12px 16px', borderRadius:'10px', textAlign:'left', cursor:'pointer', fontFamily:'Inter,sans-serif', fontSize:'0.875rem', fontWeight:'500',
+              border:'1px solid var(--borda)', background:'var(--card)', color:'var(--texto)',
+            }}>{op.label}</button>
+          ))}
+        </div>
+      </div>
+    )
+  }
+  if (config?.perguntaInicial && !situacao && !podeEditar) {
+    return <p style={{ color:'var(--texto-apagado)', fontSize:'0.875rem' }}>Ainda não foi respondida a pergunta inicial deste setor pra este cliente.</p>
+  }
 
   return (
     <div>
@@ -880,23 +1007,12 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
         Competência {competencia}{!podeEditar ? ' · Somente leitura' : ''}
         {lancamento?.preenchidoPor?.nome && ` · Preenchido por ${lancamento.preenchidoPor.nome}`}
       </p>
-      {campos.length === 0 && <p style={{ color:'var(--texto-apagado)', fontSize:'0.875rem', marginBottom:'16px' }}>Nenhum campo configurado ainda para o regime "{labelRegime(clienteRegime)}"{podeEditar?'. Adicione um campo abaixo.':'.'}</p>}
+      {campos.length === 0 && <p style={{ color:'var(--texto-apagado)', fontSize:'0.875rem', marginBottom:'16px' }}>Nenhum campo configurado ainda{podeEditar?'. Adicione um campo abaixo.':'.'}</p>}
       {campos.length > 0 && (
         <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))', gap:'14px', marginBottom:'20px' }}>
           {campos.map(c => (
             <Campo key={c.id} label={c.label}>
-              {podeEditar ? (
-                c.tipo === 'moeda' ? (
-                  <input style={s.inp}
-                    value={valores[c.id] ? Number(valores[c.id]).toLocaleString('pt-BR',{minimumFractionDigits:2}) : ''}
-                    onChange={e => { const nums = e.target.value.replace(/\D/g,''); setValor(c.id, nums ? parseInt(nums,10)/100 : '') }}
-                    placeholder="0,00" />
-                ) : (
-                  <input style={s.inp} value={valores[c.id]||''} onChange={e=>setValor(c.id, e.target.value)} />
-                )
-              ) : (
-                <div style={{ ...s.inp, background:'var(--card)', color:'var(--texto)' }}>{c.tipo==='moeda' ? formatMoeda(valores[c.id]) : (valores[c.id]||'—')}</div>
-              )}
+              <CampoValor tipo={c.tipo} valor={valores[c.id]} onChange={v=>setValor(c.id, v)} disabled={!podeEditar} />
             </Campo>
           ))}
         </div>
@@ -909,11 +1025,13 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
               <input style={s.inp} value={novoLabel} onChange={e=>setNovoLabel(e.target.value)} placeholder="Ex: Diferencial de alíquota" autoFocus onKeyDown={e=>e.key==='Enter'&&criarCampo()} />
             </Campo>
           </div>
-          <div style={{ width:'140px' }}>
+          <div style={{ width:'150px' }}>
             <Campo label="Tipo">
               <select style={s.inp} value={novoTipo} onChange={e=>setNovoTipo(e.target.value)}>
                 <option value="moeda">Valor (R$)</option>
                 <option value="texto">Texto</option>
+                <option value="numero">Número</option>
+                <option value="booleano">Sim / Não</option>
               </select>
             </Campo>
           </div>
@@ -986,12 +1104,12 @@ function AbaParticularidades({ clienteId, setor, clienteAtivo, particularidades=
 }
 
 // ── Demanda mensal (atalho pro mês corrente) ──
-function AbaDemanda({ clienteId, setor, clienteRegime, camposExtras, onCampoCriado }) {
-  return <FormularioCompetencia clienteId={clienteId} setor={setor} clienteRegime={clienteRegime} competencia={competenciaAtual()} camposExtras={camposExtras} onCampoCriado={onCampoCriado}/>
+function AbaDemanda({ clienteId, setor, clienteRegime, configSetor, onAtualizado }) {
+  return <FormularioCompetencia clienteId={clienteId} setor={setor} clienteRegime={clienteRegime} competencia={competenciaAtual()} configSetor={configSetor} onAtualizado={onAtualizado}/>
 }
 
 // ── Histórico: pastas de ano → mês → dados daquele mês ──
-function AbaHistorico({ clienteId, setor, clienteRegime, camposExtras, onCampoCriado }) {
+function AbaHistorico({ clienteId, setor, clienteRegime, configSetor, onAtualizado }) {
   const { mostrar } = useToast()
   const [carregando, setCarregando] = useState(true)
   const [lancamentos, setLancamentos] = useState([])
@@ -1024,7 +1142,7 @@ function AbaHistorico({ clienteId, setor, clienteRegime, camposExtras, onCampoCr
       <div>
         <button onClick={()=>setMesSelecionado(null)} style={btnVoltar}><Icone.ChevronLeft size={14}/> {MESES_LABEL[Number(mes)-1]} de {ano}</button>
         <FormularioCompetencia clienteId={clienteId} setor={setor} clienteRegime={clienteRegime} competencia={mesSelecionado}
-          camposExtras={camposExtras} onCampoCriado={()=>{ onCampoCriado&&onCampoCriado(); carregarLista() }}/>
+          configSetor={configSetor} onAtualizado={()=>{ onAtualizado&&onAtualizado(); carregarLista() }}/>
       </div>
     )
   }
