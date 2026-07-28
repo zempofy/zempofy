@@ -100,7 +100,7 @@ const CONFIG_DEMANDA = {
     }
   },
 
-  dp: {
+  'departamento pessoal': {
     perguntaInicial: {
       pergunta: 'Em qual situação essa empresa se encaixa?',
       opcoes: [
