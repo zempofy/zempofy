@@ -695,8 +695,9 @@ function BarraSetoresCliente({ setores, setorAtivo, setorClicavel, onInformacoes
             ref={el => { itemRefs.current[item.chave] = el }}
             onClick={() => item.setor ? onSetor(item.setor) : onInformacoes()}
             style={{
-              position:'relative', zIndex:1, width:'76px', flexShrink:0, padding:'8px 6px', border:'none', background:'none',
-              cursor: clicavel ? 'pointer' : 'default', fontFamily:'Inter,sans-serif', fontSize:'0.72rem', fontWeight:'600', lineHeight:'1.25',
+              position:'relative', zIndex:1, width:'104px', flexShrink:0, padding:'8px 10px', border:'none', background:'none',
+              display:'flex', alignItems:'center', justifyContent:'center', minHeight:'36px',
+              cursor: clicavel ? 'pointer' : 'default', fontFamily:'Inter,sans-serif', fontSize:'0.74rem', fontWeight:'600', lineHeight:'1.25',
               whiteSpace:'normal', textAlign:'center', color: ehAtivo ? (item.setor?.cor || 'var(--texto)') : 'var(--texto-apagado)',
               transition:'color 0.2s',
             }}>
