@@ -104,11 +104,12 @@ router.delete('/:id', autenticar, temPermissao('gerenciarClientes'), async (req,
 // ── Demanda mensal por setor ──
 const competenciaAtual = () => new Date().toISOString().slice(0, 7); // "YYYY-MM"
 
-// Cliente inativo: ninguém edita, nem titular. Mês corrente: quem tem o setor (ou admin) edita. Mês fechado (passado): só o titular edita.
+// Cliente inativo: ninguém edita, nem titular. Só o mês corrente é editável, sem exceção —
+// competência passada é sempre somente leitura (nem admin edita, mês fechado é fechado).
 const podeEditarCompetencia = (usuario, setorId, competencia, clienteAtivo) => {
   if (!clienteAtivo) return false;
-  if (usuario.cargo === 'admin') return true;
   if (competencia !== competenciaAtual()) return false;
+  if (usuario.cargo === 'admin') return true;
   return usuario.setores?.some(s => s.toString() === setorId);
 };
 
@@ -176,7 +177,7 @@ router.post('/:id/lancamentos/:setorId/:competencia', autenticar, async (req, re
     if (!podeEditarCompetencia(req.usuario, req.params.setorId, competencia, cliente.status !== 'inativo')) {
       const motivo = cliente.status === 'inativo'
         ? 'Cliente inativo — reative pra poder editar.'
-        : (competencia === competenciaAtual() ? 'Você não tem acesso a este setor.' : 'Esta competência já está fechada — só o titular pode editar.');
+        : (competencia === competenciaAtual() ? 'Você não tem acesso a este setor.' : 'Esta competência já está fechada e não pode mais ser editada.');
       return res.status(403).json({ erro: motivo });
     }
 
