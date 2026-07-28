@@ -202,7 +202,7 @@ function Secao({ titulo, children }) {
 function Campo({ label, obrigatorio, children }) {
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:'6px' }}>
-      <label style={{ fontSize:'0.7rem', fontWeight:'600', color:'var(--texto-apagado)', textTransform:'uppercase', letterSpacing:'1px', fontFamily:'Inter,sans-serif' }}>
+      <label style={{ fontSize:'0.7rem', fontWeight:'600', color:'var(--texto-apagado)', textTransform:'uppercase', letterSpacing:'1px', fontFamily:'Inter,sans-serif', lineHeight:'1.3', minHeight:'2.6em', display:'flex', alignItems:'flex-end' }}>
         {label}{obrigatorio && <span style={{ color:'#f87171', marginLeft:'3px' }}>*</span>}
       </label>
       {children}
@@ -1012,7 +1012,7 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
   }
 
   const pillInfo = config?.porRegime
-    ? { label:'Regime', valor: labelRegime(clienteRegime), hint:'editar no cadastro do cliente' }
+    ? { label:'Regime', valor: labelRegime(clienteRegime), hint: null }
     : (config?.perguntaInicial && situacao
         ? { label:'Situação', valor: config.perguntaInicial.opcoes.find(o=>o.valor===situacao)?.label || situacao, hint: null }
         : null)
