@@ -17,6 +17,7 @@ const ETAPAS = [
 ]
 
 const formatMoeda = (v) => `R$ ${Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}/mês`
+const mascaraTel = (v) => { const d=v.replace(/\D/g,'').slice(0,11); return d.length<=10?d.replace(/(\d{2})(\d{4})(\d)/,'($1) $2-$3'):d.replace(/(\d{2})(\d{5})(\d)/,'($1) $2-$3') }
 
 const s = {
   overlay: { position:'fixed', inset:0, background:'rgba(0,0,0,0.6)', zIndex:9999, display:'flex', alignItems:'center', justifyContent:'center', padding:'20px' },
@@ -105,7 +106,7 @@ function DetalheDrawer({ lead, fechar, onMoverEtapa, isTitular, podeGerenciar, o
 
         <div style={{ padding:'20px 24px', display:'flex', flexDirection:'column', gap:'20px', flex:1 }}>
           <div style={{ background:'rgba(0,177,65,0.06)', border:'1px solid rgba(0,177,65,0.15)', borderRadius:'10px', padding:'12px 16px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-            <span style={{ fontSize:'0.78rem', color:'var(--texto-apagado)', fontFamily:'Inter,sans-serif' }}>Valor estimado</span>
+            <span style={{ fontSize:'0.78rem', color:'var(--texto-apagado)', fontFamily:'Inter,sans-serif' }}>Valor do serviço</span>
             <span style={{ fontSize:'1rem', fontWeight:'700', color:'var(--verde)', fontFamily:'Inter,sans-serif' }}>{formatMoeda(lead.valor)}</span>
           </div>
 
@@ -204,11 +205,11 @@ function FormLead({ lead, fechar, onSalvo }) {
   }
 
   return (
-    <div style={s.overlay} onClick={fechar}>
+    <div style={s.overlay}>
       <div style={s.modal} onClick={e=>e.stopPropagation()}>
         <div style={s.modalTopo}>
           <span style={s.modalTitulo}>{lead ? 'Editar lead' : 'Novo lead'}</span>
-          <button style={s.btnX} onClick={fechar}>✕</button>
+          <button style={s.btnX} onClick={fechar} title="Fechar">✕</button>
         </div>
         <div style={s.modalCorpo}>
           {erro && <p style={s.erro}>{erro}</p>}
@@ -220,14 +221,14 @@ function FormLead({ lead, fechar, onSalvo }) {
           </Campo>
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px' }}>
             <Campo label="Telefone">
-              <input style={s.input} value={form.telefone} onChange={e=>set('telefone',e.target.value)} placeholder="(31) 99999-9999" />
+              <input style={s.input} value={form.telefone} onChange={e=>set('telefone',mascaraTel(e.target.value))} placeholder="(31) 99999-9999" maxLength={15} />
             </Campo>
             <Campo label="E-mail">
               <input style={s.input} value={form.email} onChange={e=>set('email',e.target.value)} placeholder="contato@empresa.com" />
             </Campo>
           </div>
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px' }}>
-            <Campo label="Valor estimado (R$/mês)">
+            <Campo label="Valor do serviço">
               <input style={s.input}
                 value={form.valorCentavos ? (parseInt(String(form.valorCentavos).replace(/\D/g,''),10)/100).toLocaleString('pt-BR',{minimumFractionDigits:2}) : ''}
                 onChange={e=>{ const nums=e.target.value.replace(/\D/g,''); set('valorCentavos', nums?parseInt(nums,10):'') }}
