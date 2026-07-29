@@ -8,7 +8,7 @@ export function PreferenciasProvider({ children }) {
 
   const tamanhosFonte = {
     0: '13px',
-    1: '16px',
+    1: '15px',
     2: '17px',
   }
 
