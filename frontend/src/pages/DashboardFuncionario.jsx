@@ -564,6 +564,7 @@ export default function DashboardFuncionario() {
   // Verifica se tem algum item na seção Escritório pra mostrar o separador
   const menuItens = [
     { id: 'inicio', label: 'Início', icone: <Icone.Home size={16} /> },
+    { id: 'crm', label: 'CRM', icone: <Icone.Users size={16} /> },
 
     // Escritório — Clientes sempre visível (acesso de visualização pra todos); Onboarding só com permissão
     { id: '__sep_escritorio', separador: true, label: 'Escritório' },
@@ -571,7 +572,6 @@ export default function DashboardFuncionario() {
       { id: 'implantacao', label: 'Onboarding', icone: <Icone.ClipboardList size={16} /> },
     ] : []),
     { id: 'clientes', label: 'Clientes', icone: <Icone.Users size={16} /> },
-    { id: 'crm', label: 'CRM', icone: <Icone.Users size={16} /> },
 
     // Separador Pessoal — sempre visível
     { id: '__sep_pessoal', separador: true, label: 'Pessoal' },

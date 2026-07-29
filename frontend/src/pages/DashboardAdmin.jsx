@@ -1592,7 +1592,7 @@ export default function DashboardAdmin() {
   // Sidebar dinâmico — cada item só aparece se tiver permissão
   const menuItens = [
     { id: 'inicio', label: 'Início', icone: <Icone.Home size={16} /> },
-    { id: 'crm', label: 'CRM', icone: <Icone.Users size={16} />, badge: 'Beta' },
+    { id: 'crm', label: 'CRM', icone: <Icone.Users size={16} /> },
 
     // Separador — Escritório
     { id: '__sep_escritorio', separador: true, label: 'Escritório' },
