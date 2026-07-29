@@ -46,13 +46,6 @@ const ATIVIDADES = [
   { value:'comercio_industria', label:'Comércio e Indústria' },
   { value:'todos', label:'Serviço, Comércio e Indústria' },
 ]
-const PERIODICIDADES = [
-  { value:'mensal', label:'Mensal' },
-  { value:'trimestral', label:'Trimestral' },
-  { value:'semestral', label:'Semestral' },
-  { value:'anual', label:'Anual' },
-  { value:'esporadico', label:'Esporádico' },
-]
 
 const normalizarNome = (str='') => str.normalize('NFD').replace(/\p{Diacritic}/gu,'').toLowerCase().trim()
 
@@ -193,7 +186,6 @@ const nomeMes = (competencia) => MESES_NOME[Number(competencia.slice(5,7))-1]
 
 const labelRegime = (v) => REGIMES.find(r=>r.value===v)?.label || v
 const labelPorte = (v) => PORTES.find(r=>r.value===v)?.label || v
-const labelPeriodicidade = (v) => PERIODICIDADES.find(p=>p.value===v)?.label || v
 const statusInfo = (v) => STATUS_OPTS.find(s=>s.value===v) || STATUS_OPTS[0]
 const formatMoeda = (v) => v ? `R$ ${Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2})}` : '—'
 const formatData = (v) => v ? new Date(v).toLocaleDateString('pt-BR') : '—'
@@ -244,8 +236,6 @@ function FormCliente({ cliente, fechar, onSalvo }) {
   const [erro, setErro] = useState('')
   const [camposComErro, setCamposComErro] = useState([])
   const [setoresList, setSetoresList] = useState([])
-  const [servicosCadastrados, setServicosCadastrados] = useState([])
-  const [mostrarListaServicos, setMostrarListaServicos] = useState(false)
 
   const [form, setForm] = useState({
     razaoSocial: cliente?.razaoSocial || '',
@@ -270,15 +260,11 @@ function FormCliente({ cliente, fechar, onSalvo }) {
       cep: cliente?.endereco?.cep||'',
     },
     socios: cliente?.socios?.length ? cliente.socios : (cliente?.socio?.nome ? [{ nome: cliente.socio.nome, cpf: cliente.socio.cpf||'', telefone: cliente.socio.telefone||'', email: cliente.socio.email||'', qualificacao:'' }] : [{ nome:'', cpf:'', telefone:'', email:'', qualificacao:'' }]),
-    servicosContratados: cliente?.servicosContratados?.length
-      ? cliente.servicosContratados.map(sv => ({ ...sv, dataInicio: isoData(sv.dataInicio), honorarioMensal: sv.honorarioMensal ? Math.round(Number(sv.honorarioMensal)*100) : '' }))
-      : [{ nome:'', dataInicio:'', honorarioMensal:'', diaVencimento:'', periodicidade:'mensal' }],
     observacoes: cliente?.observacoes || '',
   })
 
   useEffect(() => {
     api.get('/setores').then(r => setSetoresList(r.data)).catch(()=>{})
-    api.get('/servicos').then(r => setServicosCadastrados(r.data)).catch(()=>{})
   }, [])
 
   const set = (k,v) => { setForm(f=>({...f,[k]:v})); if(camposComErro.includes(k)) setCamposComErro(c=>c.filter(e=>e!==k)) }
@@ -287,22 +273,11 @@ function FormCliente({ cliente, fechar, onSalvo }) {
   const setSocio = (i,k,v) => setForm(f=>({...f,socios:f.socios.map((s,j)=>j===i?{...s,[k]:v}:s)}))
   const addSocio = () => setForm(f=>({...f,socios:[...f.socios,{nome:'',cpf:'',telefone:'',email:'',qualificacao:''}]}))
   const removeSocio = (i) => setForm(f=>({...f,socios:f.socios.filter((_,j)=>j!==i)}))
-  const setSv = (i,k,v) => setForm(f=>({...f,servicosContratados:f.servicosContratados.map((s,j)=>j===i?{...s,[k]:v}:s)}))
-  const addSv = () => setForm(f=>({...f,servicosContratados:[...f.servicosContratados,{nome:'',dataInicio:'',honorarioMensal:'',diaVencimento:'',periodicidade:'mensal'}]}))
-  const removeSv = (i) => setForm(f=>({...f,servicosContratados:f.servicosContratados.filter((_,j)=>j!==i)}))
 
   const toggleSetor = (id) => setForm(f=>({
     ...f,
     setores: f.setores.includes(id) ? f.setores.filter(s=>s!==id) : [...f.setores, id]
   }))
-
-  const usarServicoExistente = (sv) => {
-    const honorario = sv.honorarioPadrao ? Math.round(Number(sv.honorarioPadrao)*100) : ''
-    const novoSv = { nome:sv.nome, dataInicio:'', honorarioMensal:honorario, diaVencimento:'', periodicidade:sv.periodicidade||'mensal' }
-    const semVazios = form.servicosContratados.filter(s=>s.nome.trim())
-    setForm(f=>({...f,servicosContratados:[...semVazios,novoSv]}))
-    setMostrarListaServicos(false)
-  }
 
   // ── Busca CNPJ ──
   const buscarCNPJ = async () => {
@@ -394,9 +369,6 @@ function FormCliente({ cliente, fechar, onSalvo }) {
     const payload = {
       ...form,
       socios: form.socios.filter(s=>s.nome.trim()),
-      servicosContratados: form.servicosContratados
-        .filter(s=>s.nome.trim())
-        .map(sv=>({...sv, honorarioMensal: sv.honorarioMensal ? (parseInt(sv.honorarioMensal,10)/100).toFixed(2) : 0}))
     }
     try {
       if (cliente?._id) { await api.put(`/clientes/${cliente._id}`, payload); mostrar('Cliente atualizado!','sucesso') }
@@ -598,66 +570,6 @@ function FormCliente({ cliente, fechar, onSalvo }) {
           </button>
         </Secao>
 
-        {/* ── SERVIÇOS ── */}
-        <Secao titulo="Serviços contratados">
-          <div style={{ display:'flex', justifyContent:'flex-end' }}>
-            {servicosCadastrados.length > 0 && (
-              <div style={{ position:'relative' }}>
-                <button onClick={()=>setMostrarListaServicos(v=>!v)} style={{ ...s.btnSecundario }}>
-                  📋 Usar serviço existente ▾
-                </button>
-                {mostrarListaServicos && (
-                  <div style={{ position:'absolute', right:0, top:'calc(100% + 6px)', background:'var(--card)', border:'1px solid var(--borda)', borderRadius:'10px', boxShadow:'0 8px 24px rgba(0,0,0,0.4)', zIndex:10, minWidth:'220px', overflow:'hidden' }}>
-                    {servicosCadastrados.map(sv=>(
-                      <button key={sv._id} onClick={()=>usarServicoExistente(sv)} style={{ display:'flex', flexDirection:'column', width:'100%', padding:'10px 14px', background:'none', border:'none', borderBottom:'1px solid var(--borda)', cursor:'pointer', textAlign:'left' }}
-                        onMouseEnter={e=>e.currentTarget.style.background='var(--input)'}
-                        onMouseLeave={e=>e.currentTarget.style.background='none'}>
-                        <span style={{ fontSize:'0.85rem', fontWeight:'600', color:'var(--texto)', fontFamily:'Inter,sans-serif' }}>{sv.nome}</span>
-                        <span style={{ fontSize:'0.72rem', color:'var(--texto-apagado)', fontFamily:'Inter,sans-serif' }}>{labelPeriodicidade(sv.periodicidade)}{sv.honorarioPadrao>0?` · R$ ${Number(sv.honorarioPadrao).toLocaleString('pt-BR',{minimumFractionDigits:2})}`:''}  </span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-          {form.servicosContratados.map((sv,i)=>(
-            <div key={i} style={{ border:'1px solid var(--borda)', borderRadius:'12px', padding:'16px', display:'flex', flexDirection:'column', gap:'12px' }}>
-              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                <p style={{ fontSize:'0.82rem', fontWeight:'600', color:'var(--texto)', margin:0, fontFamily:'Inter,sans-serif' }}>Serviço {i+1}</p>
-                {form.servicosContratados.length>1 && <button onClick={()=>removeSv(i)} style={{ background:'none', border:'none', color:'#f87171', cursor:'pointer', fontSize:'12px', fontFamily:'Inter,sans-serif' }}>Remover</button>}
-              </div>
-              <Campo label="Nome do serviço" obrigatorio>
-                <input style={s.inp} value={sv.nome} onChange={e=>setSv(i,'nome',e.target.value)} placeholder="Ex: Contabilidade, Fiscal, DP..." />
-              </Campo>
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px' }}>
-                <Campo label="Periodicidade">
-                  <select style={s.inp} value={sv.periodicidade||'mensal'} onChange={e=>setSv(i,'periodicidade',e.target.value)}>
-                    {PERIODICIDADES.map(p=><option key={p.value} value={p.value}>{p.label}</option>)}
-                  </select>
-                </Campo>
-                <Campo label="Honorário (R$)">
-                  <input style={s.inp}
-                    value={sv.honorarioMensal ? (parseInt(String(sv.honorarioMensal).replace(/\D/g,''),10)/100).toLocaleString('pt-BR',{minimumFractionDigits:2}) : ''}
-                    onChange={e=>{ const nums=e.target.value.replace(/\D/g,''); setSv(i,'honorarioMensal',nums?parseInt(nums,10):'') }}
-                    placeholder="0,00" />
-                </Campo>
-              </div>
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px' }}>
-                <Campo label="Data início">
-                  <input style={s.inp} type="date" value={sv.dataInicio} onChange={e=>setSv(i,'dataInicio',e.target.value)} />
-                </Campo>
-                <Campo label="Dia de vencimento">
-                  <input style={s.inp} type="number" min="1" max="31" value={sv.diaVencimento} onChange={e=>setSv(i,'diaVencimento',e.target.value)} placeholder="Ex: 10" />
-                </Campo>
-              </div>
-            </div>
-          ))}
-          <button onClick={addSv} style={{ background:'none', border:'1px dashed var(--borda)', borderRadius:'10px', color:'var(--texto-apagado)', padding:'10px', cursor:'pointer', fontFamily:'Inter,sans-serif', fontSize:'0.82rem', width:'100%' }}>
-            + Adicionar serviço
-          </button>
-        </Secao>
-
         {/* ── OBSERVAÇÕES ── */}
         <Secao titulo="Observações">
           <Campo label="Notas internas">
@@ -742,6 +654,12 @@ function TelaDetalhe({ clienteId, voltar, onAtualizado, abaInicial = 'info' }) {
     return usuario?.cargo === 'admin' || usuario?.setores?.includes(setor._id)
   }
 
+  // Barra de setores (topo): admin vê todos os setores do cliente; colaborador vê só a interseção com os setores dele
+  const setoresClienteValidos = dados?.setores?.filter(s=>s.nome) || []
+  const setoresBarra = usuario?.cargo === 'admin'
+    ? setoresClienteValidos
+    : setoresClienteValidos.filter(s => usuario?.setores?.includes(s._id))
+
   const clicarSetor = (setor) => {
     if (!setorTemDemanda(setor)) return
     if (setorAtivo?._id === setor._id) {
@@ -787,10 +705,9 @@ function TelaDetalhe({ clienteId, voltar, onAtualizado, abaInicial = 'info' }) {
 
   const nomeCliente = dados.razaoSocial||dados.nome||'—'
   const st = statusInfo(dados.status)
-  const honorarioTotal = dados.servicosContratados?.reduce((a,sv)=>a+(Number(sv.honorarioMensal)||0),0)
   const abas = (setorAtivo && setorTemDemanda(setorAtivo))
     ? [{id:'particularidades',label:'Particularidades'},{id:'demanda',label:'Demanda'},{id:'historico',label:'Histórico'}]
-    : [{id:'info',label:'Informações'},{id:'servicos',label:'Serviços'},{id:'onboardings',label:'Onboardings'},{id:'obs',label:'Observações'}]
+    : [{id:'info',label:'Informações'},{id:'setores',label:'Setores'},{id:'onboardings',label:'Onboardings'},{id:'obs',label:'Observações'}]
 
   return (
     <div>
@@ -822,9 +739,9 @@ function TelaDetalhe({ clienteId, voltar, onAtualizado, abaInicial = 'info' }) {
           )}
         </div>
 
-        {dados.setores?.filter(s=>s.nome).length>0 && (
+        {setoresBarra.length>0 && (
           <BarraSetoresCliente
-            setores={dados.setores.filter(s=>s.nome)}
+            setores={setoresBarra}
             setorAtivo={setorAtivo}
             setorClicavel={setorTemDemanda}
             onInformacoes={()=>{ setSetorAtivo(null); setAba('info') }}
@@ -861,24 +778,15 @@ function TelaDetalhe({ clienteId, voltar, onAtualizado, abaInicial = 'info' }) {
         </div>
       )}
 
-      {aba==='servicos'&&(
-        <div style={{ display:'flex', flexDirection:'column', gap:'12px' }}>
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'14px 18px', background:'rgba(0,177,65,0.06)', border:'1px solid rgba(0,177,65,0.15)', borderRadius:'12px' }}>
-            <p style={{ fontSize:'0.85rem', color:'var(--texto-apagado)', margin:0 }}>Total de honorários mensais</p>
-            <p style={{ fontSize:'1.1rem', fontWeight:'700', color:'var(--verde)', margin:0 }}>{formatMoeda(honorarioTotal)}</p>
-          </div>
-          {dados.servicosContratados?.map((sv,i)=>(
-            <div key={i} style={{ background:'var(--card)', border:'1px solid var(--borda)', borderRadius:'12px', padding:'16px 20px' }}>
-              <p style={{ fontWeight:'600', color:'var(--texto)', margin:'0 0 10px', fontSize:'0.95rem' }}>{sv.nome}</p>
-              <div style={{ display:'flex', gap:'24px', flexWrap:'wrap' }}>
-                <InfoLinha label="Periodicidade" valor={labelPeriodicidade(sv.periodicidade)}/>
-                <InfoLinha label="Início" valor={formatData(sv.dataInicio)}/>
-                <InfoLinha label="Honorário" valor={formatMoeda(sv.honorarioMensal)}/>
-                <InfoLinha label="Vencimento" valor={sv.diaVencimento?`Dia ${sv.diaVencimento}`:'—'}/>
-              </div>
+      {aba==='setores'&&(
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(200px, 1fr))', gap:'12px' }}>
+          {dados.setores?.filter(s=>s.nome).map(setor=>(
+            <div key={setor._id} style={{ background:'var(--card)', border:'1px solid var(--borda)', borderRadius:'12px', padding:'16px 20px', display:'flex', alignItems:'center', gap:'12px' }}>
+              <div style={{ width:'12px', height:'12px', borderRadius:'50%', background:setor.cor||'var(--verde)', flexShrink:0 }}/>
+              <p style={{ fontWeight:'600', color:'var(--texto)', margin:0, fontSize:'0.95rem' }}>{setor.nome}</p>
             </div>
           ))}
-          {!dados.servicosContratados?.length&&<p style={{ color:'var(--texto-apagado)', fontSize:'0.875rem' }}>Nenhum serviço cadastrado.</p>}
+          {!dados.setores?.filter(s=>s.nome).length&&<p style={{ color:'var(--texto-apagado)', fontSize:'0.875rem' }}>Nenhum setor vinculado a este cliente.</p>}
         </div>
       )}
 

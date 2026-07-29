@@ -824,21 +824,6 @@ export default function Layout({ children, menuItens, paginaAtual, setPagina }) 
             </>
           )}
 
-          {/* Sistema — só titular */}
-          {isTitular && (
-            <>
-              <p style={styles.configSecao}>Sistema</p>
-              <button style={{
-                ...styles.configItem,
-                ...(paginaConfig === 'servicos' ? styles.configItemAtivo : {}),
-              }} onClick={() => { setPaginaConfig('servicos'); setPagina('servicos') }}>
-                <span style={{ opacity: 0.7, display: 'flex' }}><Icone.CreditCard size={16} /></span>
-                Serviços
-              </button>
-              <div style={styles.configDivisor} />
-            </>
-          )}
-
           {/* Conta — todos */}
           <p style={styles.configSecao}>Conta</p>
           <button style={{

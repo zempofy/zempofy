@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Fragment } from 'react'
 import { createPortal } from 'react-dom'
 import { useAuth } from '../contexts/AuthContext'
 import Layout from '../components/Layout'
@@ -13,9 +13,7 @@ import { useToast } from '../components/Toast'
 import Implantacao from '../components/Implantacao'
 import ModelosOnboarding from '../components/ModelosOnboarding'
 import BancoAtividades from '../components/BancoAtividades'
-import Obrigacoes from '../components/Obrigacoes'
 import PaginaInicio from '../components/PaginaInicio'
-import Servicos from '../components/Servicos'
 import Clientes from '../components/Clientes'
 import Setores from '../components/Setores'
 import CRM from '../components/CRM'
@@ -544,7 +542,13 @@ const buscarFeriados = async (ano) => {
 
 export default function DashboardFuncionario() {
   const { usuario, temPermissao } = useAuth()
-  const [pagina, setPagina] = useState('inicio')
+  const [pagina, setPaginaReal] = useState('inicio')
+  // Clicar num item do sidebar que já está ativo força remontar a página (reseta navegação aninhada, ex: cliente aberto)
+  const [resetKey, setResetKey] = useState(0)
+  const setPagina = (novaPagina) => {
+    if (novaPagina === pagina) setResetKey(k => k + 1)
+    setPaginaReal(novaPagina)
+  }
   const [clienteDetalheId, setClienteDetalheId] = useState(null)
   const [nomeNovoOnboarding, setNomeNovoOnboarding] = useState('')
   const [tarefas, setTarefas] = useState([])
@@ -595,25 +599,25 @@ export default function DashboardFuncionario() {
 
   return (
     <Layout menuItens={menuItens} paginaAtual={pagina} setPagina={setPagina}>
-      {pagina === 'inicio' && <PaginaInicio usuario={usuario} setPagina={setPagina} isTitular={false} temPermissao={temPermissao} />}
-      {pagina === 'tarefas' && <PaginaMinhasTarefas tarefas={tarefas} recarregar={carregarDados} modo="onboarding" />}
-      {pagina === 'tarefas-onboarding' && <PaginaMinhasTarefas tarefas={tarefas} recarregar={carregarDados} modo="onboarding" />}
-      {pagina === 'tarefas-minhas' && <PaginaMinhasTarefas tarefas={tarefas} recarregar={carregarDados} modo="minhas" />}
-      {pagina === 'agenda' && <Agenda cargo="funcionario" usuarioAtualId={usuario?.id} />}
-      {pagina === 'implantacao' && <Implantacao setPagina={setPagina} setClienteDetalheId={setClienteDetalheId} nomeNovoOnboarding={nomeNovoOnboarding} onNomeNovoOnboardingUsado={()=>setNomeNovoOnboarding('')} />}
-      {pagina === 'crm' && <CRM onIniciarOnboarding={(lead)=>{ setNomeNovoOnboarding(lead.nomeEmpresa || lead.nome); setPagina('implantacao') }} />}
-      {pagina === 'modelos' && <ModelosOnboarding />}
-      {pagina === 'checklist' && <BancoAtividades />}
-      {pagina === 'clientes' && <Clientes detalheInicial={clienteDetalheId} abaInicial="onboardings" onDetalheAberto={()=>setClienteDetalheId(null)} />}
-      {pagina === 'equipe' && <PaginaEquipeColaborador />}
-      {pagina === 'setores' && <Setores funcionarios={[]} />}
-      {pagina === 'servicos' && <Servicos />}
-      {pagina === 'obrigacoes' && <Obrigacoes />}
-      {pagina === 'onboarding' && <Implantacao setPagina={setPagina} setClienteDetalheId={setClienteDetalheId} />}
-      {pagina === 'chat' && <Chat setPagina={setPagina} />}
-      {pagina === 'anotacoes' && <Anotacoes />}
-      {pagina === 'relatorios' && <Relatorios />}
-      {pagina === 'mural' && <Mural />}
+      <Fragment key={resetKey}>
+        {pagina === 'inicio' && <PaginaInicio usuario={usuario} setPagina={setPagina} isTitular={false} temPermissao={temPermissao} />}
+        {pagina === 'tarefas' && <PaginaMinhasTarefas tarefas={tarefas} recarregar={carregarDados} modo="onboarding" />}
+        {pagina === 'tarefas-onboarding' && <PaginaMinhasTarefas tarefas={tarefas} recarregar={carregarDados} modo="onboarding" />}
+        {pagina === 'tarefas-minhas' && <PaginaMinhasTarefas tarefas={tarefas} recarregar={carregarDados} modo="minhas" />}
+        {pagina === 'agenda' && <Agenda cargo="funcionario" usuarioAtualId={usuario?.id} />}
+        {pagina === 'implantacao' && <Implantacao setPagina={setPagina} setClienteDetalheId={setClienteDetalheId} nomeNovoOnboarding={nomeNovoOnboarding} onNomeNovoOnboardingUsado={()=>setNomeNovoOnboarding('')} />}
+        {pagina === 'crm' && <CRM onIniciarOnboarding={(lead)=>{ setNomeNovoOnboarding(lead.nomeEmpresa || lead.nome); setPagina('implantacao') }} />}
+        {pagina === 'modelos' && <ModelosOnboarding />}
+        {pagina === 'checklist' && <BancoAtividades />}
+        {pagina === 'clientes' && <Clientes detalheInicial={clienteDetalheId} abaInicial="onboardings" onDetalheAberto={()=>setClienteDetalheId(null)} />}
+        {pagina === 'equipe' && <PaginaEquipeColaborador />}
+        {pagina === 'setores' && <Setores funcionarios={[]} />}
+        {pagina === 'onboarding' && <Implantacao setPagina={setPagina} setClienteDetalheId={setClienteDetalheId} />}
+        {pagina === 'chat' && <Chat setPagina={setPagina} />}
+        {pagina === 'anotacoes' && <Anotacoes />}
+        {pagina === 'relatorios' && <Relatorios />}
+        {pagina === 'mural' && <Mural />}
+      </Fragment>
     </Layout>
   )
 }

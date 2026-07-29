@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Fragment } from 'react'
 import { createPortal } from 'react-dom'
 import { useAuth } from '../contexts/AuthContext'
 import Layout from '../components/Layout'
@@ -17,8 +17,6 @@ import ModelosOnboarding from '../components/ModelosOnboarding'
 import Setores from '../components/Setores'
 import BancoAtividades from '../components/BancoAtividades'
 import Clientes from '../components/Clientes'
-import Servicos from '../components/Servicos'
-import Obrigacoes from '../components/Obrigacoes'
 import CRM from '../components/CRM'
 import ConfigAlertas from '../components/ConfigAlertas'
 import PaginaInicio from '../components/PaginaInicio'
@@ -1562,7 +1560,13 @@ function PaginaHistorico() {
 export default function DashboardAdmin() {
   const { usuario, temPermissao } = useAuth()
   const isTitular = usuario?.cargo === 'admin'
-  const [pagina, setPagina] = useState('inicio')
+  const [pagina, setPaginaReal] = useState('inicio')
+  // Clicar num item do sidebar que já está ativo força remontar a página (reseta navegação aninhada, ex: cliente aberto)
+  const [resetKey, setResetKey] = useState(0)
+  const setPagina = (novaPagina) => {
+    if (novaPagina === pagina) setResetKey(k => k + 1)
+    setPaginaReal(novaPagina)
+  }
   const [clienteDetalheId, setClienteDetalheId] = useState(null)
   const [nomeNovoOnboarding, setNomeNovoOnboarding] = useState('')
   const [tarefas, setTarefas] = useState([])
@@ -1648,15 +1652,12 @@ export default function DashboardAdmin() {
       const r = await api.get('/usuarios')
       setFuncionarios(r.data)
     }} />
-    if (pagina === 'servicos') return <Servicos />
-    if (pagina === 'obrigacoes') return <Obrigacoes />
     if (pagina === 'plano') return <PaginaEmDesenvolvimento titulo="Meu plano" descricao="O gerenciamento de planos e assinaturas estará disponível em breve. Por enquanto, entre em contato para mais informações." />
-    if (pagina === 'servicos') return <PaginaEmDesenvolvimento titulo="Serviços" descricao="O cadastro de serviços contratados pelos clientes estará disponível em breve." />
   }
 
   return (
     <Layout menuItens={menuItens} paginaAtual={pagina} setPagina={setPagina}>
-      {renderPagina()}
+      <Fragment key={resetKey}>{renderPagina()}</Fragment>
     </Layout>
   )
 }
