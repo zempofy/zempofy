@@ -57,8 +57,23 @@ const PERIODICIDADES = [
 const normalizarNome = (str='') => str.normalize('NFD').replace(/\p{Diacritic}/gu,'').toLowerCase().trim()
 
 // ── Subfiltros por setor (tela de Clientes) ──
+// `campo` extrai o valor do cliente pra comparar; `opcoesFixas` é só a fonte de label —
+// as pílulas exibidas são calculadas em cima de quem realmente aparece nos clientes do setor.
 const SUBFILTROS_POR_SETOR = {
-  fiscal: { campo: 'regime', opcoes: REGIMES.filter(r=>r.value!=='outro') },
+  fiscal: {
+    campo: (cliente) => cliente.regime,
+    opcoesFixas: REGIMES.filter(r=>r.value!=='outro'),
+  },
+  'departamento pessoal': {
+    campo: (cliente) => cliente.configSetores?.['departamento pessoal']?.situacao || null,
+    opcoesFixas: [
+      { value:'pro_labore', label:'Só pró-labore' },
+      { value:'clt', label:'Somente CLT' },
+      { value:'ambos', label:'CLT + Pró-labore' },
+      { value:null, label:'Não configurado' },
+    ],
+  },
+  // contabil: entra depois que a "situação" (periodicidade) desse setor for fechada
 }
 
 // ── Config de campos da Demanda mensal por setor/regime ──
@@ -1367,7 +1382,9 @@ export default function Clientes({ detalheInicial = null, abaInicial = 'info', o
   const [carregando, setCarregando] = useState(true)
   const [busca, setBusca] = useState('')
   const [filtroSetor, setFiltroSetor] = useState(null)
-  const [subFiltro, setSubFiltro] = useState(null)
+  // undefined = "Todos" (sem subfiltro ativo) — precisa ser diferente de null porque
+  // o DP tem uma opção real de valor null ("Não configurado")
+  const [subFiltro, setSubFiltro] = useState(undefined)
   const [formAberto, setFormAberto] = useState(false)
   const [importarAberto, setImportarAberto] = useState(false)
   const [detalheId, setDetalheId] = useState(() => {
@@ -1410,16 +1427,21 @@ export default function Clientes({ detalheInicial = null, abaInicial = 'info', o
     finally { setCarregando(false) }
   }
   useEffect(()=>{carregar()},[])
-  useEffect(()=>{ setSubFiltro(null) }, [filtroSetor])
+  useEffect(()=>{ setSubFiltro(undefined) }, [filtroSetor])
 
   const setorFiltroAtivo = filtroSetor ? setoresList.find(x=>x._id===filtroSetor) : null
   const subFiltroConfig = setorFiltroAtivo ? SUBFILTROS_POR_SETOR[normalizarNome(setorFiltroAtivo.nome)] : null
+
+  // Pílulas visíveis = só as opções fixas cujo valor aparece em pelo menos 1 cliente do setor selecionado
+  const clientesDoSetorFiltrado = filtroSetor ? clientes.filter(c => c.setores?.some(s=>(s._id||s)===filtroSetor)) : []
+  const valoresPresentes = subFiltroConfig ? new Set(clientesDoSetorFiltrado.map(c => subFiltroConfig.campo(c))) : new Set()
+  const opcoesVisiveis = subFiltroConfig ? subFiltroConfig.opcoesFixas.filter(op => valoresPresentes.has(op.value)) : []
 
   const filtrados = clientes.filter(c=>{
     const nome = c.razaoSocial||c.nome||''
     const matchBusca = nome.toLowerCase().includes(busca.toLowerCase()) || c.nomeFantasia?.toLowerCase().includes(busca.toLowerCase()) || c.cnpj?.includes(busca)
     const matchSetor = !filtroSetor || c.setores?.some(s=>(s._id||s)===filtroSetor)
-    const matchSubFiltro = !subFiltroConfig || !subFiltro || c[subFiltroConfig.campo]===subFiltro
+    const matchSubFiltro = !subFiltroConfig || subFiltro===undefined || subFiltroConfig.campo(c)===subFiltro
     return matchBusca && matchSetor && matchSubFiltro
   }).sort((a,b)=>{
     const inativoA = a.status==='inativo' ? 1 : 0
@@ -1468,13 +1490,13 @@ export default function Clientes({ detalheInicial = null, abaInicial = 'info', o
       </div>
 
       {/* Subfiltro (ex: Regime quando setor Fiscal está selecionado) */}
-      {subFiltroConfig && (
+      {opcoesVisiveis.length > 0 && (
         <div style={{ display:'flex', gap:'6px', flexWrap:'wrap', marginBottom:'20px' }}>
-          <button onClick={()=>setSubFiltro(null)} style={{ padding:'5px 12px', borderRadius:'7px', fontSize:'0.72rem', fontWeight:'600', cursor:'pointer', fontFamily:'Inter,sans-serif', border:`1px solid ${!subFiltro?'rgba(0,177,65,0.3)':'var(--borda)'}`, background:!subFiltro?'rgba(0,177,65,0.08)':'transparent', color:!subFiltro?'var(--verde)':'var(--texto-apagado)' }}>
+          <button onClick={()=>setSubFiltro(undefined)} style={{ padding:'5px 12px', borderRadius:'7px', fontSize:'0.72rem', fontWeight:'600', cursor:'pointer', fontFamily:'Inter,sans-serif', border:`1px solid ${subFiltro===undefined?'rgba(0,177,65,0.3)':'var(--borda)'}`, background:subFiltro===undefined?'rgba(0,177,65,0.08)':'transparent', color:subFiltro===undefined?'var(--verde)':'var(--texto-apagado)' }}>
             Todos
           </button>
-          {subFiltroConfig.opcoes.map(op=>(
-            <button key={op.value} onClick={()=>setSubFiltro(subFiltro===op.value?null:op.value)} style={{ padding:'5px 12px', borderRadius:'7px', fontSize:'0.72rem', fontWeight:'600', cursor:'pointer', fontFamily:'Inter,sans-serif', border:`1px solid ${subFiltro===op.value?'rgba(0,177,65,0.3)':'var(--borda)'}`, background:subFiltro===op.value?'rgba(0,177,65,0.08)':'transparent', color:subFiltro===op.value?'var(--verde)':'var(--texto-apagado)' }}>
+          {opcoesVisiveis.map(op=>(
+            <button key={String(op.value)} onClick={()=>setSubFiltro(subFiltro===op.value?undefined:op.value)} style={{ padding:'5px 12px', borderRadius:'7px', fontSize:'0.72rem', fontWeight:'600', cursor:'pointer', fontFamily:'Inter,sans-serif', border:`1px solid ${subFiltro===op.value?'rgba(0,177,65,0.3)':'var(--borda)'}`, background:subFiltro===op.value?'rgba(0,177,65,0.08)':'transparent', color:subFiltro===op.value?'var(--verde)':'var(--texto-apagado)' }}>
               {op.label}
             </button>
           ))}
