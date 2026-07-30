@@ -495,6 +495,16 @@ function PaginaEquipeColaborador() {
               <div style={{ flex: 1 }}>
                 <p style={{ fontSize: '0.9rem', fontWeight: '600', color: 'var(--texto)', margin: 0 }}>{f.nome}</p>
                 <p style={{ fontSize: '0.8rem', color: 'var(--texto-apagado)', margin: 0 }}>{f.email}</p>
+                {f.setores?.length > 0 && (
+                  <div style={{ display:'flex', gap:'4px', flexWrap:'wrap', marginTop:'4px' }}>
+                    {f.setores.map(setor => (
+                      <span key={setor._id||setor} style={{ fontSize:'0.6rem', fontWeight:'600', padding:'1px 7px', borderRadius:'4px', background:'var(--input)', color:'var(--texto-apagado)', border:'1px solid var(--borda)', display:'flex', alignItems:'center', gap:'4px' }}>
+                        <div style={{ width:'5px', height:'5px', borderRadius:'50%', background:setor.cor||'var(--verde)', flexShrink:0 }}/>
+                        {setor.nome||setor}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
               <span style={{ fontSize: '0.72rem', color: 'var(--texto-apagado)', background: 'var(--input)', borderRadius: '6px', padding: '3px 9px', border: '1px solid var(--borda)' }}>
                 Colaborador

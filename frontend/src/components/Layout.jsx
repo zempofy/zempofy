@@ -752,7 +752,7 @@ export default function Layout({ children, menuItens, paginaAtual, setPagina }) 
           </button>
           {sidebarAberta && (
             <div style={styles.sidebarRodape}>
-              <span style={styles.sidebarVersao}>Zempofy Onboarding</span>
+              <span style={styles.sidebarVersao}>Zempofy</span>
             </div>
           )}
         </div>

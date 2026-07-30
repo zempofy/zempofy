@@ -297,7 +297,9 @@ export default function ImportarClientes({ fechar, onImportado }) {
           <div style={{ textAlign:'center' }}>
             <p style={{ fontSize:'1.2rem', fontWeight:'700', color:'var(--texto)', fontFamily:'Inter,sans-serif', margin:'0 0 8px' }}>Importação concluída!</p>
             <p style={{ fontSize:'0.875rem', color:'var(--texto-apagado)', fontFamily:'Inter,sans-serif', margin:0 }}>
-              <strong style={{ color:'#00b141' }}>{resultado.importados}</strong> importado(s) · <strong style={{ color: resultado.ignorados>0?'#fbbf24':'var(--texto-apagado)' }}>{resultado.ignorados}</strong> ignorado(s)
+              <strong style={{ color:'#00b141' }}>{resultado.importados}</strong> importado(s)
+              {resultado.atualizados > 0 && <> · <strong style={{ color:'#3b82f6' }}>{resultado.atualizados}</strong> atualizado(s) (CNPJ já existia)</>}
+              {' '}· <strong style={{ color: resultado.ignorados>0?'#fbbf24':'var(--texto-apagado)' }}>{resultado.ignorados}</strong> ignorado(s)
             </p>
           </div>
           {resultado.erros?.length > 0 && (

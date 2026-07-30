@@ -66,8 +66,20 @@ const SUBFILTROS_POR_SETOR = {
       { value:null, label:'Não configurado' },
     ],
   },
-  // contabil: entra depois que a "situação" (periodicidade) desse setor for fechada
 }
+
+const BANCOS_SUGERIDOS = [
+  { value:'bb', label:'Banco do Brasil' },
+  { value:'caixa', label:'Caixa Econômica' },
+  { value:'itau', label:'Itaú' },
+  { value:'bradesco', label:'Bradesco' },
+  { value:'santander', label:'Santander' },
+  { value:'sicoob', label:'Sicoob' },
+  { value:'sicredi', label:'Sicredi' },
+  { value:'nubank', label:'Nubank' },
+  { value:'inter', label:'Inter' },
+  { value:'outro', label:'Outro' },
+]
 
 // ── Config de campos da Demanda mensal por setor/regime ──
 const CONFIG_DEMANDA = {
@@ -148,16 +160,38 @@ const CONFIG_DEMANDA = {
       }
     },
     observacoesCompartilhadas: true
+  },
+
+  contabil: {
+    perguntaInicial: {
+      pergunta: 'O contábil desta empresa será feito:',
+      opcoes: [
+        { valor:'mensal', label:'Mês a mês' },
+        { valor:'trimestral', label:'Trimestralmente (março, junho, setembro e dezembro)' },
+        { valor:'semestral', label:'Semestralmente (junho e dezembro)' },
+      ]
+    },
+    modulos: {
+      contabilFeito: {
+        ativoQuando: ['mensal','trimestral','semestral'],
+        // meses em que o bloco aparece por situação — situação ausente aqui (ex: 'mensal') aparece todo mês
+        mesesAtivos: { trimestral:[3,6,9,12], semestral:[6,12] },
+        campos: [
+          { id:'contabilFeito', label:'Contábil feito', tipo:'booleano' },
+        ]
+      }
+    },
+    temBancos: true,
   }
-  // contabil, financeiro: adicionar aqui quando escopo fechar
+  // financeiro: adicionar aqui quando escopo fechar
 }
 
 // Monta os blocos (cartões com título) de campos fixos pra um setor, dado o contexto
 // (regime do cliente, situação respondida, competência sendo vista). Suporta os dois
 // formatos de config: porRegime (Fiscal, um bloco só) e modulos com
 // ativoQuando/camposSazonais (DP e futuros setores, um bloco por módulo ativo).
-const ICONE_BLOCO = { fiscal: 'BarChart', clt: 'UsersThree', proLabore: 'CreditCard' }
-const TITULO_MODULO = { clt: 'CLT', proLabore: 'Pró-labore' }
+const ICONE_BLOCO = { fiscal: 'BarChart', clt: 'UsersThree', proLabore: 'CreditCard', contabilFeito: 'CheckCircle' }
+const TITULO_MODULO = { clt: 'CLT', proLabore: 'Pró-labore', contabilFeito: 'Contábil' }
 
 const blocosFixosDoSetor = (config, { regime, situacao, competencia }) => {
   if (!config) return []
@@ -167,11 +201,14 @@ const blocosFixosDoSetor = (config, { regime, situacao, competencia }) => {
   }
   if (config.modulos) {
     const blocos = []
+    const mes = Number(competencia.slice(5,7))
     Object.entries(config.modulos).forEach(([chave, mod]) => {
       if (!mod.ativoQuando.includes(situacao)) return
+      // mesesAtivos[situacao]: se definido, o bloco só aparece nesses meses; situação sem entrada aparece todo mês
+      const mesesRestritos = mod.mesesAtivos?.[situacao]
+      if (mesesRestritos && !mesesRestritos.includes(mes)) return
       const campos = [...mod.campos]
       if (mod.camposSazonais) {
-        const mes = Number(competencia.slice(5,7))
         if (mod.camposSazonais.meses.includes(mes)) campos.push(...mod.camposSazonais.campos)
       }
       blocos.push({ chave, titulo: TITULO_MODULO[chave] || chave, campos })
@@ -372,7 +409,10 @@ function FormCliente({ cliente, fechar, onSalvo }) {
     }
     try {
       if (cliente?._id) { await api.put(`/clientes/${cliente._id}`, payload); mostrar('Cliente atualizado!','sucesso') }
-      else { await api.post('/clientes', payload); mostrar('Cliente cadastrado!','sucesso') }
+      else {
+        const r = await api.post('/clientes', payload)
+        mostrar(r.status === 200 ? 'Já existia um cliente com esse CNPJ — cadastro atualizado com os dados mais recentes.' : 'Cliente cadastrado!', 'sucesso')
+      }
       onSalvo(); fechar()
     } catch(e) { setErro(e.response?.data?.erro || 'Erro ao salvar.') }
     finally { setCarregando(false) }
@@ -893,6 +933,96 @@ function CampoValor({ tipo, valor, onChange, disabled }) {
   return <input style={s.inp} value={valor||''} onChange={e=>onChange(e.target.value)} />
 }
 
+// ── Bloco fixo "Extratos Bancários" (Contábil) — sempre visível, bancos persistem mês a mês ──
+function BlocoExtratosBancarios({ clienteId, setor, bancos=[], valoresExtratos, onChangeExtrato, podeEditar, onBancosAtualizados }) {
+  const { mostrar } = useToast()
+  const [adicionando, setAdicionando] = useState(false)
+  const [bancoSelecionado, setBancoSelecionado] = useState('')
+  const [nomeOutro, setNomeOutro] = useState('')
+  const [salvando, setSalvando] = useState(false)
+
+  const bancosAtivos = bancos.filter(b => b.ativo)
+
+  const adicionar = async () => {
+    const nome = bancoSelecionado === 'outro' ? nomeOutro.trim() : BANCOS_SUGERIDOS.find(b=>b.value===bancoSelecionado)?.label
+    if (!nome) return
+    setSalvando(true)
+    try {
+      await api.post(`/clientes/${clienteId}/bancos/${setor._id}`, { nome })
+      mostrar('Banco adicionado!', 'sucesso')
+      setBancoSelecionado(''); setNomeOutro(''); setAdicionando(false)
+      onBancosAtualizados && onBancosAtualizados()
+    } catch (e) { mostrar(e.response?.data?.erro || 'Erro ao adicionar banco.', 'erro') }
+    finally { setSalvando(false) }
+  }
+
+  const desativar = async (bancoId) => {
+    try {
+      await api.patch(`/clientes/${clienteId}/bancos/${setor._id}/${bancoId}`, { ativo: false })
+      onBancosAtualizados && onBancosAtualizados()
+    } catch (e) { mostrar(e.response?.data?.erro || 'Erro ao remover banco.', 'erro') }
+  }
+
+  return (
+    <div style={{ background:'var(--card)', border:'1px solid var(--borda)', borderRadius:'14px', padding:'18px', marginBottom:'14px' }}>
+      <div style={{ display:'flex', alignItems:'center', gap:'8px', marginBottom:'16px' }}>
+        <div style={{ width:'26px', height:'26px', borderRadius:'7px', background:'rgba(0,177,65,0.12)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+          <Icone.Building size={14} style={{ color:'var(--verde)' }}/>
+        </div>
+        <p style={{ fontSize:'0.82rem', fontWeight:'700', color:'var(--texto)', margin:0 }}>Extratos Bancários</p>
+      </div>
+
+      {bancosAtivos.length === 0 && (
+        <p style={{ color:'var(--texto-apagado)', fontSize:'0.82rem', marginBottom:'12px' }}>Nenhum banco cadastrado ainda.</p>
+      )}
+
+      {bancosAtivos.length > 0 && (
+        <div style={{ display:'flex', flexDirection:'column', gap:'10px', marginBottom: podeEditar ? '14px' : 0 }}>
+          {bancosAtivos.map(b => (
+            <div key={b.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:'10px', padding:'10px 14px', background:'var(--input)', border:'1px solid var(--borda)', borderRadius:'10px' }}>
+              <span style={{ fontSize:'0.85rem', color:'var(--texto)', fontWeight:'600' }}>{b.nome}</span>
+              <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
+                <CampoValor tipo="booleano" valor={valoresExtratos[b.id]} onChange={v=>onChangeExtrato(b.id, v)} disabled={!podeEditar} />
+                {podeEditar && (
+                  <button type="button" onClick={()=>desativar(b.id)} title="Remover banco" style={{ background:'none', border:'none', color:'var(--texto-apagado)', cursor:'pointer', padding:'4px', display:'flex' }}>
+                    <Icone.X size={14}/>
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {podeEditar && (adicionando ? (
+        <div style={{ display:'flex', gap:'10px', alignItems:'flex-end', flexWrap:'wrap', border:'1px dashed var(--borda)', borderRadius:'10px', padding:'14px' }}>
+          <div style={{ flex:1, minWidth:'180px' }}>
+            <Campo label="Banco">
+              <select style={s.inp} value={bancoSelecionado} onChange={e=>setBancoSelecionado(e.target.value)}>
+                <option value="">Selecione...</option>
+                {BANCOS_SUGERIDOS.map(b=><option key={b.value} value={b.value}>{b.label}</option>)}
+              </select>
+            </Campo>
+          </div>
+          {bancoSelecionado==='outro' && (
+            <div style={{ flex:1, minWidth:'180px' }}>
+              <Campo label="Nome do banco">
+                <input style={s.inp} value={nomeOutro} onChange={e=>setNomeOutro(e.target.value)} placeholder="Nome do banco" autoFocus />
+              </Campo>
+            </div>
+          )}
+          <button style={s.btnSalv} onClick={adicionar} disabled={salvando || !bancoSelecionado || (bancoSelecionado==='outro' && !nomeOutro.trim())}>{salvando?'Adicionando...':'Adicionar'}</button>
+          <button style={s.btnCanc} onClick={()=>{setAdicionando(false);setBancoSelecionado('');setNomeOutro('')}}>Cancelar</button>
+        </div>
+      ) : (
+        <button onClick={()=>setAdicionando(true)} style={{ background:'none', border:'1px dashed var(--borda)', borderRadius:'10px', color:'var(--texto-apagado)', padding:'10px', cursor:'pointer', fontFamily:'Inter,sans-serif', fontSize:'0.82rem', width:'100%' }}>
+          + Adicionar banco
+        </button>
+      ))}
+    </div>
+  )
+}
+
 // ── Formulário de uma competência (mês atual ou mês passado, se quem vê tiver permissão) ──
 function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, configSetor, onAtualizado }) {
   const { mostrar } = useToast()
@@ -998,7 +1128,18 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
         )}
       </div>
 
-      {blocos.length === 0 && camposExtras.length === 0 && (
+      {config?.temBancos && (
+        <BlocoExtratosBancarios
+          clienteId={clienteId} setor={setor}
+          bancos={configSetor?.bancos || []}
+          valoresExtratos={valores.extratos || {}}
+          onChangeExtrato={(bancoId, v) => setValores(vs => ({ ...vs, extratos: { ...(vs.extratos||{}), [bancoId]: v } }))}
+          podeEditar={podeEditar}
+          onBancosAtualizados={onAtualizado}
+        />
+      )}
+
+      {blocos.length === 0 && camposExtras.length === 0 && !config?.temBancos && (
         <p style={{ color:'var(--texto-apagado)', fontSize:'0.875rem', marginBottom:'16px' }}>Nenhum campo configurado ainda{podeEditar?'. Adicione um campo abaixo.':'.'}</p>
       )}
 

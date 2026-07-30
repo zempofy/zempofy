@@ -8,6 +8,32 @@ const Setor = require('../models/Setor');
 
 const router = express.Router();
 
+// ── Mescla de cadastro em duplicata de CNPJ ──
+// Quando o mesmo CNPJ é cadastrado de novo (manual ou importação), atualiza o registro existente
+// em vez de criar um duplicado. Só sobrescreve campos que vieram preenchidos na nova entrada —
+// campo vazio na nova entrada não apaga o que já estava cadastrado.
+const preenchido = (v) => {
+  if (v === undefined || v === null || v === '') return false;
+  if (Array.isArray(v)) return v.length > 0;
+  if (typeof v === 'object') return Object.values(v).some(preenchido);
+  return true;
+};
+
+const CAMPOS_CADASTRAIS = ['razaoSocial', 'nomeFantasia', 'cnpj', 'porte', 'regime', 'dataAbertura', 'cnaePrincipal', 'atividade', 'telefone', 'email', 'socios'];
+
+const mesclarCadastro = (existente, novo) => {
+  CAMPOS_CADASTRAIS.forEach(campo => {
+    if (preenchido(novo[campo])) existente[campo] = novo[campo];
+  });
+  if (novo.endereco) {
+    if (!existente.endereco) existente.endereco = {};
+    Object.entries(novo.endereco).forEach(([k, v]) => {
+      if (preenchido(v)) existente.endereco[k] = v;
+    });
+    existente.markModified('endereco');
+  }
+};
+
 // GET /api/clientes
 router.get('/', autenticar, async (req, res) => {
   try {
@@ -57,8 +83,14 @@ router.post('/', autenticar, temPermissao('gerenciarClientes'), async (req, res)
   try {
     if (cnpj) {
       const cnpjLimpo = cnpj.replace(/\D/g, '');
-      const existe = await Cliente.findOne({ empresa: req.usuario.empresa._id, cnpj: { $regex: cnpjLimpo } }).lean();
-      if (existe) return res.status(400).json({ erro: 'Já existe um cliente com esse CNPJ.' });
+      const existente = await Cliente.findOne({ empresa: req.usuario.empresa._id, cnpj: { $regex: cnpjLimpo } });
+      if (existente) {
+        // CNPJ já cadastrado: atualiza o registro existente com os dados mais recentes em vez de duplicar
+        mesclarCadastro(existente, { ...req.body, razaoSocial: razaoSocial.trim() });
+        await existente.save();
+        registrarLog({ empresa: req.usuario.empresa._id, usuario: req.usuario._id, tipo: 'cliente_editado', categoria: 'cliente', descricao: `Atualizou o cadastro de ${existente.razaoSocial} (CNPJ já existente)` });
+        return res.json(existente);
+      }
     }
     const cliente = await Cliente.create({
       ...req.body,
@@ -106,9 +138,10 @@ const competenciaAtual = () => new Date().toISOString().slice(0, 7); // "YYYY-MM
 
 // Cliente inativo: ninguém edita, nem titular. Só o mês corrente é editável, sem exceção —
 // competência passada é sempre somente leitura (nem admin edita, mês fechado é fechado).
-const podeEditarCompetencia = (usuario, setorId, competencia, clienteAtivo) => {
+// Exceção: setor Contábil não trava nunca — qualquer competência, mesmo antiga, é editável.
+const podeEditarCompetencia = (usuario, setorId, competencia, clienteAtivo, setorNome) => {
   if (!clienteAtivo) return false;
-  if (competencia !== competenciaAtual()) return false;
+  if (setorNome !== 'contabil' && competencia !== competenciaAtual()) return false;
   if (usuario.cargo === 'admin') return true;
   return usuario.setores?.some(s => s.toString() === setorId);
 };
@@ -153,12 +186,15 @@ router.get('/:id/lancamentos/:setorId/:competencia', autenticar, async (req, res
     const cliente = await Cliente.findOne({ _id: req.params.id, empresa: req.usuario.empresa._id }).lean();
     if (!cliente) return res.status(404).json({ erro: 'Cliente não encontrado.' });
 
+    const setor = await Setor.findById(req.params.setorId).select('nome').lean();
+    const setorNome = normalizarNome(setor?.nome || '');
+
     const lancamento = await LancamentoSetor.findOne({
       cliente: req.params.id, setor: req.params.setorId, competencia, empresa: req.usuario.empresa._id,
     }).populate('preenchidoPor', 'nome').lean();
 
     const base = lancamento || { cliente: req.params.id, setor: req.params.setorId, competencia, dados: {}, preenchidoPor: null, preenchidoEm: null };
-    res.json({ ...base, preenchido: !!lancamento, podeEditar: podeEditarCompetencia(req.usuario, req.params.setorId, competencia, cliente.status !== 'inativo') });
+    res.json({ ...base, preenchido: !!lancamento, podeEditar: podeEditarCompetencia(req.usuario, req.params.setorId, competencia, cliente.status !== 'inativo', setorNome) });
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao buscar lançamento.' });
   }
@@ -174,10 +210,13 @@ router.post('/:id/lancamentos/:setorId/:competencia', autenticar, async (req, re
     const cliente = await Cliente.findOne({ _id: req.params.id, empresa: req.usuario.empresa._id }).lean();
     if (!cliente) return res.status(404).json({ erro: 'Cliente não encontrado.' });
 
-    if (!podeEditarCompetencia(req.usuario, req.params.setorId, competencia, cliente.status !== 'inativo')) {
+    const setor = await Setor.findById(req.params.setorId).select('nome').lean();
+    const setorNome = normalizarNome(setor?.nome || '');
+
+    if (!podeEditarCompetencia(req.usuario, req.params.setorId, competencia, cliente.status !== 'inativo', setorNome)) {
       const motivo = cliente.status === 'inativo'
         ? 'Cliente inativo — reative pra poder editar.'
-        : (competencia === competenciaAtual() ? 'Você não tem acesso a este setor.' : 'Esta competência já está fechada e não pode mais ser editada.');
+        : (competencia === competenciaAtual() || setorNome === 'contabil' ? 'Você não tem acesso a este setor.' : 'Esta competência já está fechada e não pode mais ser editada.');
       return res.status(403).json({ erro: motivo });
     }
 
@@ -291,6 +330,74 @@ router.post('/:id/particularidades/:setorId', autenticar, async (req, res) => {
   }
 });
 
+// POST /api/clientes/:id/bancos/:setorId — adiciona um banco na lista de extratos do cliente (Contábil)
+router.post('/:id/bancos/:setorId', autenticar, async (req, res) => {
+  try {
+    if (!temAcessoAoSetor(req.usuario, req.params.setorId)) {
+      return res.status(403).json({ erro: 'Você não tem acesso a este setor.' });
+    }
+    const { nome } = req.body;
+    if (!nome?.trim()) return res.status(400).json({ erro: 'Nome do banco é obrigatório.' });
+
+    const setor = await Setor.findById(req.params.setorId).select('nome').lean();
+    if (!setor) return res.status(404).json({ erro: 'Setor não encontrado.' });
+    const setorNome = normalizarNome(setor.nome);
+
+    const cliente = await Cliente.findOne({ _id: req.params.id, empresa: req.usuario.empresa._id });
+    if (!cliente) return res.status(404).json({ erro: 'Cliente não encontrado.' });
+    if (cliente.status === 'inativo') return res.status(403).json({ erro: 'Cliente inativo — reative pra poder editar.' });
+
+    const configSetor = garantirConfigSetor(cliente, setorNome);
+    if (!configSetor.bancos) configSetor.bancos = [];
+
+    const slug = nome.trim().toLowerCase()
+      .normalize('NFD').replace(/[̀-ͯ]/g, '')
+      .replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'banco';
+    let id = slug;
+    let n = 1;
+    while (configSetor.bancos.some(b => b.id === id)) { n++; id = `${slug}_${n}`; }
+
+    configSetor.bancos.push({ id, nome: nome.trim(), ativo: true });
+
+    cliente.markModified('configSetores');
+    await cliente.save();
+
+    res.status(201).json(cliente.configSetores[setorNome]);
+  } catch (err) {
+    res.status(500).json({ erro: 'Erro ao adicionar banco.' });
+  }
+});
+
+// PATCH /api/clientes/:id/bancos/:setorId/:bancoId — ativa/desativa um banco (não apaga histórico dos meses anteriores)
+router.patch('/:id/bancos/:setorId/:bancoId', autenticar, async (req, res) => {
+  try {
+    if (!temAcessoAoSetor(req.usuario, req.params.setorId)) {
+      return res.status(403).json({ erro: 'Você não tem acesso a este setor.' });
+    }
+    const { ativo } = req.body;
+
+    const setor = await Setor.findById(req.params.setorId).select('nome').lean();
+    if (!setor) return res.status(404).json({ erro: 'Setor não encontrado.' });
+    const setorNome = normalizarNome(setor.nome);
+
+    const cliente = await Cliente.findOne({ _id: req.params.id, empresa: req.usuario.empresa._id });
+    if (!cliente) return res.status(404).json({ erro: 'Cliente não encontrado.' });
+    if (cliente.status === 'inativo') return res.status(403).json({ erro: 'Cliente inativo — reative pra poder editar.' });
+
+    const configSetor = garantirConfigSetor(cliente, setorNome);
+    const banco = configSetor.bancos?.find(b => b.id === req.params.bancoId);
+    if (!banco) return res.status(404).json({ erro: 'Banco não encontrado.' });
+    banco.ativo = !!ativo;
+
+    cliente.markModified('configSetores');
+    await cliente.save();
+
+    res.json(cliente.configSetores[setorNome]);
+  } catch (err) {
+    res.status(500).json({ erro: 'Erro ao atualizar banco.' });
+  }
+});
+
 module.exports = router;
 
 // POST /api/clientes/importar — importar lista de clientes
@@ -299,16 +406,21 @@ router.post('/importar', autenticar, temPermissao('gerenciarClientes'), async (r
     const { clientes } = req.body;
     if (!clientes?.length) return res.status(400).json({ erro: 'Nenhum cliente para importar.' });
 
-    const resultados = { importados: 0, ignorados: 0, erros: [] };
+    const resultados = { importados: 0, atualizados: 0, ignorados: 0, erros: [] };
 
     for (const c of clientes) {
       try {
         if (!c.razaoSocial?.trim()) { resultados.ignorados++; continue; }
-        // Verificar duplicata por CNPJ
+        // CNPJ já cadastrado: atualiza o registro existente com os dados mais recentes em vez de duplicar
         if (c.cnpj) {
           const cnpjLimpo = c.cnpj.replace(/\D/g, '');
-          const existe = await Cliente.findOne({ empresa: req.usuario.empresa._id, cnpj: { $regex: cnpjLimpo } }).lean();
-          if (existe) { resultados.ignorados++; resultados.erros.push(`${c.razaoSocial}: CNPJ já cadastrado`); continue; }
+          const existente = await Cliente.findOne({ empresa: req.usuario.empresa._id, cnpj: { $regex: cnpjLimpo } });
+          if (existente) {
+            mesclarCadastro(existente, c);
+            await existente.save();
+            resultados.atualizados++;
+            continue;
+          }
         }
         await Cliente.create({
           ...c,
@@ -326,15 +438,15 @@ router.post('/importar', autenticar, temPermissao('gerenciarClientes'), async (r
     }
 
     // Registrar no histórico
-    if (resultados.importados > 0) {
+    if (resultados.importados > 0 || resultados.atualizados > 0) {
       const registrarLog = require('../services/log');
       registrarLog({
         empresa: req.usuario.empresa._id,
         usuario: req.usuario._id,
         tipo: 'clientes_importados',
         categoria: 'cliente',
-        descricao: `Importou ${resultados.importados} cliente(s) via planilha Excel`,
-        meta: { total: resultados.importados }
+        descricao: `Importou ${resultados.importados} cliente(s) e atualizou ${resultados.atualizados} via planilha Excel`,
+        meta: { total: resultados.importados, atualizados: resultados.atualizados }
       });
     }
     res.json(resultados);

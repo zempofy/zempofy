@@ -372,7 +372,7 @@ export default function CRM({ onIniciarOnboarding }) {
       {carregando ? (
         <p style={{ color:'var(--texto-apagado)' }}>Carregando...</p>
       ) : (
-        <div style={{ display:'flex', gap:'12px', overflowX:'auto', paddingBottom:'16px', alignItems:'flex-start' }}>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(6, minmax(150px, 1fr))', gap:'12px', overflowX:'auto', paddingBottom:'16px', alignItems:'start' }}>
           {ETAPAS.map(etapa => {
             const leadsEtapa = leadsFiltrados.filter(l=>l.etapa===etapa.id)
             const sobreDrop = dragSobre === etapa.id
@@ -382,7 +382,7 @@ export default function CRM({ onIniciarOnboarding }) {
                 onDragOver={!mobile ? (e)=>{ e.preventDefault(); setDragSobre(etapa.id) } : undefined}
                 onDragLeave={!mobile ? ()=>setDragSobre(null) : undefined}
                 onDrop={!mobile ? (e)=>onDrop(etapa.id, e) : undefined}
-                style={{ flex:'0 0 220px', display:'flex', flexDirection:'column', gap:'8px', transition:'all 0.15s' }}
+                style={{ display:'flex', flexDirection:'column', gap:'8px', transition:'all 0.15s', minWidth:0 }}
               >
                 <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'8px 12px', borderRadius:'8px', background: sobreDrop ? etapa.bg : 'var(--card)', border:`1px solid ${sobreDrop ? etapa.cor+'50' : 'var(--borda)'}`, transition:'all 0.15s' }}>
                   <div style={{ display:'flex', alignItems:'center', gap:'7px' }}>
