@@ -36,9 +36,10 @@ router.post('/', autenticar, async (req, res) => {
 // PUT /api/anotacoes/:id - Editar anotação
 router.put('/:id', autenticar, async (req, res) => {
   try {
+    const { empresa, usuario, _id, criadaEm, ...dados } = req.body;
     const anotacao = await Anotacao.findOneAndUpdate(
       { _id: req.params.id, usuario: req.usuario._id },
-      { ...req.body, atualizadaEm: new Date() },
+      { $set: { ...dados, atualizadaEm: new Date() } },
       { new: true }
     );
     if (!anotacao) return res.status(404).json({ erro: 'Anotação não encontrada.' });

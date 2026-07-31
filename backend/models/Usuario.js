@@ -28,6 +28,7 @@ const usuarioSchema = new mongoose.Schema({
   emailVerificado: { type: Boolean, default: false },
   tokenVerificacao: { type: String, default: null },
   criadoEm: { type: Date, default: Date.now },
+  ultimoAcesso: { type: Date, default: null },
   setores: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Setor' }]
 });
 

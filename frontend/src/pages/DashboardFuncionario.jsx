@@ -592,6 +592,7 @@ export default function DashboardFuncionario() {
 
     {
       id: 'tarefas', label: 'Tarefas', icone: <Icone.ClipboardList size={16} />,
+      badgeCount: tarefas.filter(t => t.status !== 'concluida').length,
       subItens: [
         { id: 'tarefas-onboarding', label: 'Onboarding' },
         { id: 'tarefas-minhas',     label: 'Minhas tarefas' },

@@ -111,6 +111,15 @@ export default function ImportarClientes({ fechar, onImportado }) {
               nomeFantasia: data.nome_fantasia || c.nomeFantasia || data.razao_social,
               dataAbertura: data.data_inicio_atividade || null,
               cnaePrincipal: data.cnae_fiscal ? String(data.cnae_fiscal) : '',
+              // A Receita só confirma com certeza Simples Nacional e MEI — Lucro Presumido/Real
+              // não têm como ser identificados via CNPJ, então mantém o que veio da planilha
+              // (ou vazio) e sinaliza pra confirmação manual.
+              regime: data.opcao_pelo_mei
+                ? 'mei'
+                : data.opcao_pelo_simples
+                  ? 'simples_nacional'
+                  : c.regime || '',
+              _regimeIncerto: !data.opcao_pelo_mei && !data.opcao_pelo_simples,
               porte: (() => {
                 const p = data.porte?.toUpperCase() || ''
                 if (p.includes('MEI')) return 'mei'
@@ -247,7 +256,14 @@ export default function ImportarClientes({ fechar, onImportado }) {
                     <td style={{ padding:'10px 14px', color:'var(--texto)', fontWeight:'500', maxWidth:'200px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{c.razaoSocial}</td>
                     <td style={{ padding:'10px 14px', color:'var(--texto-apagado)' }}>{c.cnpj||'—'}</td>
                     <td style={{ padding:'10px 14px', color:'var(--texto-apagado)' }}>{c.porte?.toUpperCase()||'—'}</td>
-                    <td style={{ padding:'10px 14px', color:'var(--texto-apagado)', maxWidth:'140px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{c.regime||'—'}</td>
+                    <td style={{ padding:'10px 14px', color:'var(--texto-apagado)', maxWidth:'160px' }}>
+                      <span style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', display:'block' }}>{c.regime||'—'}</span>
+                      {c._regimeIncerto && (
+                        <span title="A Receita só confirma Simples Nacional e MEI — Lucro Presumido/Real precisa ser confirmado manualmente." style={{ display:'flex', alignItems:'center', gap:'3px', fontSize:'0.65rem', color:'#fbbf24', whiteSpace:'nowrap' }}>
+                          <Icone.AlertTriangle size={10}/> confirmar manualmente
+                        </span>
+                      )}
+                    </td>
                     <td style={{ padding:'10px 14px' }}>
                       <span style={{ fontSize:'0.7rem', fontWeight:'600', padding:'2px 8px', borderRadius:'99px', background: c.status==='ativo'?'rgba(0,177,65,0.1)':c.status==='inativo'?'rgba(248,113,113,0.1)':'rgba(251,191,36,0.1)', color: c.status==='ativo'?'#00b141':c.status==='inativo'?'#f87171':'#fbbf24' }}>
                         {c.status==='ativo'?'Ativo':c.status==='inativo'?'Inativo':'Encerramento'}

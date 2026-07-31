@@ -29,7 +29,7 @@ router.post('/cadastro', async (req, res) => {
 
   try {
     // Verificar se email já existe
-    const emailExiste = await getUsuario().findOne({ email }).lean();
+    const emailExiste = await getUsuario().findOne({ email: email.toLowerCase().trim() }).lean();
     if (emailExiste) {
       return res.status(400).json({ erro: 'Este e-mail já está em uso.' });
     }
@@ -74,6 +74,7 @@ router.post('/cadastro', async (req, res) => {
       }
     });
   } catch (err) {
+    if (err.code === 11000) return res.status(400).json({ erro: 'Este e-mail já está em uso.' });
     console.error(err);
     res.status(500).json({ erro: 'Erro ao criar conta.' });
   }
@@ -100,6 +101,9 @@ router.post('/login', async (req, res) => {
     }
 
     const token = gerarToken(usuario);
+
+    // Não bloqueia a resposta do login por causa disso
+    getUsuario().updateOne({ _id: usuario._id }, { $set: { ultimoAcesso: new Date() } }).catch(() => {});
 
     res.json({
       token,

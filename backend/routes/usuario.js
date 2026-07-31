@@ -5,6 +5,7 @@ const { autenticar, apenasAdmin } = require('../middleware/auth');
 const { enviarVerificacaoEmail } = require('../services/email');
 const crypto = require('crypto');
 const Usuario = require('../models/Usuario');
+const { usuarioSchema, validar } = require('../validacao');
 
 const router = express.Router();
 
@@ -15,7 +16,7 @@ router.put('/meu-perfil', autenticar, async (req, res) => {
     const atualizacao = {}
     if (nome?.trim()) atualizacao.nome = nome.trim()
     if (email) {
-      const emailExiste = await Usuario.findOne({ email, _id: { $ne: req.usuario._id } }).lean();
+      const emailExiste = await Usuario.findOne({ email: email.toLowerCase().trim(), _id: { $ne: req.usuario._id } }).lean();
       if (emailExiste) return res.status(400).json({ erro: 'E-mail já está em uso.' });
       atualizacao.email = email
     }
@@ -62,7 +63,7 @@ router.get('/', autenticar, async (req, res) => {
 });
 
 // POST /api/usuarios — titular ou colaborador com permissão gerenciarMembros
-router.post('/', autenticar, async (req, res) => {
+router.post('/', autenticar, validar(usuarioSchema), async (req, res) => {
   const isAdmin = req.usuario.cargo === 'admin'
   const temPermissao = req.usuario.permissoes?.gerenciarMembros
   if (!isAdmin && !temPermissao) return res.status(403).json({ erro: 'Sem permissão para adicionar membros.' });
@@ -70,7 +71,7 @@ router.post('/', autenticar, async (req, res) => {
   if (!nome || !email || !senha) return res.status(400).json({ erro: 'Preencha todos os campos.' });
   if (!setores || setores.length === 0) return res.status(400).json({ erro: 'Selecione pelo menos um setor.' });
   try {
-    const emailExiste = await Usuario.findOne({ email }).lean();
+    const emailExiste = await Usuario.findOne({ email: email.toLowerCase().trim() }).lean();
     if (emailExiste) return res.status(400).json({ erro: 'E-mail já em uso.' });
     const tokenVerif = crypto.randomBytes(32).toString('hex');
     const usuario = await Usuario.create({
@@ -101,6 +102,7 @@ router.post('/', autenticar, async (req, res) => {
     registrarLog({ empresa: req.usuario.empresa._id, usuario: req.usuario._id, tipo: 'membro_adicionado', categoria: 'equipe', descricao: 'Adicionou ' + nome + ' à equipe', meta: { nome, email } });
     res.status(201).json({ id: usuario._id, nome: usuario.nome, email: usuario.email, cargo: usuario.cargo, permissoes: usuario.permissoes });
   } catch (err) {
+    if (err.code === 11000) return res.status(400).json({ erro: 'E-mail já em uso.' });
     res.status(500).json({ erro: 'Erro ao criar usuário.' });
   }
 });

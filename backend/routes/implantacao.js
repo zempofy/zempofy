@@ -167,7 +167,9 @@ router.post('/', autenticar, temPermissao('criarImplantacoes'), async (req, res)
         implantacao.etapas?.map(e => e.setor?.toString()).filter(Boolean) || []
       )];
 
-      const clienteExistente = await Cliente.findOne({ empresa: req.usuario.empresa._id, cnpj: { $regex: cnpjLimpo } }).lean();
+      // Regex tolerante a máscara — o cnpj salvo pode estar com ou sem pontuação
+      const cnpjRegexTolerante = cnpjLimpo.split('').join('[.\\-/]*');
+      const clienteExistente = await Cliente.findOne({ empresa: req.usuario.empresa._id, cnpj: { $regex: cnpjRegexTolerante } }).lean();
       if (!clienteExistente) {
         await Cliente.create({
           razaoSocial: nomeCliente.trim(),

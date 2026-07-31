@@ -11,7 +11,7 @@ export default function ConfigAlertas() {
   const { mostrar } = useToast()
 
   useEffect(() => {
-    api.get('/empresa/me').then(r => {
+    api.get('/empresa').then(r => {
       setDias(r.data.alertaOnboardingDias || 7)
       setFrequencia(r.data.resumoFrequencia || 'semanal')
     }).catch(() => {}).finally(() => setCarregando(false))

@@ -29,7 +29,8 @@ const implantacaoSchema = new mongoose.Schema({
   empresa: { type: mongoose.Schema.Types.ObjectId, ref: 'Empresa', required: true, index: true },
   criadoPor: { type: mongoose.Schema.Types.ObjectId, ref: 'Usuario', required: true },
   concluidaEm: { type: Date },
-  criadoEm: { type: Date, default: Date.now }
+  criadoEm: { type: Date, default: Date.now },
+  ultimoAlertaParado: { type: Date, default: null }
 });
 
 module.exports = mongoose.model('Implantacao', implantacaoSchema);

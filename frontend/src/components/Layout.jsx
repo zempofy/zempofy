@@ -436,9 +436,13 @@ function NavItens({ menuItens, paginaAtual, setPagina, sidebarAberta, onItemClic
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <span style={{
                     ...styles.navIcone,
+                    position: 'relative',
                     color: subAtivo ? 'var(--verde)' : 'inherit',
                     opacity: subAtivo ? 1 : 0.75,
-                  }}>{item.icone}</span>
+                  }}>
+                    {item.icone}
+                    {item.badgeCount > 0 && <span style={styles.navIconeBadge}>{item.badgeCount > 9 ? '9+' : item.badgeCount}</span>}
+                  </span>
                   {sidebarAberta && <span style={{
                     ...styles.navLabel,
                     color: subAtivo ? 'rgba(255,255,255,0.9)' : 'inherit',
@@ -490,7 +494,10 @@ function NavItens({ menuItens, paginaAtual, setPagina, sidebarAberta, onItemClic
             onClick={() => { setPagina(item.id); if (onItemClick) onItemClick() }}
             title={!sidebarAberta ? item.label : ''}
           >
-            <span style={styles.navIcone}>{item.icone}</span>
+            <span style={{ ...styles.navIcone, position: 'relative' }}>
+              {item.icone}
+              {item.badgeCount > 0 && <span style={styles.navIconeBadge}>{item.badgeCount > 9 ? '9+' : item.badgeCount}</span>}
+            </span>
             {sidebarAberta && <span style={styles.navLabel}>{item.label}</span>}
             {sidebarAberta && item.badge && (
               <span style={{ fontSize:'9px', fontWeight:'700', padding:'1px 6px', borderRadius:'4px', background:'rgba(99,102,241,0.12)', color:'#818cf8', letterSpacing:'0.5px', marginLeft:'auto', flexShrink:0 }}>{item.badge}</span>
@@ -675,7 +682,12 @@ export default function Layout({ children, menuItens, paginaAtual, setPagina }) 
             {/* Dropdown simples — só nome e sair */}
             {painelAberto && (
               <>
-                <div onClick={() => setPainelAberto(false)} style={{ position: 'fixed', inset: 0, zIndex: 199 }} />
+                {/* Portado pro body: a topbar tem backdropFilter, que vira containing block de position:fixed
+                    e prendia esse overlay só dentro da faixa da topbar, em vez da tela inteira. */}
+                {createPortal(
+                  <div onClick={() => setPainelAberto(false)} style={{ position: 'fixed', inset: 0, zIndex: 199 }} />,
+                  document.body
+                )}
                 <div style={{
                   position: 'absolute', top: 'calc(100% + 8px)', right: 0,
                   background: '#18181b', border: '1px solid #27272a', borderRadius: '12px',
@@ -809,7 +821,7 @@ export default function Layout({ children, menuItens, paginaAtual, setPagina }) 
             <>
               <p style={styles.configSecao}>Equipe</p>
               {[
-                ...(isTitular || temPermissao('gerenciarMembros') ? [{ id: 'equipe', label: 'Colaboradores', icone: <Icone.Users size={16} /> }] : []),
+                ...(isTitular || temPermissao('gerenciarEquipe') || temPermissao('gerenciarMembros') ? [{ id: 'equipe', label: 'Colaboradores', icone: <Icone.Users size={16} /> }] : []),
                 ...(isTitular || temPermissao('gerenciarSetores') ? [{ id: 'setores', label: 'Setores', icone: <Icone.UsersThree size={16} /> }] : []),
               ].map(item => (
                 <button key={item.id} style={{
@@ -937,6 +949,14 @@ const styles = {
     borderRadius: '50%', width: '14px', height: '14px',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
     boxShadow: '0 0 6px rgba(0,177,65,0.6)',
+  },
+  navIconeBadge: {
+    position: 'absolute', top: '-5px', right: '-7px',
+    background: '#f87171', color: '#fff',
+    fontSize: '0.55rem', fontWeight: '800',
+    borderRadius: '99px', minWidth: '14px', height: '14px', padding: '0 3px',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    fontFamily: 'Inter, sans-serif', lineHeight: 1,
   },
   topbarSep: {
     width: '1px', height: '18px',

@@ -648,10 +648,10 @@ function BarraSetoresCliente({ setores, setorAtivo, setorClicavel, onInformacoes
   }, [chaveAtiva, setores.length])
 
   return (
-    <div ref={containerRef} style={{ position:'relative', display:'inline-flex', maxWidth:'100%', background:'var(--input)', border:'1px solid var(--borda)', borderRadius:'12px', padding:'4px', marginBottom:'16px', overflowX:'auto' }}>
+    <div ref={containerRef} style={{ position:'relative', display:'inline-flex', maxWidth:'100%', background:'var(--input)', border:'1px solid var(--borda)', borderRadius:'10px', padding:'3px', marginBottom:'16px', overflowX:'auto' }}>
       <div style={{
-        position:'absolute', top:'4px', bottom:'4px', left:`${highlight.left}px`, width:`${highlight.width}px`,
-        background:'var(--card)', border:`1px solid ${highlight.cor}`, borderRadius:'9px', opacity:highlight.opacity,
+        position:'absolute', top:'3px', bottom:'3px', left:`${highlight.left}px`, width:`${highlight.width}px`,
+        background:'var(--card)', border:`1px solid ${highlight.cor}`, borderRadius:'8px', opacity:highlight.opacity,
         transition:'left 0.28s cubic-bezier(.4,0,.2,1), width 0.28s cubic-bezier(.4,0,.2,1), opacity 0.15s, border-color 0.2s',
       }}/>
       {itens.map(item => {
@@ -662,9 +662,9 @@ function BarraSetoresCliente({ setores, setorAtivo, setorClicavel, onInformacoes
             ref={el => { itemRefs.current[item.chave] = el }}
             onClick={() => item.setor ? onSetor(item.setor) : onInformacoes()}
             style={{
-              position:'relative', zIndex:1, width:'104px', flexShrink:0, padding:'8px 10px', border:'none', background:'none',
-              display:'flex', alignItems:'center', justifyContent:'center', minHeight:'36px',
-              cursor: clicavel ? 'pointer' : 'default', fontFamily:'Inter,sans-serif', fontSize:'0.74rem', fontWeight:'600', lineHeight:'1.25',
+              position:'relative', zIndex:1, width:'96px', flexShrink:0, padding:'6px 8px', border:'none', background:'none',
+              display:'flex', alignItems:'center', justifyContent:'center', minHeight:'28px',
+              cursor: clicavel ? 'pointer' : 'default', fontFamily:'Inter,sans-serif', fontSize:'0.76rem', fontWeight:'600', lineHeight:'1.2',
               whiteSpace:'normal', textAlign:'center', color: ehAtivo ? (item.setor?.cor || 'var(--texto)') : 'var(--texto-apagado)',
               transition:'color 0.2s',
             }}>
@@ -694,11 +694,10 @@ function TelaDetalhe({ clienteId, voltar, onAtualizado, abaInicial = 'info' }) {
     return usuario?.cargo === 'admin' || usuario?.setores?.includes(setor._id)
   }
 
-  // Barra de setores (topo): admin vê todos os setores do cliente; colaborador vê só a interseção com os setores dele
+  // Barra de setores (topo): só entra quem o usuário tem acesso E que tem Demanda configurada
+  // (setor sem Demanda, tipo Legalização, não aparece ali — mas continua na aba "Setores" e conta pra "Informações")
   const setoresClienteValidos = dados?.setores?.filter(s=>s.nome) || []
-  const setoresBarra = usuario?.cargo === 'admin'
-    ? setoresClienteValidos
-    : setoresClienteValidos.filter(s => usuario?.setores?.includes(s._id))
+  const setoresBarra = setoresClienteValidos.filter(s => setorTemDemanda(s))
 
   const clicarSetor = (setor) => {
     if (!setorTemDemanda(setor)) return
@@ -819,11 +818,11 @@ function TelaDetalhe({ clienteId, voltar, onAtualizado, abaInicial = 'info' }) {
       )}
 
       {aba==='setores'&&(
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(200px, 1fr))', gap:'12px' }}>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(160px, 1fr))', gap:'10px' }}>
           {dados.setores?.filter(s=>s.nome).map(setor=>(
-            <div key={setor._id} style={{ background:'var(--card)', border:'1px solid var(--borda)', borderRadius:'12px', padding:'16px 20px', display:'flex', alignItems:'center', gap:'12px' }}>
-              <div style={{ width:'12px', height:'12px', borderRadius:'50%', background:setor.cor||'var(--verde)', flexShrink:0 }}/>
-              <p style={{ fontWeight:'600', color:'var(--texto)', margin:0, fontSize:'0.95rem' }}>{setor.nome}</p>
+            <div key={setor._id} style={{ background:'var(--card)', border:'1px solid var(--borda)', borderRadius:'10px', padding:'11px 14px', display:'flex', alignItems:'center', gap:'9px' }}>
+              <div style={{ width:'9px', height:'9px', borderRadius:'50%', background:setor.cor||'var(--verde)', flexShrink:0 }}/>
+              <p style={{ fontWeight:'600', color:'var(--texto)', margin:0, fontSize:'0.82rem' }}>{setor.nome}</p>
             </div>
           ))}
           {!dados.setores?.filter(s=>s.nome).length&&<p style={{ color:'var(--texto-apagado)', fontSize:'0.875rem' }}>Nenhum setor vinculado a este cliente.</p>}

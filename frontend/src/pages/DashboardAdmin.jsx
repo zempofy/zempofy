@@ -1617,7 +1617,7 @@ export default function DashboardAdmin() {
     { id: '__sep_pessoal', separador: true, label: 'Pessoal' },
 
     // Tarefas — sempre visível
-    { id: 'tarefas', label: 'Tarefas', icone: <Icone.ClipboardList size={16} /> },
+    { id: 'tarefas', label: 'Tarefas', icone: <Icone.ClipboardList size={16} />, badgeCount: tarefas.filter(t => t.status !== 'concluida').length },
 
     // Anotações — sempre visível
     { id: 'anotacoes', label: 'Anotações', icone: <Icone.Edit size={16} /> },

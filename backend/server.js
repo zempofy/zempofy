@@ -52,7 +52,6 @@ app.use(helmet({
 
 // ── CORS restrito ──
 app.use(cors({
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-admin-key'],
   origin: (origin, callback) => {
     // Permite requisições sem origin (Render health check, curl, etc)
     if (!origin) return callback(null, true);
@@ -61,7 +60,7 @@ app.use(cors({
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-admin-key'],
 }));
 
 app.use(express.json({ limit: '10mb' }));
@@ -96,7 +95,9 @@ const verificarOnboardingsParados = async () => {
     const Usuario = require('./models/Usuario');
     const { enviarAlertaOnboardingParado } = require('./services/email');
     const implantacoes = await Implantacao.find({ status: { $ne: 'concluida' } })
-      .populate('empresa', 'nome alertaOnboardingDias');
+      .populate('empresa', 'nome alertaOnboardingDias')
+      .populate('etapas.setor', 'nome');
+    let enviados = 0;
     for (const imp of implantacoes) {
       const diasPadrao = imp.empresa?.alertaOnboardingDias || 7;
       // Usar updatedAt original, ignorando atualizações do campo ultimoAlertaParado
@@ -115,13 +116,15 @@ const verificarOnboardingsParados = async () => {
           destinatario: titular.email,
           nomeCliente: imp.nomeCliente,
           diasParado,
-          etapaAtual: etapaAtual?.nome || 'Aguardando',
+          etapaAtual: etapaAtual?.setor?.nome || 'Aguardando',
           empresa: imp.empresa?.nome || '',
         });
         // Registrar envio
         await Implantacao.findByIdAndUpdate(imp._id, { $set: { ultimoAlertaParado: new Date() } }, { timestamps: false });
+        enviados++;
       }
     }
+    console.log(`✅ Job onboarding parado: ${enviados} alerta(s) enviado(s) de ${implantacoes.length} onboarding(s) em aberto.`);
   } catch(e) { console.error('Job onboarding parado:', e.message); }
 };
 // ── Job: lembrete de tarefas com prazo próximo ──
@@ -130,27 +133,33 @@ const verificarTarefasComPrazo = async () => {
     const Tarefa = require('./models/Tarefa');
     const Usuario = require('./models/Usuario');
     const { enviarLembreteTarefa } = require('./services/email');
-    const hoje = new Date(); hoje.setHours(0,0,0,0);
-    const em3dias = new Date(hoje); em3dias.setDate(em3dias.getDate() + 3);
+    // Tarefa não tem campo "prazo" — a data da tarefa é o campo "data" (String "YYYY-MM-DD",
+    // mesmo formato do <input type="date"> usado na Agenda). Comparar como string funciona
+    // corretamente nesse formato (ordem lexicográfica = ordem cronológica).
+    const hojeStr = new Date().toISOString().slice(0, 10);
+    const em3diasStr = new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10);
 
     const tarefas = await Tarefa.find({
       status: { $ne: 'concluida' },
-      prazo: { $gte: hoje, $lte: em3dias },
+      data: { $gte: hojeStr, $lte: em3diasStr },
       responsavel: { $exists: true }
     }).populate('responsavel', 'nome email').populate('criadoPor', 'nome');
 
+    let enviados = 0;
     for (const t of tarefas) {
       if (!t.responsavel?.email) continue;
-      const diasRestantes = Math.floor((new Date(t.prazo) - hoje) / 86400000);
+      const diasRestantes = Math.floor((new Date(t.data) - new Date(hojeStr)) / 86400000);
       await enviarLembreteTarefa({
         destinatario: t.responsavel.email,
         nome: t.responsavel.nome,
-        titulo: t.titulo || t.descricao,
-        prazo: t.prazo,
+        titulo: t.descricao,
+        prazo: t.data,
         criadoPor: t.criadoPor?.nome,
         diasRestantes,
       });
+      enviados++;
     }
+    console.log(`✅ Job lembrete tarefa: ${enviados} lembrete(s) enviado(s) de ${tarefas.length} tarefa(s) com prazo próximo.`);
   } catch(e) { console.error('Job lembrete tarefa:', e.message); }
 };
 
@@ -213,15 +222,21 @@ const enviarResumoPeriodico = async () => {
   } catch(e) { console.error('Job resumo:', e.message); }
 };
 
-// Rodar às 8h todos os dias
+// Rodar às 8h todos os dias — checa a cada 5min (em vez de 1h) e trava por dia (em vez de
+// só por hora), pra não depender do timing exato de quando o processo do Render subiu/reiniciou.
+// Sem essa trava, um restart durante a janela das 8h faria o job rodar de novo no mesmo dia.
+let ultimoDiaJobsExecutados = null;
 setInterval(() => {
-  const hora = new Date().getHours();
-  if (hora === 8) {
+  const agora = new Date();
+  const hoje = agora.toISOString().slice(0, 10); // YYYY-MM-DD
+  if (agora.getHours() === 8 && ultimoDiaJobsExecutados !== hoje) {
+    ultimoDiaJobsExecutados = hoje;
+    console.log(`⏰ Rodando jobs diários (${hoje})`);
     verificarOnboardingsParados();
     verificarTarefasComPrazo();
     enviarResumoPeriodico();
   }
-}, 3600000);
+}, 300000);
 
 // ── Rotas ──
 app.use('/api/auth', authRoutes);
@@ -344,11 +359,13 @@ mongoose.connect(process.env.MONGODB_URI)
       let criados = 0;
       for (const imp of implantacoes) {
         const cnpjLimpo = imp.cnpj?.replace(/\D/g, '') || '';
+        // Regex tolerante a máscara — o cnpj salvo pode estar com ou sem pontuação
+        const cnpjRegexTolerante = cnpjLimpo ? cnpjLimpo.split('').join('[.\\-/]*') : '';
         // Verificar duplicata por CNPJ ou por nome (cobre clientes antigos sem CNPJ)
         const existe = await Cliente.findOne({
           empresa: imp.empresa,
           $or: [
-            ...(cnpjLimpo ? [{ cnpj: { $regex: cnpjLimpo } }] : []),
+            ...(cnpjRegexTolerante ? [{ cnpj: { $regex: cnpjRegexTolerante } }] : []),
             { $or: [{ razaoSocial: imp.nomeCliente }, { nome: imp.nomeCliente }] }
           ]
         });

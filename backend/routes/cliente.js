@@ -5,6 +5,7 @@ const Cliente = require('../models/Cliente');
 const Implantacao = require('../models/Implantacao');
 const LancamentoSetor = require('../models/LancamentoSetor');
 const Setor = require('../models/Setor');
+const { clienteSchema, validar } = require('../validacao');
 
 const router = express.Router();
 
@@ -20,6 +21,11 @@ const preenchido = (v) => {
 };
 
 const CAMPOS_CADASTRAIS = ['razaoSocial', 'nomeFantasia', 'cnpj', 'porte', 'regime', 'dataAbertura', 'cnaePrincipal', 'atividade', 'telefone', 'email', 'socios'];
+
+// Compara CNPJ tolerando máscara — o valor salvo no banco pode estar com ou sem pontuação
+// dependendo de como o cliente foi cadastrado, então um regex com dígitos puros (ex: "$regex: cnpjLimpo")
+// nunca batia contra um cnpj salvo como "12.345.678/0001-90". Aceita pontuação opcional entre os dígitos.
+const cnpjRegexTolerante = (cnpjDigitos) => new RegExp(cnpjDigitos.split('').join('[.\\-/]*'));
 
 const mesclarCadastro = (existente, novo) => {
   CAMPOS_CADASTRAIS.forEach(campo => {
@@ -57,7 +63,7 @@ router.get('/:id', autenticar, async (req, res) => {
     // Buscar onboardings vinculados ao CNPJ do cliente
     const cnpjLimpo = cliente.cnpj?.replace(/\D/g, '');
     const onboardings = cnpjLimpo
-      ? await Implantacao.find({ empresa: req.usuario.empresa._id, cnpj: { $regex: cnpjLimpo } })
+      ? await Implantacao.find({ empresa: req.usuario.empresa._id, cnpj: cnpjRegexTolerante(cnpjLimpo) })
           .select('nomeCliente status criadoEm etapas')
           .populate('modelo', 'nome')
           .sort({ criadoEm: -1 })
@@ -71,7 +77,7 @@ router.get('/:id', autenticar, async (req, res) => {
 });
 
 // POST /api/clientes
-router.post('/', autenticar, temPermissao('gerenciarClientes'), async (req, res) => {
+router.post('/', autenticar, temPermissao('gerenciarClientes'), validar(clienteSchema), async (req, res) => {
   const { razaoSocial, cnpj, regime, porte, servicosContratados } = req.body;
   if (!razaoSocial?.trim()) return res.status(400).json({ erro: 'Razão social é obrigatória.' });
   // Clientes criados via onboarding (origem: 'onboarding') não exigem todos os campos
@@ -83,7 +89,7 @@ router.post('/', autenticar, temPermissao('gerenciarClientes'), async (req, res)
   try {
     if (cnpj) {
       const cnpjLimpo = cnpj.replace(/\D/g, '');
-      const existente = await Cliente.findOne({ empresa: req.usuario.empresa._id, cnpj: { $regex: cnpjLimpo } });
+      const existente = await Cliente.findOne({ empresa: req.usuario.empresa._id, cnpj: cnpjRegexTolerante(cnpjLimpo) });
       if (existente) {
         // CNPJ já cadastrado: atualiza o registro existente com os dados mais recentes em vez de duplicar
         mesclarCadastro(existente, { ...req.body, razaoSocial: razaoSocial.trim() });
@@ -411,10 +417,16 @@ router.post('/importar', autenticar, temPermissao('gerenciarClientes'), async (r
     for (const c of clientes) {
       try {
         if (!c.razaoSocial?.trim()) { resultados.ignorados++; continue; }
+        const validacao = clienteSchema.safeParse(c);
+        if (!validacao.success) {
+          resultados.ignorados++;
+          resultados.erros.push(`${c.razaoSocial}: ${validacao.error.issues[0]?.message || 'dado inválido'}`);
+          continue;
+        }
         // CNPJ já cadastrado: atualiza o registro existente com os dados mais recentes em vez de duplicar
         if (c.cnpj) {
           const cnpjLimpo = c.cnpj.replace(/\D/g, '');
-          const existente = await Cliente.findOne({ empresa: req.usuario.empresa._id, cnpj: { $regex: cnpjLimpo } });
+          const existente = await Cliente.findOne({ empresa: req.usuario.empresa._id, cnpj: cnpjRegexTolerante(cnpjLimpo) });
           if (existente) {
             mesclarCadastro(existente, c);
             await existente.save();
