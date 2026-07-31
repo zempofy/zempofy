@@ -20,12 +20,16 @@ const preenchido = (v) => {
   return true;
 };
 
-const CAMPOS_CADASTRAIS = ['razaoSocial', 'nomeFantasia', 'cnpj', 'porte', 'regime', 'dataAbertura', 'cnaePrincipal', 'atividade', 'telefone', 'email', 'socios'];
+const CAMPOS_CADASTRAIS = ['razaoSocial', 'nomeFantasia', 'cnpj', 'tipoPessoa', 'porte', 'regime', 'dataAbertura', 'cnaePrincipal', 'atividade', 'telefone', 'email', 'socios'];
 
 // Compara CNPJ tolerando máscara — o valor salvo no banco pode estar com ou sem pontuação
 // dependendo de como o cliente foi cadastrado, então um regex com dígitos puros (ex: "$regex: cnpjLimpo")
 // nunca batia contra um cnpj salvo como "12.345.678/0001-90". Aceita pontuação opcional entre os dígitos.
 const cnpjRegexTolerante = (cnpjDigitos) => new RegExp(cnpjDigitos.split('').join('[.\\-/]*'));
+
+// Documento de 11 dígitos é CPF (pessoa física); 14 dígitos (ou vazio) é CNPJ (pessoa jurídica).
+// Deriva sempre a partir do documento em vez de confiar no que o cliente envia.
+const tipoPessoaDoDocumento = (documento) => (documento || '').replace(/\D/g, '').length === 11 ? 'fisica' : 'juridica';
 
 const mesclarCadastro = (existente, novo) => {
   CAMPOS_CADASTRAIS.forEach(campo => {
@@ -80,9 +84,11 @@ router.get('/:id', autenticar, async (req, res) => {
 router.post('/', autenticar, temPermissao('gerenciarClientes'), validar(clienteSchema), async (req, res) => {
   const { razaoSocial, cnpj, regime, porte, servicosContratados } = req.body;
   if (!razaoSocial?.trim()) return res.status(400).json({ erro: 'Razão social é obrigatória.' });
-  // Clientes criados via onboarding (origem: 'onboarding') não exigem todos os campos
+  const tipoPessoa = tipoPessoaDoDocumento(cnpj);
+  // Clientes criados via onboarding (origem: 'onboarding') não exigem todos os campos.
+  // Pessoa física não tem porte (não se aplica).
   const viaOnboarding = req.body.origem === 'onboarding';
-  if (!viaOnboarding) {
+  if (!viaOnboarding && tipoPessoa !== 'fisica') {
     if (!porte) return res.status(400).json({ erro: 'Porte é obrigatório.' });
     if (!regime) return res.status(400).json({ erro: 'Regime tributário é obrigatório.' });
   }
@@ -91,16 +97,17 @@ router.post('/', autenticar, temPermissao('gerenciarClientes'), validar(clienteS
       const cnpjLimpo = cnpj.replace(/\D/g, '');
       const existente = await Cliente.findOne({ empresa: req.usuario.empresa._id, cnpj: cnpjRegexTolerante(cnpjLimpo) });
       if (existente) {
-        // CNPJ já cadastrado: atualiza o registro existente com os dados mais recentes em vez de duplicar
-        mesclarCadastro(existente, { ...req.body, razaoSocial: razaoSocial.trim() });
+        // CNPJ/CPF já cadastrado: atualiza o registro existente com os dados mais recentes em vez de duplicar
+        mesclarCadastro(existente, { ...req.body, razaoSocial: razaoSocial.trim(), tipoPessoa });
         await existente.save();
-        registrarLog({ empresa: req.usuario.empresa._id, usuario: req.usuario._id, tipo: 'cliente_editado', categoria: 'cliente', descricao: `Atualizou o cadastro de ${existente.razaoSocial} (CNPJ já existente)` });
+        registrarLog({ empresa: req.usuario.empresa._id, usuario: req.usuario._id, tipo: 'cliente_editado', categoria: 'cliente', descricao: `Atualizou o cadastro de ${existente.razaoSocial} (CNPJ/CPF já existente)` });
         return res.json(existente);
       }
     }
     const cliente = await Cliente.create({
       ...req.body,
       razaoSocial: razaoSocial.trim(),
+      tipoPessoa,
       empresa: req.usuario.empresa._id,
       criadoPor: req.usuario._id,
     });
@@ -112,9 +119,10 @@ router.post('/', autenticar, temPermissao('gerenciarClientes'), validar(clienteS
 });
 
 // PUT /api/clientes/:id
-router.put('/:id', autenticar, temPermissao('gerenciarClientes'), async (req, res) => {
+router.put('/:id', autenticar, temPermissao('gerenciarClientes'), validar(clienteSchema), async (req, res) => {
   try {
     const { empresa, criadoPor, _id, criadoEm, ...dados } = req.body;
+    if (dados.cnpj !== undefined) dados.tipoPessoa = tipoPessoaDoDocumento(dados.cnpj);
     const cliente = await Cliente.findOneAndUpdate(
       { _id: req.params.id, empresa: req.usuario.empresa._id },
       { $set: dados },
@@ -423,12 +431,13 @@ router.post('/importar', autenticar, temPermissao('gerenciarClientes'), async (r
           resultados.erros.push(`${c.razaoSocial}: ${validacao.error.issues[0]?.message || 'dado inválido'}`);
           continue;
         }
-        // CNPJ já cadastrado: atualiza o registro existente com os dados mais recentes em vez de duplicar
+        const tipoPessoa = tipoPessoaDoDocumento(c.cnpj);
+        // CNPJ/CPF já cadastrado: atualiza o registro existente com os dados mais recentes em vez de duplicar
         if (c.cnpj) {
           const cnpjLimpo = c.cnpj.replace(/\D/g, '');
           const existente = await Cliente.findOne({ empresa: req.usuario.empresa._id, cnpj: cnpjRegexTolerante(cnpjLimpo) });
           if (existente) {
-            mesclarCadastro(existente, c);
+            mesclarCadastro(existente, { ...c, tipoPessoa });
             await existente.save();
             resultados.atualizados++;
             continue;
@@ -436,6 +445,7 @@ router.post('/importar', autenticar, temPermissao('gerenciarClientes'), async (r
         }
         await Cliente.create({
           ...c,
+          tipoPessoa,
           empresa: req.usuario.empresa._id,
           criadoPor: req.usuario._id,
           status: c.status || 'ativo',

@@ -3,9 +3,10 @@ const { z } = require('zod');
 // Validações básicas (tipo/formato) pras rotas mais expostas a dado externo — não substitui
 // as regras de negócio já existentes em cada rota, só barra lixo óbvio antes de tocar no banco.
 
+// Aceita CNPJ (14 dígitos, pessoa jurídica) ou CPF (11 dígitos, pessoa física)
 const cnpjOpcional = z.string().optional().default('').refine(
-  v => !v || v.replace(/\D/g, '').length === 14,
-  { message: 'CNPJ deve ter 14 dígitos.' }
+  v => !v || [11, 14].includes(v.replace(/\D/g, '').length),
+  { message: 'CNPJ deve ter 14 dígitos ou CPF deve ter 11 dígitos.' }
 );
 
 const emailOpcional = z.string().optional().default('').refine(

@@ -9,9 +9,10 @@ const clienteSchema = new mongoose.Schema({
   // Dados básicos — obrigatórios
   razaoSocial: { type: String, required: true, trim: true },
   nomeFantasia: { type: String, default: '', trim: true },
-  cnpj: { type: String, default: '', trim: true },
+  cnpj: { type: String, default: '', trim: true }, // guarda CNPJ (14 dígitos) ou CPF (11 dígitos), conforme tipoPessoa
+  tipoPessoa: { type: String, enum: ['juridica', 'fisica'], default: 'juridica' },
   porte: { type: String, enum: ['mei', 'me', 'epp', 'grande', ''], default: '' },
-  regime: { type: String, enum: ['simples_nacional', 'lucro_presumido', 'lucro_real', 'mei', 'outro', ''], default: '' },
+  regime: { type: String, enum: ['simples_nacional', 'lucro_presumido', 'lucro_real', 'mei', 'pessoa_fisica', 'outro', ''], default: '' },
 
   // Dados complementares
   dataAbertura: { type: Date, default: null },

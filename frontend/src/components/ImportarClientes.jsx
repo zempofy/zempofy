@@ -26,10 +26,15 @@ const mascaraCNPJ = (v) => v.replace(/\D/g,'').slice(0,14)
   .replace(/^(\d{2})\.(\d{3})(\d)/,'$1.$2.$3')
   .replace(/\.(\d{3})(\d)/,'.$1/$2')
   .replace(/(\d{4})(\d)/,'$1-$2')
+const mascaraCPF = (v) => v.replace(/\D/g,'').slice(0,11)
+  .replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d{1,2})/,'$1-$2')
+// Máscara única do campo "CNPJ/CPF" — CPF enquanto tiver até 11 dígitos, CNPJ a partir do 12º
+const mascaraDocumento = (v) => { const d=v.replace(/\D/g,''); return d.length<=11 ? mascaraCPF(v) : mascaraCNPJ(v) }
+const ehPessoaFisica = (documento='') => documento.replace(/\D/g,'').length===11
 
 function baixarModelo() {
   const cabecalho = [
-    ['Razão Social *', 'CNPJ *', 'Porte *', 'Regime *', 'Status *', 'Nome Fantasia', 'Telefone', 'E-mail'],
+    ['Razão Social *', 'CNPJ / CPF *', 'Porte *', 'Regime *', 'Status *', 'Nome Fantasia', 'Telefone', 'E-mail'],
     ['', '', 'MEI / ME / EPP / Grande', 'Simples Nacional / Lucro Presumido / Lucro Real / MEI / Outro', 'Ativo / Inativo / Em encerramento', '', '', ''],
   ]
 
@@ -66,22 +71,26 @@ export default function ImportarClientes({ fechar, onImportado }) {
         // Pular as 2 primeiras linhas (cabeçalho + legenda)
         const dados = rows.slice(2).filter(row => row[0]?.toString().trim())
 
-        const lista = dados.map(row => ({
-          razaoSocial: row[0]?.toString().trim() || '',
-          cnpj: row[1]?.toString().trim() ? mascaraCNPJ(row[1].toString().replace(/\D/g,'')) : '',
-          porte: PORTES_MAP[row[2]?.toString().trim().toUpperCase()] || '',
-          regime: REGIMES_MAP[row[3]?.toString().trim().toUpperCase()] || '',
-          status: STATUS_MAP[row[4]?.toString().trim().toUpperCase()] || 'ativo',
-          nomeFantasia: row[5]?.toString().trim() || '',
-          telefone: row[6]?.toString().trim() || '',
-          email: row[7]?.toString().trim() || '',
-          socios: [],
-          endereco: {},
-          dataAbertura: null,
-          cnaePrincipal: '',
-          _enriquecido: false,
-          _erro: '',
-        }))
+        const lista = dados.map(row => {
+          const cnpj = row[1]?.toString().trim() ? mascaraDocumento(row[1].toString().replace(/\D/g,'')) : ''
+          const fisica = ehPessoaFisica(cnpj)
+          return {
+            razaoSocial: row[0]?.toString().trim() || '',
+            cnpj,
+            porte: fisica ? '' : (PORTES_MAP[row[2]?.toString().trim().toUpperCase()] || ''),
+            regime: fisica ? 'pessoa_fisica' : (REGIMES_MAP[row[3]?.toString().trim().toUpperCase()] || ''),
+            status: STATUS_MAP[row[4]?.toString().trim().toUpperCase()] || 'ativo',
+            nomeFantasia: row[5]?.toString().trim() || '',
+            telefone: row[6]?.toString().trim() || '',
+            email: row[7]?.toString().trim() || '',
+            socios: [],
+            endereco: {},
+            dataAbertura: null,
+            cnaePrincipal: '',
+            _enriquecido: false,
+            _erro: '',
+          }
+        })
 
         if (!lista.length) return mostrar('Nenhum cliente encontrado na planilha.', 'aviso')
         setClientes(lista)
@@ -245,7 +254,7 @@ export default function ImportarClientes({ fechar, onImportado }) {
             <table style={{ width:'100%', borderCollapse:'collapse', fontFamily:'Inter,sans-serif', fontSize:'0.8rem' }}>
               <thead>
                 <tr style={{ background:'var(--card)', borderBottom:'1px solid var(--borda)' }}>
-                  {['Razão Social','CNPJ','Porte','Regime','Status','Receita'].map(h=>(
+                  {['Razão Social','CNPJ/CPF','Porte','Regime','Status','Receita'].map(h=>(
                     <th key={h} style={{ padding:'10px 14px', textAlign:'left', fontSize:'0.65rem', fontWeight:'700', color:'var(--texto-apagado)', textTransform:'uppercase', letterSpacing:'0.8px', whiteSpace:'nowrap' }}>{h}</th>
                   ))}
                 </tr>
@@ -257,7 +266,7 @@ export default function ImportarClientes({ fechar, onImportado }) {
                     <td style={{ padding:'10px 14px', color:'var(--texto-apagado)' }}>{c.cnpj||'—'}</td>
                     <td style={{ padding:'10px 14px', color:'var(--texto-apagado)' }}>{c.porte?.toUpperCase()||'—'}</td>
                     <td style={{ padding:'10px 14px', color:'var(--texto-apagado)', maxWidth:'160px' }}>
-                      <span style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', display:'block' }}>{c.regime||'—'}</span>
+                      <span style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', display:'block' }}>{c.regime==='pessoa_fisica'?'Pessoa Física':(c.regime||'—')}</span>
                       {c._regimeIncerto && (
                         <span title="A Receita só confirma Simples Nacional e MEI — Lucro Presumido/Real precisa ser confirmado manualmente." style={{ display:'flex', alignItems:'center', gap:'3px', fontSize:'0.65rem', color:'#fbbf24', whiteSpace:'nowrap' }}>
                           <Icone.AlertTriangle size={10}/> confirmar manualmente

@@ -17,6 +17,9 @@ const mascaraCPF = (v) => v.replace(/\D/g,'').slice(0,11)
 const mascaraCEP = (v) => v.replace(/\D/g,'').slice(0,8).replace(/(\d{5})(\d)/,'$1-$2')
 const mascaraTel = (v) => { const d=v.replace(/\D/g,'').slice(0,11); return d.length<=10?d.replace(/(\d{2})(\d{4})(\d)/,'($1) $2-$3'):d.replace(/(\d{2})(\d{5})(\d)/,'($1) $2-$3') }
 const mascaraCNAE = (v) => { const d=v.replace(/\D/g,'').slice(0,7); return d.replace(/(\d{4})(\d)(\d{2})/,'$1-$2/$3').replace(/(\d{4})(\d)/,'$1-$2') }
+// Máscara única do campo "CNPJ/CPF": aplica CPF enquanto tiver até 11 dígitos, CNPJ a partir do 12º
+const mascaraDocumento = (v) => { const d=v.replace(/\D/g,''); return d.length<=11 ? mascaraCPF(v) : mascaraCNPJ(v) }
+const ehPessoaFisica = (documento='') => documento.replace(/\D/g,'').length===11
 
 // ── Constantes ──
 const REGIMES = [
@@ -24,6 +27,7 @@ const REGIMES = [
   { value:'lucro_presumido', label:'Lucro Presumido' },
   { value:'lucro_real', label:'Lucro Real' },
   { value:'mei', label:'MEI' },
+  { value:'pessoa_fisica', label:'Pessoa Física' },
   { value:'outro', label:'Outro' },
 ]
 const PORTES = [
@@ -304,6 +308,7 @@ function FormCliente({ cliente, fechar, onSalvo }) {
     api.get('/setores').then(r => setSetoresList(r.data)).catch(()=>{})
   }, [])
 
+  const pessoaFisica = ehPessoaFisica(form.cnpj)
   const set = (k,v) => { setForm(f=>({...f,[k]:v})); if(camposComErro.includes(k)) setCamposComErro(c=>c.filter(e=>e!==k)) }
   const inpErro = (campo) => camposComErro.includes(campo) ? { ...s.inp, borderColor:'#f87171', background:'rgba(248,113,113,0.05)' } : s.inp
   const setEnd = (k,v) => setForm(f=>({...f,endereco:{...f.endereco,[k]:v}}))
@@ -393,7 +398,7 @@ function FormCliente({ cliente, fechar, onSalvo }) {
     const erros = []
     const campos = []
     if (!form.razaoSocial.trim()) { erros.push('Razão social'); campos.push('razaoSocial') }
-    if (!form.porte) { erros.push('Porte'); campos.push('porte') }
+    if (!pessoaFisica && !form.porte) { erros.push('Porte'); campos.push('porte') }
     if (!form.regime) { erros.push('Regime tributário'); campos.push('regime') }
     // Serviço não é mais obrigatório
     if (form.email && !form.email.includes('@')) { erros.push('E-mail inválido'); campos.push('email') }
@@ -434,47 +439,59 @@ function FormCliente({ cliente, fechar, onSalvo }) {
 
         {/* ── DADOS BÁSICOS ── */}
         <Secao titulo="Dados básicos">
-          {/* CNPJ vem primeiro — com botão de busca */}
+          {/* CNPJ/CPF vem primeiro — com botão de busca (só pra CNPJ) */}
           <div style={{ display:'flex', gap:'10px', alignItems:'flex-end' }}>
-            <Campo label="CNPJ">
-              <input style={s.inp} value={form.cnpj} onChange={e=>set('cnpj',mascaraCNPJ(e.target.value))} placeholder="00.000.000/0000-00" onKeyDown={e=>e.key==='Enter'&&buscarCNPJ()} />
+            <Campo label="CNPJ / CPF">
+              <input style={s.inp} value={form.cnpj} onChange={e=>{
+                const masked = mascaraDocumento(e.target.value)
+                if (ehPessoaFisica(masked)) {
+                  setForm(f=>({ ...f, cnpj:masked, regime:'pessoa_fisica', porte:'', atividade:'', cnaePrincipal:'', dataAbertura:'', socios:[{nome:'',cpf:'',telefone:'',email:'',qualificacao:''}] }))
+                } else {
+                  setForm(f=>({ ...f, cnpj:masked, regime: f.regime==='pessoa_fisica' ? '' : f.regime }))
+                }
+              }} placeholder="00.000.000/0000-00 ou 000.000.000-00" onKeyDown={e=>e.key==='Enter'&&!pessoaFisica&&buscarCNPJ()} />
             </Campo>
-            <button onClick={buscarCNPJ} disabled={buscandoCNPJ} style={{ ...s.btnSecundario, flexShrink:0, height:'38px', alignSelf:'flex-end', display:'flex', alignItems:'center', gap:'6px' }}>
-              <Icone.Search size={13}/>{buscandoCNPJ ? 'Buscando...' : 'Buscar na Receita'}
-            </button>
+            {!pessoaFisica && (
+              <button onClick={buscarCNPJ} disabled={buscandoCNPJ} style={{ ...s.btnSecundario, flexShrink:0, height:'38px', alignSelf:'flex-end', display:'flex', alignItems:'center', gap:'6px' }}>
+                <Icone.Search size={13}/>{buscandoCNPJ ? 'Buscando...' : 'Buscar na Receita'}
+              </button>
+            )}
           </div>
 
           {/* Razão social */}
-          <Campo label="Razão social" obrigatorio>
-            <input style={camposComErro.includes('razaoSocial') ? { ...s.inp, fontSize:'1rem', borderColor:'#f87171', background:'rgba(248,113,113,0.05)' } : { ...s.inp, fontSize:'1rem' }} value={form.razaoSocial} onChange={e=>set('razaoSocial',e.target.value)} placeholder="Nome oficial da empresa" />
+          <Campo label={pessoaFisica ? 'Nome completo' : 'Razão social'} obrigatorio>
+            <input style={camposComErro.includes('razaoSocial') ? { ...s.inp, fontSize:'1rem', borderColor:'#f87171', background:'rgba(248,113,113,0.05)' } : { ...s.inp, fontSize:'1rem' }} value={form.razaoSocial} onChange={e=>set('razaoSocial',e.target.value)} placeholder={pessoaFisica ? 'Nome completo da pessoa' : 'Nome oficial da empresa'} />
           </Campo>
 
-          {/* Nome fantasia com botão copiar */}
-          <Campo label="Nome fantasia">
-            <div style={{ display:'flex', gap:'8px', alignItems:'center' }}>
-              <input style={{ ...s.inp, flex:1 }} value={form.nomeFantasia} onChange={e=>set('nomeFantasia',e.target.value)} placeholder="Como é conhecido" />
-              <button onClick={()=>set('nomeFantasia',form.razaoSocial)} title="Copiar razão social" style={{ background:'none', border:'1px solid var(--borda)', borderRadius:'8px', color:'var(--texto-apagado)', padding:'0 10px', height:'38px', cursor:'pointer', display:'flex', alignItems:'center', flexShrink:0 }}>
-                <Icone.Copy size={14}/>
-              </button>
-            </div>
-          </Campo>
+          {!pessoaFisica && (
+            <Campo label="Nome fantasia">
+              <div style={{ display:'flex', gap:'8px', alignItems:'center' }}>
+                <input style={{ ...s.inp, flex:1 }} value={form.nomeFantasia} onChange={e=>set('nomeFantasia',e.target.value)} placeholder="Como é conhecido" />
+                <button onClick={()=>set('nomeFantasia',form.razaoSocial)} title="Copiar razão social" style={{ background:'none', border:'1px solid var(--borda)', borderRadius:'8px', color:'var(--texto-apagado)', padding:'0 10px', height:'38px', cursor:'pointer', display:'flex', alignItems:'center', flexShrink:0 }}>
+                  <Icone.Copy size={14}/>
+                </button>
+              </div>
+            </Campo>
+          )}
 
           {/* Porte + Regime + Status */}
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'12px' }}>
-            <Campo label="Porte" obrigatorio>
-              <select style={inpErro('porte')} value={form.porte} onChange={e=>{
-                const p=e.target.value; set('porte',p); if(p==='mei') set('regime','mei')
-              }}>
-                <option value="">Selecione</option>
-                {PORTES.map(p=><option key={p.value} value={p.value}>{p.label}</option>)}
-              </select>
-            </Campo>
+          <div style={{ display:'grid', gridTemplateColumns: pessoaFisica ? '1fr 1fr' : '1fr 1fr 1fr', gap:'12px' }}>
+            {!pessoaFisica && (
+              <Campo label="Porte" obrigatorio>
+                <select style={inpErro('porte')} value={form.porte} onChange={e=>{
+                  const p=e.target.value; set('porte',p); if(p==='mei') set('regime','mei')
+                }}>
+                  <option value="">Selecione</option>
+                  {PORTES.map(p=><option key={p.value} value={p.value}>{p.label}</option>)}
+                </select>
+              </Campo>
+            )}
             <Campo label="Regime tributário" obrigatorio>
-              {form.porte==='mei'
-                ? <div style={{...s.inp,color:'var(--texto-apagado)',background:'rgba(255,255,255,0.03)',display:'flex',alignItems:'center'}}>MEI</div>
+              {pessoaFisica || form.porte==='mei'
+                ? <div style={{...s.inp,color:'var(--texto-apagado)',background:'rgba(255,255,255,0.03)',display:'flex',alignItems:'center'}}>{pessoaFisica?'Pessoa Física':'MEI'}</div>
                 : <select style={inpErro('regime')} value={form.regime} onChange={e=>set('regime',e.target.value)}>
                     <option value="">Selecione</option>
-                    {REGIMES.filter(r=>r.value!=='mei').map(r=><option key={r.value} value={r.value}>{r.label}</option>)}
+                    {REGIMES.filter(r=>r.value!=='mei'&&r.value!=='pessoa_fisica').map(r=><option key={r.value} value={r.value}>{r.label}</option>)}
                   </select>
               }
             </Campo>
@@ -485,21 +502,23 @@ function FormCliente({ cliente, fechar, onSalvo }) {
             </Campo>
           </div>
 
-          {/* Atividade + CNAE + Data abertura */}
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 140px 160px', gap:'12px' }}>
-            <Campo label="Atividade principal">
-              <select style={s.inp} value={form.atividade} onChange={e=>set('atividade',e.target.value)}>
-                <option value="">Selecione</option>
-                {ATIVIDADES.map(a=><option key={a.value} value={a.value}>{a.label}</option>)}
-              </select>
-            </Campo>
-            <Campo label="CNAE">
-              <input style={s.inp} value={form.cnaePrincipal} onChange={e=>set('cnaePrincipal',mascaraCNAE(e.target.value))} placeholder="0000-0/00" />
-            </Campo>
-            <Campo label="Data de abertura">
-              <input style={s.inp} type="date" value={form.dataAbertura} onChange={e=>set('dataAbertura',e.target.value)} />
-            </Campo>
-          </div>
+          {/* Atividade + CNAE + Data abertura — não se aplica a pessoa física */}
+          {!pessoaFisica && (
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 140px 160px', gap:'12px' }}>
+              <Campo label="Atividade principal">
+                <select style={s.inp} value={form.atividade} onChange={e=>set('atividade',e.target.value)}>
+                  <option value="">Selecione</option>
+                  {ATIVIDADES.map(a=><option key={a.value} value={a.value}>{a.label}</option>)}
+                </select>
+              </Campo>
+              <Campo label="CNAE">
+                <input style={s.inp} value={form.cnaePrincipal} onChange={e=>set('cnaePrincipal',mascaraCNAE(e.target.value))} placeholder="0000-0/00" />
+              </Campo>
+              <Campo label="Data de abertura">
+                <input style={s.inp} type="date" value={form.dataAbertura} onChange={e=>set('dataAbertura',e.target.value)} />
+              </Campo>
+            </div>
+          )}
         </Secao>
 
         {/* ── SETORES ── */}
@@ -587,7 +606,8 @@ function FormCliente({ cliente, fechar, onSalvo }) {
           </div>
         </Secao>
 
-        {/* ── SÓCIOS ── */}
+        {/* ── SÓCIOS — não se aplica a pessoa física ── */}
+        {!pessoaFisica && (
         <Secao titulo="Sócios / Responsáveis">
           {form.socios.map((sc, i) => (
             <div key={i} style={{ border:'1px solid var(--borda)', borderRadius:'10px', padding:'14px', display:'flex', flexDirection:'column', gap:'10px' }}>
@@ -609,6 +629,7 @@ function FormCliente({ cliente, fechar, onSalvo }) {
             + Adicionar sócio
           </button>
         </Secao>
+        )}
 
         {/* ── OBSERVAÇÕES ── */}
         <Secao titulo="Observações">
@@ -811,7 +832,15 @@ function TelaDetalhe({ clienteId, voltar, onAtualizado, abaInicial = 'info' }) {
 
       {aba==='info'&&(
         <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(280px, 1fr))', gap:'16px' }}>
-          <div style={s.secCard}><p style={s.secTit}>Dados básicos</p><InfoLinha label="CNPJ" valor={dados.cnpj||'—'}/><InfoLinha label="Porte" valor={labelPorte(dados.porte)}/><InfoLinha label="Regime" valor={labelRegime(dados.regime)}/><InfoLinha label="Abertura" valor={formatData(dados.dataAbertura)}/><InfoLinha label="CNAE" valor={dados.cnaePrincipal||'—'}/></div>
+          <div style={s.secCard}><p style={s.secTit}>Dados básicos</p>
+            <InfoLinha label={ehPessoaFisica(dados.cnpj) ? 'CPF' : 'CNPJ'} valor={dados.cnpj||'—'}/>
+            <InfoLinha label="Regime" valor={labelRegime(dados.regime)}/>
+            {!ehPessoaFisica(dados.cnpj) && <>
+              <InfoLinha label="Porte" valor={labelPorte(dados.porte)}/>
+              <InfoLinha label="Abertura" valor={formatData(dados.dataAbertura)}/>
+              <InfoLinha label="CNAE" valor={dados.cnaePrincipal||'—'}/>
+            </>}
+          </div>
           <div style={s.secCard}><p style={s.secTit}>Contato</p><InfoLinha label="Telefone" valor={dados.telefone||'—'}/><InfoLinha label="E-mail" valor={dados.email||'—'}/>{dados.endereco?.logradouro&&<InfoLinha label="Endereço" valor={`${dados.endereco.logradouro}, ${dados.endereco.numero}${dados.endereco.complemento?` - ${dados.endereco.complemento}`:''}, ${dados.endereco.bairro}, ${dados.endereco.cidade}/${dados.endereco.estado}`}/>}</div>
           {dados.socios?.filter(s=>s.nome).map((sc,i)=>(<div key={i} style={s.secCard}><p style={s.secTit}>Sócio {i+1}{sc.qualificacao?` — ${sc.qualificacao}`:''}</p><InfoLinha label="Nome" valor={sc.nome}/><InfoLinha label="CPF" valor={sc.cpf||'—'}/><InfoLinha label="Telefone" valor={sc.telefone||'—'}/><InfoLinha label="E-mail" valor={sc.email||'—'}/></div>))}
         </div>
@@ -1375,7 +1404,7 @@ function CardCliente({ cliente, onClick }) {
         <div style={{ width:'40px', height:'40px', borderRadius:'10px', background:'var(--verde)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1rem', fontWeight:'700', color:'#fff', flexShrink:0 }}>{nomeCliente.slice(0,2).toUpperCase()}</div>
         <div style={{ minWidth:0 }}>
           <p style={{ fontWeight:'600', color:'var(--texto)', margin:0, fontSize:'0.9rem', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{nomeCliente}</p>
-          <p style={{ fontSize:'0.72rem', color:'var(--texto-apagado)', margin:'2px 0 0' }}>{cliente.cnpj||'Sem CNPJ'}</p>
+          <p style={{ fontSize:'0.72rem', color:'var(--texto-apagado)', margin:'2px 0 0' }}>{cliente.cnpj||(cliente.tipoPessoa==='fisica'?'Sem CPF':'Sem CNPJ')}</p>
         </div>
       </div>
       <div style={{ display:'flex', gap:'6px', marginBottom:'14px', flexWrap:'wrap' }}>
@@ -1430,6 +1459,7 @@ export default function Clientes({ detalheInicial = null, abaInicial = 'info', o
   const [carregando, setCarregando] = useState(true)
   const [busca, setBusca] = useState('')
   const [filtroSetor, setFiltroSetor] = useState(null)
+  const [filtroPessoaFisica, setFiltroPessoaFisica] = useState(false)
   // undefined = "Todos" (sem subfiltro ativo) — precisa ser diferente de null porque
   // o DP tem uma opção real de valor null ("Não configurado")
   const [subFiltro, setSubFiltro] = useState(undefined)
@@ -1490,7 +1520,8 @@ export default function Clientes({ detalheInicial = null, abaInicial = 'info', o
     const matchBusca = nome.toLowerCase().includes(busca.toLowerCase()) || c.nomeFantasia?.toLowerCase().includes(busca.toLowerCase()) || c.cnpj?.includes(busca)
     const matchSetor = !filtroSetor || c.setores?.some(s=>(s._id||s)===filtroSetor)
     const matchSubFiltro = !subFiltroConfig || subFiltro===undefined || subFiltroConfig.campo(c)===subFiltro
-    return matchBusca && matchSetor && matchSubFiltro
+    const matchPessoaFisica = !filtroPessoaFisica || ehPessoaFisica(c.cnpj)
+    return matchBusca && matchSetor && matchSubFiltro && matchPessoaFisica
   }).sort((a,b)=>{
     const inativoA = a.status==='inativo' ? 1 : 0
     const inativoB = b.status==='inativo' ? 1 : 0
@@ -1521,7 +1552,7 @@ export default function Clientes({ detalheInicial = null, abaInicial = 'info', o
 
       {/* Busca + filtro por setor */}
       <div style={{ display:'flex', gap:'10px', marginBottom:'20px', flexWrap:'wrap', alignItems:'center' }}>
-        <input style={{ ...s.inp, flex:1, minWidth:'200px' }} value={busca} onChange={e=>setBusca(e.target.value)} placeholder="Buscar por nome ou CNPJ..." />
+        <input style={{ ...s.inp, flex:1, minWidth:'200px' }} value={busca} onChange={e=>setBusca(e.target.value)} placeholder="Buscar por nome, CNPJ ou CPF..." />
         {setoresList.length>0&&(
           <div style={{ display:'flex', gap:'6px', flexWrap:'wrap' }}>
             <button onClick={()=>setFiltroSetor(null)} style={{ padding:'7px 14px', borderRadius:'8px', fontSize:'0.78rem', fontWeight:'600', cursor:'pointer', fontFamily:'Inter,sans-serif', border:`1px solid ${!filtroSetor?'rgba(0,177,65,0.3)':'var(--borda)'}`, background:!filtroSetor?'rgba(0,177,65,0.08)':'var(--input)', color:!filtroSetor?'var(--verde)':'var(--texto-apagado)' }}>
@@ -1535,6 +1566,9 @@ export default function Clientes({ detalheInicial = null, abaInicial = 'info', o
             ))}
           </div>
         )}
+        <button onClick={()=>setFiltroPessoaFisica(v=>!v)} style={{ padding:'7px 14px', borderRadius:'8px', fontSize:'0.78rem', fontWeight:'600', cursor:'pointer', fontFamily:'Inter,sans-serif', display:'flex', alignItems:'center', gap:'6px', border:`1px solid ${filtroPessoaFisica?'rgba(0,177,65,0.3)':'var(--borda)'}`, background:filtroPessoaFisica?'rgba(0,177,65,0.08)':'var(--input)', color:filtroPessoaFisica?'var(--verde)':'var(--texto-apagado)' }}>
+          <Icone.User size={13}/> Pessoa Física
+        </button>
       </div>
 
       {/* Subfiltro (ex: Regime quando setor Fiscal está selecionado) */}
