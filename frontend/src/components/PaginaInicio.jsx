@@ -49,7 +49,7 @@ function SecaoHeader({ titulo, icone, onVerTodos }) {
 
 // ── VERSÃO TITULAR ──
 function InicioTitular({ usuario, setPagina }) {
-  const [dados, setDados] = useState({ implantacoes:[], clientes:[], tarefas:[], logs:[] })
+  const [dados, setDados] = useState({ implantacoes:[], clientes:[], tarefas:[], logs:[], leads:[] })
   const [carregando, setCarregando] = useState(true)
 
   useEffect(() => {
@@ -57,8 +57,9 @@ function InicioTitular({ usuario, setPagina }) {
       api.get('/implantacoes').catch(()=>({ data:[] })),
       api.get('/clientes').catch(()=>({ data:[] })),
       api.get('/tarefas').catch(()=>({ data:[] })),
-    ]).then(([imp, cli, tar]) => {
-      setDados({ implantacoes: imp.data, clientes: cli.data, tarefas: tar.data })
+      api.get('/leads').catch(()=>({ data:[] })),
+    ]).then(([imp, cli, tar, leads]) => {
+      setDados({ implantacoes: imp.data, clientes: cli.data, tarefas: tar.data, leads: leads.data })
       setCarregando(false)
     })
   }, [])
@@ -180,23 +181,28 @@ function InicioTitular({ usuario, setPagina }) {
         {/* Resumo CRM */}
         <div style={{ background:'var(--card)', border:'1px solid var(--borda)', borderRadius:'12px', padding:'16px' }}>
           <SecaoHeader titulo="Funil CRM" icone={<Icone.Users size={14}/>} onVerTodos={()=>setPagina('crm')} />
-          {[
-            { label:'Prospecção', valor:2, cor:'#6366f1' },
-            { label:'Contato', valor:2, cor:'#f59e0b' },
-            { label:'Reunião', valor:1, cor:'#3b82f6' },
-            { label:'Proposta', valor:1, cor:'#8b5cf6' },
-            { label:'Fechado', valor:1, cor:'#00b141' },
-          ].map((e,i) => (
-            <div key={i} style={{ display:'flex', alignItems:'center', gap:'10px', padding:'7px 0', borderBottom:'1px solid var(--borda)' }}>
-              <div style={{ width:'7px', height:'7px', borderRadius:'50%', background:e.cor, flexShrink:0 }}/>
-              <p style={{ fontSize:'0.8rem', color:'var(--texto)', margin:0, fontFamily:'Inter,sans-serif', flex:1 }}>{e.label}</p>
-              <div style={{ flex:2, height:'4px', background:'var(--borda)', borderRadius:'99px', overflow:'hidden' }}>
-                <div style={{ height:'100%', width:`${(e.valor/2)*100}%`, background:e.cor, borderRadius:'99px' }}/>
+          {(() => {
+            const etapasFunil = [
+              { id:'prospeccao', label:'Prospecção', cor:'#6366f1' },
+              { id:'contato', label:'Contato', cor:'#f59e0b' },
+              { id:'reuniao', label:'Reunião', cor:'#3b82f6' },
+              { id:'proposta', label:'Proposta', cor:'#8b5cf6' },
+              { id:'fechado', label:'Fechado', cor:'#00b141' },
+            ].map(e => ({ ...e, valor: dados.leads.filter(l => l.etapa === e.id).length }))
+            const maxValor = Math.max(1, ...etapasFunil.map(e => e.valor))
+            return dados.leads.length === 0 ? (
+              <p style={{ color:'var(--texto-apagado)', fontSize:'0.82rem', fontFamily:'Inter,sans-serif' }}>Nenhum lead cadastrado ainda.</p>
+            ) : etapasFunil.map((e,i) => (
+              <div key={i} style={{ display:'flex', alignItems:'center', gap:'10px', padding:'7px 0', borderBottom:'1px solid var(--borda)' }}>
+                <div style={{ width:'7px', height:'7px', borderRadius:'50%', background:e.cor, flexShrink:0 }}/>
+                <p style={{ fontSize:'0.8rem', color:'var(--texto)', margin:0, fontFamily:'Inter,sans-serif', flex:1 }}>{e.label}</p>
+                <div style={{ flex:2, height:'4px', background:'var(--borda)', borderRadius:'99px', overflow:'hidden' }}>
+                  <div style={{ height:'100%', width:`${(e.valor/maxValor)*100}%`, background:e.cor, borderRadius:'99px' }}/>
+                </div>
+                <span style={{ fontSize:'0.75rem', fontWeight:'700', color:e.cor, flexShrink:0, minWidth:'16px', textAlign:'right' }}>{e.valor}</span>
               </div>
-              <span style={{ fontSize:'0.75rem', fontWeight:'700', color:e.cor, flexShrink:0, minWidth:'16px', textAlign:'right' }}>{e.valor}</span>
-            </div>
-          ))}
-          <p style={{ fontSize:'0.68rem', color:'var(--texto-apagado)', margin:'10px 0 0', fontFamily:'Inter,sans-serif', fontStyle:'italic' }}>Dados demonstrativos — CRM em beta</p>
+            ))
+          })()}
         </div>
       </div>
     </div>
@@ -247,6 +253,21 @@ function InicioColaborador({ usuario, setPagina, temPermissao }) {
         <MetricCard icone={<Icone.ClipboardList size={14}/>} label="Onboardings" valor={impsAtivas.length} sub="em andamento" />
         <MetricCard icone={<Icone.CheckCircle size={14}/>} label="Concluídas" valor={tarefas.filter(t=>t.status==='concluida').length} sub="esta semana" cor="var(--verde)" />
       </div>
+
+      {/* Meus setores */}
+      {usuario?.setores?.length > 0 && (
+        <div style={{ background:'var(--card)', border:'1px solid var(--borda)', borderRadius:'12px', padding:'16px' }}>
+          <SecaoHeader titulo="Meus setores" icone={<Icone.Users size={14}/>} />
+          <div style={{ display:'flex', gap:'6px', flexWrap:'wrap' }}>
+            {usuario.setores.map(setor => (
+              <span key={setor._id||setor} style={{ fontSize:'0.72rem', fontWeight:'600', padding:'4px 10px', borderRadius:'6px', background:'var(--input)', color:'var(--texto-apagado)', border:'1px solid var(--borda)', display:'flex', alignItems:'center', gap:'6px', fontFamily:'Inter,sans-serif' }}>
+                <div style={{ width:'7px', height:'7px', borderRadius:'50%', background:setor.cor||'var(--verde)', flexShrink:0 }}/>
+                {setor.nome||setor}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Minhas tarefas */}
       <div style={{ background:'var(--card)', border:'1px solid var(--borda)', borderRadius:'12px', padding:'16px' }}>

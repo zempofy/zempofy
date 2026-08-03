@@ -578,7 +578,7 @@ export default function DashboardFuncionario() {
   // Verifica se tem algum item na seção Escritório pra mostrar o separador
   const menuItens = [
     { id: 'inicio', label: 'Início', icone: <Icone.Home size={16} /> },
-    { id: 'crm', label: 'CRM', icone: <Icone.Users size={16} /> },
+    { id: 'crm', label: 'CRM', icone: <Icone.Zap size={16} /> },
 
     // Escritório — Clientes sempre visível (acesso de visualização pra todos); Onboarding só com permissão
     { id: '__sep_escritorio', separador: true, label: 'Escritório' },

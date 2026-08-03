@@ -13,6 +13,11 @@ const clienteSchema = new mongoose.Schema({
   tipoPessoa: { type: String, enum: ['juridica', 'fisica'], default: 'juridica' },
   porte: { type: String, enum: ['mei', 'me', 'epp', 'grande', ''], default: '' },
   regime: { type: String, enum: ['simples_nacional', 'lucro_presumido', 'lucro_real', 'mei', 'pessoa_fisica', 'outro', ''], default: '' },
+  // Histórico versionado do regime, por vigência — regime acima continua sendo sempre o valor
+  // atual (usado no cadastro, subfiltros e Demanda do mês corrente). Só é consultado pra
+  // resolver competências passadas do Histórico do Fiscal.
+  historicoRegime: [{ valor: String, vigenteDesde: String, _id: false }],
+  honorario: { type: Number, default: 0 },
 
   // Dados complementares
   dataAbertura: { type: Date, default: null },

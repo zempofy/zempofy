@@ -14,11 +14,15 @@ const emailOpcional = z.string().optional().default('').refine(
   { message: 'E-mail inválido.' }
 );
 
-const clienteSchema = z.object({
+const clienteCreateSchema = z.object({
   razaoSocial: z.string().trim().min(1, 'Razão social é obrigatória.'),
   cnpj: cnpjOpcional,
   email: emailOpcional,
 }).passthrough();
+
+// Atualização parcial (edição, inativar, reativar etc.) — mesmas regras de formato,
+// mas nenhum campo é obrigatório porque o payload pode mandar só o que mudou.
+const clienteUpdateSchema = clienteCreateSchema.partial();
 
 const usuarioSchema = z.object({
   nome: z.string().trim().min(1, 'Nome é obrigatório.'),
@@ -36,4 +40,4 @@ const validar = (schema) => (req, res, next) => {
   next();
 };
 
-module.exports = { clienteSchema, usuarioSchema, validar };
+module.exports = { clienteCreateSchema, clienteUpdateSchema, usuarioSchema, validar };

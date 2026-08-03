@@ -70,6 +70,15 @@ const SUBFILTROS_POR_SETOR = {
       { value:null, label:'Não configurado' },
     ],
   },
+  contabil: {
+    campo: (cliente) => cliente.configSetores?.contabil?.situacao || null,
+    opcoesFixas: [
+      { value:'mensal', label:'Mês a mês' },
+      { value:'trimestral', label:'Trimestral' },
+      { value:'semestral', label:'Semestral' },
+      { value:null, label:'Não configurado' },
+    ],
+  },
 }
 
 const BANCOS_SUGERIDOS = [
@@ -90,35 +99,36 @@ const CONFIG_DEMANDA = {
   fiscal: {
     porRegime: {
       simples_nacional: [
-        { id:'totalVendas', label:'Total de vendas no mês', tipo:'moeda' },
-        { id:'totalServicos', label:'Total de serviços prestados', tipo:'moeda' },
-        { id:'das', label:'Valor do DAS', tipo:'moeda' },
-        { id:'issRetido', label:'ISS Retido', tipo:'moeda' },
-        { id:'icmsAntecipado', label:'ICMS Antecipado', tipo:'moeda' },
+        { id:'totalVendas', label:'Venda', tipo:'moeda' },
+        { id:'totalServicos', label:'Serviço', tipo:'moeda' },
+        { id:'das', label:'Guia simples', tipo:'moeda' },
+        { id:'issRetido', label:'ISS retido', tipo:'moeda' },
+        { id:'icmsDifal', label:'ICMS difal', tipo:'moeda' },
+        { id:'icmsAntecipado', label:'ICMS antecipação', tipo:'moeda' },
       ],
       lucro_presumido: [
-        { id:'totalVendas', label:'Total de vendas no mês', tipo:'moeda' },
-        { id:'totalServicos', label:'Total de serviços prestados', tipo:'moeda' },
+        { id:'totalVendas', label:'Venda', tipo:'moeda' },
+        { id:'totalServicos', label:'Serviço', tipo:'moeda' },
         { id:'pis', label:'PIS', tipo:'moeda' },
         { id:'cofins', label:'COFINS', tipo:'moeda' },
         { id:'irpj', label:'IRPJ', tipo:'moeda' },
         { id:'csll', label:'CSLL', tipo:'moeda' },
-        { id:'iss', label:'ISS', tipo:'moeda' },
-        { id:'issProprio', label:'ISS Próprio', tipo:'moeda' },
-        { id:'icmsAntecipado', label:'ICMS Antecipado', tipo:'moeda' },
-        { id:'icmsProprio', label:'ICMS Próprio', tipo:'moeda' },
+        { id:'issProprio', label:'ISS próprio', tipo:'moeda' },
+        { id:'issRetido', label:'ISS retido', tipo:'moeda' },
+        { id:'icmsAntecipado', label:'ICMS antecipação', tipo:'moeda' },
+        { id:'icmsDifal', label:'ICMS difal', tipo:'moeda' },
       ],
       lucro_real: [
-        { id:'totalVendas', label:'Total de vendas no mês', tipo:'moeda' },
-        { id:'totalServicos', label:'Total de serviços prestados', tipo:'moeda' },
+        { id:'totalVendas', label:'Venda', tipo:'moeda' },
+        { id:'totalServicos', label:'Serviço', tipo:'moeda' },
         { id:'pis', label:'PIS', tipo:'moeda' },
         { id:'cofins', label:'COFINS', tipo:'moeda' },
         { id:'irpj', label:'IRPJ', tipo:'moeda' },
         { id:'csll', label:'CSLL', tipo:'moeda' },
-        { id:'iss', label:'ISS', tipo:'moeda' },
-        { id:'issProprio', label:'ISS Próprio', tipo:'moeda' },
-        { id:'icmsAntecipado', label:'ICMS Antecipado', tipo:'moeda' },
-        { id:'icmsProprio', label:'ICMS Próprio', tipo:'moeda' },
+        { id:'issProprio', label:'ISS próprio', tipo:'moeda' },
+        { id:'issRetido', label:'ISS retido', tipo:'moeda' },
+        { id:'icmsAntecipado', label:'ICMS antecipação', tipo:'moeda' },
+        { id:'icmsDifal', label:'ICMS difal', tipo:'moeda' },
       ],
       // mei: definir campos quando for a vez
     }
@@ -267,6 +277,32 @@ function InfoLinha({ label, valor }) {
   )
 }
 
+// ── Diálogo de vigência: pergunta a partir de quando uma mudança de regime/situação passa a valer ──
+function ModalVigenciaMudanca({ onEscolher, onCancelar }) {
+  const agora = competenciaAtual()
+  const mesAtualLabel = `${nomeMes(agora)} de ${agora.slice(0,4)}`
+  return createPortal(
+    <div style={s.overlay} onClick={onCancelar}>
+      <div style={s.modalPeq} onClick={e=>e.stopPropagation()}>
+        <div style={s.modalTopo}><p style={s.modalTit}>Essa mudança deve valer a partir de quando?</p><button style={s.btnX} onClick={onCancelar}>✕</button></div>
+        <div style={{ padding:'20px 24px', display:'flex', flexDirection:'column', gap:'10px' }}>
+          <button onClick={()=>onEscolher('agora')} style={{ textAlign:'left', padding:'14px 16px', borderRadius:'10px', border:'1px solid rgba(0,177,65,0.3)', background:'rgba(0,177,65,0.08)', cursor:'pointer', fontFamily:'Inter,sans-serif' }}>
+            <p style={{ fontSize:'0.875rem', fontWeight:'700', color:'var(--verde)', margin:'0 0 4px' }}>A partir de agora <span style={{ fontWeight:'500' }}>(recomendado)</span></p>
+            <p style={{ fontSize:'0.78rem', color:'var(--texto-apagado)', margin:0, lineHeight:'1.4' }}>Os meses já preenchidos continuam exatamente como estavam. Vale a partir da competência atual ({mesAtualLabel}), independente do mês que você está vendo agora.</p>
+          </button>
+          <button onClick={()=>onEscolher('inicio')} style={{ textAlign:'left', padding:'14px 16px', borderRadius:'10px', border:'1px solid var(--borda)', background:'var(--card)', cursor:'pointer', fontFamily:'Inter,sans-serif' }}>
+            <p style={{ fontSize:'0.875rem', fontWeight:'700', color:'var(--texto)', margin:'0 0 4px' }}>Desde o início</p>
+            <p style={{ fontSize:'0.78rem', color:'var(--texto-apagado)', margin:0, lineHeight:'1.4' }}>Corrige também os meses já preenchidos com essa configuração. Use se a configuração inicial estava errada.</p>
+          </button>
+        </div>
+        <div style={s.modalRodape}>
+          <button style={s.btnCanc} onClick={onCancelar}>Cancelar</button>
+        </div>
+      </div>
+    </div>, document.body
+  )
+}
+
 // ── Formulário (página única com scroll) ──
 function FormCliente({ cliente, fechar, onSalvo }) {
   const { mostrar } = useToast()
@@ -277,6 +313,7 @@ function FormCliente({ cliente, fechar, onSalvo }) {
   const [erro, setErro] = useState('')
   const [camposComErro, setCamposComErro] = useState([])
   const [setoresList, setSetoresList] = useState([])
+  const [pedindoVigenciaRegime, setPedindoVigenciaRegime] = useState(false)
 
   const [form, setForm] = useState({
     razaoSocial: cliente?.razaoSocial || '',
@@ -284,6 +321,7 @@ function FormCliente({ cliente, fechar, onSalvo }) {
     cnpj: cliente?.cnpj || '',
     porte: cliente?.porte || '',
     regime: cliente?.regime || '',
+    honorario: cliente?.honorario || 0,
     atividade: cliente?.atividade || '',
     dataAbertura: isoData(cliente?.dataAbertura),
     cnaePrincipal: cliente?.cnaePrincipal || '',
@@ -394,6 +432,24 @@ function FormCliente({ cliente, fechar, onSalvo }) {
     finally { setBuscandoCEP(false) }
   }
 
+  const executarSalvar = async (modoVigenciaRegime) => {
+    setErro(''); setCamposComErro([]); setCarregando(true)
+    const payload = {
+      ...form,
+      socios: form.socios.filter(s=>s.nome.trim()),
+      ...(modoVigenciaRegime ? { modoVigenciaRegime } : {}),
+    }
+    try {
+      if (cliente?._id) { await api.put(`/clientes/${cliente._id}`, payload); mostrar('Cliente atualizado!','sucesso') }
+      else {
+        const r = await api.post('/clientes', payload)
+        mostrar(r.status === 200 ? 'Já existia um cliente com esse CNPJ — cadastro atualizado com os dados mais recentes.' : 'Cliente cadastrado!', 'sucesso')
+      }
+      onSalvo(); fechar()
+    } catch(e) { setErro(e.response?.data?.erro || 'Erro ao salvar.') }
+    finally { setCarregando(false) }
+  }
+
   const salvar = async () => {
     const erros = []
     const campos = []
@@ -407,20 +463,13 @@ function FormCliente({ cliente, fechar, onSalvo }) {
       setCamposComErro(campos)
       return
     }
-    setErro(''); setCamposComErro([]); setCarregando(true)
-    const payload = {
-      ...form,
-      socios: form.socios.filter(s=>s.nome.trim()),
+    // Regime mudou de verdade num cliente que já tinha um antes — pergunta a partir de quando
+    // essa mudança vale, ao invés de salvar direto (protege o Histórico já preenchido).
+    if (cliente?.regime && form.regime !== cliente.regime) {
+      setPedindoVigenciaRegime(true)
+      return
     }
-    try {
-      if (cliente?._id) { await api.put(`/clientes/${cliente._id}`, payload); mostrar('Cliente atualizado!','sucesso') }
-      else {
-        const r = await api.post('/clientes', payload)
-        mostrar(r.status === 200 ? 'Já existia um cliente com esse CNPJ — cadastro atualizado com os dados mais recentes.' : 'Cliente cadastrado!', 'sucesso')
-      }
-      onSalvo(); fechar()
-    } catch(e) { setErro(e.response?.data?.erro || 'Erro ao salvar.') }
-    finally { setCarregando(false) }
+    executarSalvar()
   }
 
   return (
@@ -501,6 +550,11 @@ function FormCliente({ cliente, fechar, onSalvo }) {
               </select>
             </Campo>
           </div>
+
+          {/* Honorário */}
+          <Campo label="Honorário mensal">
+            <CampoValor tipo="moeda" valor={form.honorario} onChange={v=>set('honorario', v || 0)} />
+          </Campo>
 
           {/* Atividade + CNAE + Data abertura — não se aplica a pessoa física */}
           {!pessoaFisica && (
@@ -645,6 +699,13 @@ function FormCliente({ cliente, fechar, onSalvo }) {
         <button style={s.btnCanc} onClick={fechar}>Cancelar</button>
         <button style={s.btnSalv} onClick={salvar} disabled={carregando}>{carregando?'Salvando...':cliente?'Salvar alterações':'Cadastrar cliente'}</button>
       </div>
+
+      {pedindoVigenciaRegime && (
+        <ModalVigenciaMudanca
+          onEscolher={(modo) => { setPedindoVigenciaRegime(false); executarSalvar(modo) }}
+          onCancelar={()=>setPedindoVigenciaRegime(false)}
+        />
+      )}
     </div>
   )
 }
@@ -712,7 +773,7 @@ function TelaDetalhe({ clienteId, voltar, onAtualizado, abaInicial = 'info' }) {
   // Só tem acesso à Demanda/Histórico do setor quem está naquele setor (ou é titular) — e o setor precisa ter escopo fechado (CONFIG_DEMANDA)
   const setorTemDemanda = (setor) => {
     if (!CONFIG_DEMANDA[normalizarNome(setor?.nome||'')]) return false
-    return usuario?.cargo === 'admin' || usuario?.setores?.includes(setor._id)
+    return usuario?.cargo === 'admin' || usuario?.setores?.some(s => (s._id || s).toString() === setor._id)
   }
 
   // Barra de setores (topo): só entra quem o usuário tem acesso E que tem Demanda configurada
@@ -835,6 +896,7 @@ function TelaDetalhe({ clienteId, voltar, onAtualizado, abaInicial = 'info' }) {
           <div style={s.secCard}><p style={s.secTit}>Dados básicos</p>
             <InfoLinha label={ehPessoaFisica(dados.cnpj) ? 'CPF' : 'CNPJ'} valor={dados.cnpj||'—'}/>
             <InfoLinha label="Regime" valor={labelRegime(dados.regime)}/>
+            <InfoLinha label="Honorário mensal" valor={formatMoeda(dados.honorario)}/>
             {!ehPessoaFisica(dados.cnpj) && <>
               <InfoLinha label="Porte" valor={labelPorte(dados.porte)}/>
               <InfoLinha label="Abertura" valor={formatData(dados.dataAbertura)}/>
@@ -1063,14 +1125,21 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
   const [novoTipo, setNovoTipo] = useState('moeda')
   const [criando, setCriando] = useState(false)
   const [respondendo, setRespondendo] = useState(false)
+  const [editandoSituacao, setEditandoSituacao] = useState(false)
+  const [valorVigenciaPendente, setValorVigenciaPendente] = useState(null)
 
   const config = CONFIG_DEMANDA[normalizarNome(setor.nome)]
   const situacao = configSetor?.situacao
   const camposExtras = configSetor?.camposExtras || []
-  const blocos = blocosFixosDoSetor(config, { regime: clienteRegime, situacao, competencia })
+  // Pro mês atual, a última entrada do histórico já É o valor ao vivo (é o que as rotas de
+  // escrita mantêm); pra mês passado, o backend já resolve pro que valia naquela competência.
+  const regimeResolvido = lancamento?.regimeResolvido ?? clienteRegime
+  const situacaoResolvida = lancamento?.situacaoResolvida ?? situacao
+  const blocos = blocosFixosDoSetor(config, { regime: regimeResolvido, situacao: situacaoResolvida, competencia })
 
   useEffect(() => {
     setCarregando(true)
+    setEditandoSituacao(false)
     api.get(`/clientes/${clienteId}/lancamentos/${setor._id}/${competencia}`)
       .then(r => { setLancamento(r.data); setValores(r.data?.dados || {}) })
       .catch(() => mostrar('Erro ao carregar dados.', 'erro'))
@@ -1102,10 +1171,10 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
     finally { setCriando(false) }
   }
 
-  const responderPergunta = async (valor) => {
+  const responderPergunta = async (valor, modoVigencia) => {
     setRespondendo(true)
     try {
-      await api.patch(`/clientes/${clienteId}/config-setor/${setor._id}`, { situacao: valor })
+      await api.patch(`/clientes/${clienteId}/config-setor/${setor._id}`, { situacao: valor, modoVigencia })
       onAtualizado && onAtualizado()
     } catch (e) { mostrar(e.response?.data?.erro || 'Erro ao salvar.', 'erro') }
     finally { setRespondendo(false) }
@@ -1134,10 +1203,36 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
     return <p style={{ color:'var(--texto-apagado)', fontSize:'0.875rem' }}>Ainda não foi respondida a pergunta inicial deste setor pra este cliente.</p>
   }
 
+  if (config?.perguntaInicial && situacao && editandoSituacao) {
+    return (
+      <div>
+        <p style={{ fontSize:'0.95rem', fontWeight:'600', color:'var(--texto)', marginBottom:'14px' }}>{config.perguntaInicial.pergunta}</p>
+        <div style={{ display:'flex', flexDirection:'column', gap:'8px', maxWidth:'320px' }}>
+          {config.perguntaInicial.opcoes.map(op=>(
+            <button key={op.valor} onClick={()=>op.valor!==situacao && setValorVigenciaPendente(op.valor)} disabled={respondendo} style={{
+              padding:'12px 16px', borderRadius:'10px', textAlign:'left', cursor:'pointer', fontFamily:'Inter,sans-serif', fontSize:'0.875rem', fontWeight:'500',
+              border: op.valor===situacao ? '1px solid var(--verde)' : '1px solid var(--borda)',
+              background: op.valor===situacao ? 'rgba(0,177,65,0.08)' : 'var(--card)', color:'var(--texto)',
+            }}>{op.label}{op.valor===situacao && ' · atual'}</button>
+          ))}
+        </div>
+        <button onClick={()=>setEditandoSituacao(false)} disabled={respondendo} style={{ marginTop:'14px', background:'none', border:'1px solid var(--borda)', borderRadius:'8px', color:'var(--texto-apagado)', padding:'8px 16px', fontFamily:'Inter,sans-serif', fontSize:'0.82rem', cursor:'pointer' }}>
+          Cancelar
+        </button>
+        {valorVigenciaPendente && (
+          <ModalVigenciaMudanca
+            onEscolher={async (modo) => { await responderPergunta(valorVigenciaPendente, modo); setValorVigenciaPendente(null); setEditandoSituacao(false) }}
+            onCancelar={()=>setValorVigenciaPendente(null)}
+          />
+        )}
+      </div>
+    )
+  }
+
   const pillInfo = config?.porRegime
-    ? { label:'Regime', valor: labelRegime(clienteRegime), hint: null }
-    : (config?.perguntaInicial && situacao
-        ? { label:'Situação', valor: config.perguntaInicial.opcoes.find(o=>o.valor===situacao)?.label || situacao, hint: null }
+    ? { label:'Regime', valor: labelRegime(regimeResolvido), hint: null }
+    : (config?.perguntaInicial && situacaoResolvida
+        ? { label:'Situação', valor: config.perguntaInicial.opcoes.find(o=>o.valor===situacaoResolvida)?.label || situacaoResolvida, hint: null }
         : null)
 
   return (
@@ -1148,10 +1243,17 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
           {lancamento?.preenchidoPor?.nome && ` · Preenchido por ${lancamento.preenchidoPor.nome}`}
         </p>
         {pillInfo && (
-          <div style={{ display:'flex', alignItems:'center', gap:'6px', background:'var(--input)', border:'1px solid var(--borda)', borderRadius:'99px', padding:'5px 12px' }}>
-            <span style={{ fontSize:'0.72rem', color:'var(--texto-apagado)' }}>{pillInfo.label}:</span>
-            <span style={{ fontSize:'0.72rem', color:'var(--texto)', fontWeight:'600' }}>{pillInfo.valor}</span>
-            {pillInfo.hint && <span style={{ fontSize:'0.65rem', color:'var(--texto-apagado)' }}>· {pillInfo.hint}</span>}
+          <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:'6px', background:'var(--input)', border:'1px solid var(--borda)', borderRadius:'99px', padding:'5px 12px' }}>
+              <span style={{ fontSize:'0.72rem', color:'var(--texto-apagado)' }}>{pillInfo.label}:</span>
+              <span style={{ fontSize:'0.72rem', color:'var(--texto)', fontWeight:'600' }}>{pillInfo.valor}</span>
+              {pillInfo.hint && <span style={{ fontSize:'0.65rem', color:'var(--texto-apagado)' }}>· {pillInfo.hint}</span>}
+            </div>
+            {config?.perguntaInicial && podeEditar && competencia === competenciaAtual() && (
+              <button onClick={()=>setEditandoSituacao(true)} style={{ background:'none', border:'1px solid var(--borda)', borderRadius:'7px', color:'var(--texto-apagado)', padding:'5px 12px', fontFamily:'Inter,sans-serif', fontSize:'0.72rem', fontWeight:'600', cursor:'pointer' }}>
+                Editar
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -1393,7 +1495,7 @@ function AbaHistorico({ clienteId, setor, clienteRegime, configSetor, onAtualiza
 function CardCliente({ cliente, onClick }) {
   const st = statusInfo(cliente.status)
   const inativo = cliente.status==='inativo'
-  const honorarioTotal = cliente.servicosContratados?.reduce((a,sv)=>a+(Number(sv.honorarioMensal)||0),0)
+  const honorarioTotal = Number(cliente.honorario) || cliente.servicosContratados?.reduce((a,sv)=>a+(Number(sv.honorarioMensal)||0),0) || 0
   const nomeCliente = cliente.razaoSocial||cliente.nome||'—'
   return (
     <div onClick={onClick} style={{ background:'var(--card)', border:'1px solid var(--borda)', borderRadius:'14px', padding:'20px', cursor:'pointer', position:'relative', transition:'border-color 0.15s, transform 0.1s, opacity 0.15s', opacity: inativo?0.55:1 }}

@@ -31,11 +31,22 @@ const mascaraCPF = (v) => v.replace(/\D/g,'').slice(0,11)
 // Máscara única do campo "CNPJ/CPF" — CPF enquanto tiver até 11 dígitos, CNPJ a partir do 12º
 const mascaraDocumento = (v) => { const d=v.replace(/\D/g,''); return d.length<=11 ? mascaraCPF(v) : mascaraCNPJ(v) }
 const ehPessoaFisica = (documento='') => documento.replace(/\D/g,'').length===11
+// Aceita número puro (célula numérica), "350", "350,00" ou "1.350,00" vindo da planilha — vazio/inválido vira 0
+const parseHonorario = (v) => {
+  if (v === '' || v === undefined || v === null) return 0
+  if (typeof v === 'number') return v
+  const str = String(v).trim()
+  const num = str.includes(',')
+    ? Number(str.replace(/\./g,'').replace(',','.').replace(/[^\d.]/g,''))
+    : Number(str.replace(/[^\d.]/g,''))
+  return Number.isFinite(num) ? num : 0
+}
+const formatMoeda = (v) => v ? `R$ ${Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2})}` : '—'
 
 function baixarModelo() {
   const cabecalho = [
-    ['Razão Social *', 'CNPJ / CPF *', 'Porte *', 'Regime *', 'Status *', 'Nome Fantasia', 'Telefone', 'E-mail'],
-    ['', '', 'MEI / ME / EPP / Grande', 'Simples Nacional / Lucro Presumido / Lucro Real / MEI / Outro', 'Ativo / Inativo / Em encerramento', '', '', ''],
+    ['Razão Social *', 'CNPJ / CPF *', 'Porte *', 'Regime *', 'Status *', 'Nome Fantasia', 'Telefone', 'E-mail', 'Honorário'],
+    ['', '', 'MEI / ME / EPP / Grande', 'Simples Nacional / Lucro Presumido / Lucro Real / MEI / Outro', 'Ativo / Inativo / Em encerramento', '', '', '', 'Opcional — ex: 350,00'],
   ]
 
   const wb = XLSX.utils.book_new()
@@ -43,7 +54,7 @@ function baixarModelo() {
 
   // Larguras das colunas
   ws['!cols'] = [
-    { wch: 35 }, { wch: 20 }, { wch: 20 }, { wch: 25 }, { wch: 22 }, { wch: 25 }, { wch: 18 }, { wch: 28 },
+    { wch: 35 }, { wch: 20 }, { wch: 20 }, { wch: 25 }, { wch: 22 }, { wch: 25 }, { wch: 18 }, { wch: 28 }, { wch: 16 },
   ]
 
   XLSX.utils.book_append_sheet(wb, ws, 'Clientes')
@@ -83,6 +94,7 @@ export default function ImportarClientes({ fechar, onImportado }) {
             nomeFantasia: row[5]?.toString().trim() || '',
             telefone: row[6]?.toString().trim() || '',
             email: row[7]?.toString().trim() || '',
+            honorario: parseHonorario(row[8]),
             socios: [],
             endereco: {},
             dataAbertura: null,
@@ -254,7 +266,7 @@ export default function ImportarClientes({ fechar, onImportado }) {
             <table style={{ width:'100%', borderCollapse:'collapse', fontFamily:'Inter,sans-serif', fontSize:'0.8rem' }}>
               <thead>
                 <tr style={{ background:'var(--card)', borderBottom:'1px solid var(--borda)' }}>
-                  {['Razão Social','CNPJ/CPF','Porte','Regime','Status','Receita'].map(h=>(
+                  {['Razão Social','CNPJ/CPF','Porte','Regime','Status','Honorário','Receita'].map(h=>(
                     <th key={h} style={{ padding:'10px 14px', textAlign:'left', fontSize:'0.65rem', fontWeight:'700', color:'var(--texto-apagado)', textTransform:'uppercase', letterSpacing:'0.8px', whiteSpace:'nowrap' }}>{h}</th>
                   ))}
                 </tr>
@@ -278,6 +290,7 @@ export default function ImportarClientes({ fechar, onImportado }) {
                         {c.status==='ativo'?'Ativo':c.status==='inativo'?'Inativo':'Encerramento'}
                       </span>
                     </td>
+                    <td style={{ padding:'10px 14px', color:'var(--texto-apagado)' }}>{formatMoeda(c.honorario)}</td>
                     <td style={{ padding:'10px 14px' }}>
                       {c._enriquecido ? <span style={{ color:'#00b141', fontSize:'0.75rem', display:'flex', alignItems:'center', gap:'4px' }}><Icone.Check size={11}/>OK</span>
                       : c._erro ? <span style={{ color:'#f87171', fontSize:'0.72rem' }}>{c._erro}</span>

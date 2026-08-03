@@ -89,7 +89,7 @@ router.post('/login', async (req, res) => {
   }
 
   try {
-    const usuario = await getUsuario().findOne({ email }).populate('empresa');
+    const usuario = await getUsuario().findOne({ email }).populate('empresa').populate('setores', 'nome cor');
 
     if (!usuario || !usuario.ativo) {
       return res.status(401).json({ erro: 'E-mail ou senha incorretos.' });

@@ -5,7 +5,8 @@ const Cliente = require('../models/Cliente');
 const Implantacao = require('../models/Implantacao');
 const LancamentoSetor = require('../models/LancamentoSetor');
 const Setor = require('../models/Setor');
-const { clienteSchema, validar } = require('../validacao');
+const { clienteCreateSchema, clienteUpdateSchema, validar } = require('../validacao');
+const { competenciaAtual, resolverPorVigencia, aplicarMudancaComHistorico, buscarCompetenciaMaisAntiga, prepararHistoricoParaMudanca } = require('../services/historicoVigencia');
 
 const router = express.Router();
 
@@ -31,10 +32,30 @@ const cnpjRegexTolerante = (cnpjDigitos) => new RegExp(cnpjDigitos.split('').joi
 // Deriva sempre a partir do documento em vez de confiar no que o cliente envia.
 const tipoPessoaDoDocumento = (documento) => (documento || '').replace(/\D/g, '').length === 11 ? 'fisica' : 'juridica';
 
-const mesclarCadastro = (existente, novo) => {
+const mesclarCadastro = async (existente, novo) => {
+  const regimeAntigo = existente.regime;
   CAMPOS_CADASTRAIS.forEach(campo => {
     if (preenchido(novo[campo])) existente[campo] = novo[campo];
   });
+  // Fluxo em lote (CNPJ duplicado no cadastro manual ou na importação) — sem diálogo de vigência,
+  // sempre modo 'agora': preserva o Histórico já preenchido, só o mês corrente em diante reflete
+  // o regime novo.
+  if (regimeAntigo && preenchido(novo.regime) && novo.regime !== regimeAntigo) {
+    const setorFiscal = await Setor.findOne({ empresa: existente.empresa, nome: /^fiscal$/i, ativo: true }).select('_id').lean();
+    const { historico } = await prepararHistoricoParaMudanca({
+      historicoAtual: existente.historicoRegime,
+      valorAntigo: regimeAntigo,
+      modo: 'agora',
+      clienteId: existente._id,
+      setorId: setorFiscal?._id,
+      criadoEmCliente: existente.criadoEm,
+    });
+    existente.historicoRegime = aplicarMudancaComHistorico(historico, novo.regime, 'agora');
+  }
+  // honorario fica fora do CAMPOS_CADASTRAIS/preenchido genérico porque 0 é um valor válido
+  // pra outros tipos de campo mas aqui só significa "não veio preenchido" — não pode apagar
+  // um honorário já cadastrado só porque a nova entrada (ex: linha da planilha) veio em branco.
+  if (novo.honorario) existente.honorario = novo.honorario;
   if (novo.endereco) {
     if (!existente.endereco) existente.endereco = {};
     Object.entries(novo.endereco).forEach(([k, v]) => {
@@ -81,7 +102,7 @@ router.get('/:id', autenticar, async (req, res) => {
 });
 
 // POST /api/clientes
-router.post('/', autenticar, temPermissao('gerenciarClientes'), validar(clienteSchema), async (req, res) => {
+router.post('/', autenticar, temPermissao('gerenciarClientes'), validar(clienteCreateSchema), async (req, res) => {
   const { razaoSocial, cnpj, regime, porte, servicosContratados } = req.body;
   if (!razaoSocial?.trim()) return res.status(400).json({ erro: 'Razão social é obrigatória.' });
   const tipoPessoa = tipoPessoaDoDocumento(cnpj);
@@ -98,7 +119,7 @@ router.post('/', autenticar, temPermissao('gerenciarClientes'), validar(clienteS
       const existente = await Cliente.findOne({ empresa: req.usuario.empresa._id, cnpj: cnpjRegexTolerante(cnpjLimpo) });
       if (existente) {
         // CNPJ/CPF já cadastrado: atualiza o registro existente com os dados mais recentes em vez de duplicar
-        mesclarCadastro(existente, { ...req.body, razaoSocial: razaoSocial.trim(), tipoPessoa });
+        await mesclarCadastro(existente, { ...req.body, razaoSocial: razaoSocial.trim(), tipoPessoa });
         await existente.save();
         registrarLog({ empresa: req.usuario.empresa._id, usuario: req.usuario._id, tipo: 'cliente_editado', categoria: 'cliente', descricao: `Atualizou o cadastro de ${existente.razaoSocial} (CNPJ/CPF já existente)` });
         return res.json(existente);
@@ -108,6 +129,7 @@ router.post('/', autenticar, temPermissao('gerenciarClientes'), validar(clienteS
       ...req.body,
       razaoSocial: razaoSocial.trim(),
       tipoPessoa,
+      historicoRegime: regime ? [{ valor: regime, vigenteDesde: competenciaAtual() }] : [],
       empresa: req.usuario.empresa._id,
       criadoPor: req.usuario._id,
     });
@@ -119,16 +141,32 @@ router.post('/', autenticar, temPermissao('gerenciarClientes'), validar(clienteS
 });
 
 // PUT /api/clientes/:id
-router.put('/:id', autenticar, temPermissao('gerenciarClientes'), validar(clienteSchema), async (req, res) => {
+router.put('/:id', autenticar, temPermissao('gerenciarClientes'), validar(clienteUpdateSchema), async (req, res) => {
   try {
-    const { empresa, criadoPor, _id, criadoEm, ...dados } = req.body;
+    const { empresa, criadoPor, _id, criadoEm, modoVigenciaRegime, ...dados } = req.body;
     if (dados.cnpj !== undefined) dados.tipoPessoa = tipoPessoaDoDocumento(dados.cnpj);
-    const cliente = await Cliente.findOneAndUpdate(
-      { _id: req.params.id, empresa: req.usuario.empresa._id },
-      { $set: dados },
-      { new: true }
-    );
+
+    const cliente = await Cliente.findOne({ _id: req.params.id, empresa: req.usuario.empresa._id });
     if (!cliente) return res.status(404).json({ erro: 'Cliente não encontrado.' });
+
+    // Regime mudou de verdade (não é edição inicial nem o mesmo valor) — decide a vigência
+    // conforme a escolha do usuário no diálogo (default 'agora' se não vier, ex: fluxos antigos).
+    if (dados.regime !== undefined && dados.regime !== cliente.regime && cliente.regime) {
+      const modo = modoVigenciaRegime === 'inicio' ? 'inicio' : 'agora';
+      const setorFiscal = await Setor.findOne({ empresa: cliente.empresa, nome: /^fiscal$/i, ativo: true }).select('_id').lean();
+      const { historico, competenciaMaisAntiga } = await prepararHistoricoParaMudanca({
+        historicoAtual: cliente.historicoRegime,
+        valorAntigo: cliente.regime,
+        modo,
+        clienteId: cliente._id,
+        setorId: setorFiscal?._id,
+        criadoEmCliente: cliente.criadoEm,
+      });
+      cliente.historicoRegime = aplicarMudancaComHistorico(historico, dados.regime, modo, competenciaMaisAntiga);
+    }
+
+    Object.assign(cliente, dados);
+    await cliente.save();
     registrarLog({ empresa: req.usuario.empresa._id, usuario: req.usuario._id, tipo: 'cliente_editado', categoria: 'cliente', descricao: 'Editou o cliente ' + cliente.razaoSocial });
     res.json(cliente);
   } catch (err) {
@@ -148,20 +186,24 @@ router.delete('/:id', autenticar, temPermissao('gerenciarClientes'), async (req,
 });
 
 // ── Demanda mensal por setor ──
-const competenciaAtual = () => new Date().toISOString().slice(0, 7); // "YYYY-MM"
 
-// Cliente inativo: ninguém edita, nem titular. Só o mês corrente é editável, sem exceção —
-// competência passada é sempre somente leitura (nem admin edita, mês fechado é fechado).
-// Exceção: setor Contábil não trava nunca — qualquer competência, mesmo antiga, é editável.
-const podeEditarCompetencia = (usuario, setorId, competencia, clienteAtivo, setorNome) => {
+// Cliente inativo: ninguém edita, nem titular. Mês corrente: quem tem acesso ao setor edita
+// normalmente. Mês passado sem lançamento salvo ainda: dá pra preencher atrasado (útil pra
+// empresa que começou a usar o sistema agora e quer registrar meses anteriores). Mês passado
+// que já tem dado salvo: fecha pra colaborador, só o titular pode reabrir e editar.
+// Exceção: setor Contábil nunca trava, nem por mês nem por dado já salvo.
+const podeEditarCompetencia = (usuario, setorId, competencia, clienteAtivo, setorNome, temDadosSalvos) => {
   if (!clienteAtivo) return false;
-  if (setorNome !== 'contabil' && competencia !== competenciaAtual()) return false;
+  const temAcesso = usuario.cargo === 'admin' || usuario.setores?.some(s => (s._id || s).toString() === setorId);
+  if (!temAcesso) return false;
   if (usuario.cargo === 'admin') return true;
-  return usuario.setores?.some(s => s.toString() === setorId);
+  if (setorNome === 'contabil' || competencia === competenciaAtual()) return true;
+  if (competencia > competenciaAtual()) return false; // competência futura não é editável por colaborador
+  return !temDadosSalvos;
 };
 
 const temAcessoAoSetor = (usuario, setorId) =>
-  usuario.cargo === 'admin' || usuario.setores?.some(s => s.toString() === setorId);
+  usuario.cargo === 'admin' || usuario.setores?.some(s => (s._id || s).toString() === setorId);
 
 // Mesma normalização usada no frontend (CONFIG_DEMANDA é chaveado por nome de setor normalizado)
 const normalizarNome = (str = '') => str.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().trim();
@@ -208,7 +250,15 @@ router.get('/:id/lancamentos/:setorId/:competencia', autenticar, async (req, res
     }).populate('preenchidoPor', 'nome').lean();
 
     const base = lancamento || { cliente: req.params.id, setor: req.params.setorId, competencia, dados: {}, preenchidoPor: null, preenchidoEm: null };
-    res.json({ ...base, preenchido: !!lancamento, podeEditar: podeEditarCompetencia(req.usuario, req.params.setorId, competencia, cliente.status !== 'inativo', setorNome) });
+    // Resolvido aqui, uma vez só: pro mês atual, a última entrada do histórico já É o valor ao
+    // vivo (é o que as rotas de escrita mantêm); pra mês passado, resolve pro que valia então.
+    res.json({
+      ...base,
+      preenchido: !!lancamento,
+      podeEditar: podeEditarCompetencia(req.usuario, req.params.setorId, competencia, cliente.status !== 'inativo', setorNome, !!lancamento),
+      regimeResolvido: resolverPorVigencia(cliente.historicoRegime, competencia, cliente.regime),
+      situacaoResolvida: resolverPorVigencia(cliente.configSetores?.[setorNome]?.historicoSituacao, competencia, cliente.configSetores?.[setorNome]?.situacao),
+    });
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao buscar lançamento.' });
   }
@@ -227,10 +277,15 @@ router.post('/:id/lancamentos/:setorId/:competencia', autenticar, async (req, re
     const setor = await Setor.findById(req.params.setorId).select('nome').lean();
     const setorNome = normalizarNome(setor?.nome || '');
 
-    if (!podeEditarCompetencia(req.usuario, req.params.setorId, competencia, cliente.status !== 'inativo', setorNome)) {
+    const jaExiste = await LancamentoSetor.exists({
+      cliente: req.params.id, setor: req.params.setorId, competencia, empresa: req.usuario.empresa._id,
+    });
+
+    if (!podeEditarCompetencia(req.usuario, req.params.setorId, competencia, cliente.status !== 'inativo', setorNome, !!jaExiste)) {
+      const temAcesso = req.usuario.cargo === 'admin' || req.usuario.setores?.some(s => (s._id || s).toString() === req.params.setorId);
       const motivo = cliente.status === 'inativo'
         ? 'Cliente inativo — reative pra poder editar.'
-        : (competencia === competenciaAtual() || setorNome === 'contabil' ? 'Você não tem acesso a este setor.' : 'Esta competência já está fechada e não pode mais ser editada.');
+        : (!temAcesso ? 'Você não tem acesso a este setor.' : 'Esta competência já tem dado salvo — só o titular pode editar.');
       return res.status(403).json({ erro: motivo });
     }
 
@@ -295,7 +350,7 @@ router.patch('/:id/config-setor/:setorId', autenticar, async (req, res) => {
     if (!temAcessoAoSetor(req.usuario, req.params.setorId)) {
       return res.status(403).json({ erro: 'Você não tem acesso a este setor.' });
     }
-    const { situacao } = req.body;
+    const { situacao, modoVigencia } = req.body;
     if (!situacao) return res.status(400).json({ erro: 'Situação é obrigatória.' });
 
     const setor = await Setor.findById(req.params.setorId).select('nome').lean();
@@ -307,6 +362,20 @@ router.patch('/:id/config-setor/:setorId', autenticar, async (req, res) => {
     if (cliente.status === 'inativo') return res.status(403).json({ erro: 'Cliente inativo — reative pra poder editar.' });
 
     const configSetor = garantirConfigSetor(cliente, setorNome);
+    const situacaoAntiga = configSetor.situacao;
+
+    if (situacaoAntiga && situacaoAntiga !== situacao) {
+      const modo = modoVigencia === 'inicio' ? 'inicio' : 'agora';
+      const { historico, competenciaMaisAntiga } = await prepararHistoricoParaMudanca({
+        historicoAtual: configSetor.historicoSituacao,
+        valorAntigo: situacaoAntiga,
+        modo,
+        clienteId: cliente._id,
+        setorId: req.params.setorId,
+        criadoEmCliente: cliente.criadoEm,
+      });
+      configSetor.historicoSituacao = aplicarMudancaComHistorico(historico, situacao, modo, competenciaMaisAntiga);
+    }
     configSetor.situacao = situacao;
 
     cliente.markModified('configSetores');
@@ -425,7 +494,7 @@ router.post('/importar', autenticar, temPermissao('gerenciarClientes'), async (r
     for (const c of clientes) {
       try {
         if (!c.razaoSocial?.trim()) { resultados.ignorados++; continue; }
-        const validacao = clienteSchema.safeParse(c);
+        const validacao = clienteCreateSchema.safeParse(c);
         if (!validacao.success) {
           resultados.ignorados++;
           resultados.erros.push(`${c.razaoSocial}: ${validacao.error.issues[0]?.message || 'dado inválido'}`);
@@ -437,7 +506,7 @@ router.post('/importar', autenticar, temPermissao('gerenciarClientes'), async (r
           const cnpjLimpo = c.cnpj.replace(/\D/g, '');
           const existente = await Cliente.findOne({ empresa: req.usuario.empresa._id, cnpj: cnpjRegexTolerante(cnpjLimpo) });
           if (existente) {
-            mesclarCadastro(existente, { ...c, tipoPessoa });
+            await mesclarCadastro(existente, { ...c, tipoPessoa });
             await existente.save();
             resultados.atualizados++;
             continue;
@@ -446,6 +515,7 @@ router.post('/importar', autenticar, temPermissao('gerenciarClientes'), async (r
         await Cliente.create({
           ...c,
           tipoPessoa,
+          historicoRegime: c.regime ? [{ valor: c.regime, vigenteDesde: competenciaAtual() }] : [],
           empresa: req.usuario.empresa._id,
           criadoPor: req.usuario._id,
           status: c.status || 'ativo',

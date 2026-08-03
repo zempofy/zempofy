@@ -6,7 +6,7 @@ const autenticar = async (req, res, next) => {
   if (!token) return res.status(401).json({ erro: 'Acesso negado. Faça login.' });
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const usuario = await Usuario.findById(decoded.id).populate('empresa');
+    const usuario = await Usuario.findById(decoded.id).populate('empresa').populate('setores', 'nome cor');
     if (!usuario || !usuario.ativo) return res.status(401).json({ erro: 'Usuário não encontrado ou inativo.' });
     req.usuario = usuario;
     next();

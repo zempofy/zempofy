@@ -1,12 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
-import { createPortal } from 'react-dom'
 import { useAuth } from '../contexts/AuthContext'
 import api from '../services/api'
 import ModalConfiguracoes from './ModalConfiguracoes'
 import Icone from './Icones'
 import Avatar from './Avatar'
 import Modal from './Modal'
-import WidgetFeedback from './WidgetFeedback'
 import { useToast } from './Toast'
 
 function InputSenha({ id, value, onChange, onKeyDown, placeholder, autoFocus }) {
@@ -514,12 +512,20 @@ export default function Layout({ children, menuItens, paginaAtual, setPagina }) 
   const isTitular = usuario?.cargo === 'admin'
   const [sidebarAberta, setSidebarAberta] = useState(true)
   const [painelAberto, setPainelAberto] = useState(false)
+  const avatarMenuRef = useRef(null)
 
   useEffect(() => {
     const fecharEsc = (e) => { if (e.key === 'Escape') { setPainelAberto(false); setPainelConfigAberto(false) } }
     document.addEventListener('keydown', fecharEsc)
     return () => document.removeEventListener('keydown', fecharEsc)
   }, [])
+
+  useEffect(() => {
+    if (!painelAberto) return
+    const fecharFora = (e) => { if (!avatarMenuRef.current?.contains(e.target)) setPainelAberto(false) }
+    document.addEventListener('mousedown', fecharFora)
+    return () => document.removeEventListener('mousedown', fecharFora)
+  }, [painelAberto])
   const [buscaGlobal, setBuscaGlobal] = useState('')
   const [resultadosBusca, setResultadosBusca] = useState([])
   const [buscandoGlobal, setBuscandoGlobal] = useState(false)
@@ -669,7 +675,7 @@ export default function Layout({ children, menuItens, paginaAtual, setPagina }) 
           <div style={styles.topbarSep} />
 
           {/* Avatar compacto com dropdown */}
-          <div style={{ position: 'relative' }}>
+          <div style={{ position: 'relative' }} ref={avatarMenuRef}>
             <button style={styles.avatarBtn} onClick={() => setPainelAberto(v => !v)} title="Minha conta">
               <Avatar nome={usuario?.nome} foto={usuario?.avatar} size={30} fontSize={13} />
               <div style={styles.avatarInfo}>
@@ -679,15 +685,10 @@ export default function Layout({ children, menuItens, paginaAtual, setPagina }) 
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="2" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg>
             </button>
 
-            {/* Dropdown simples — só nome e sair */}
+            {/* Dropdown simples — só nome e sair. Fecha via listener de clique fora (avatarMenuRef),
+                não por overlay: um overlay portado pro body ficava acima da topbar inteira (zIndex 199 >
+                zIndex:100 da topbar) e interceptava clique nos próprios botões do dropdown, inclusive o Sair. */}
             {painelAberto && (
-              <>
-                {/* Portado pro body: a topbar tem backdropFilter, que vira containing block de position:fixed
-                    e prendia esse overlay só dentro da faixa da topbar, em vez da tela inteira. */}
-                {createPortal(
-                  <div onClick={() => setPainelAberto(false)} style={{ position: 'fixed', inset: 0, zIndex: 199 }} />,
-                  document.body
-                )}
                 <div style={{
                   position: 'absolute', top: 'calc(100% + 8px)', right: 0,
                   background: '#18181b', border: '1px solid #27272a', borderRadius: '12px',
@@ -702,6 +703,19 @@ export default function Layout({ children, menuItens, paginaAtual, setPagina }) 
                     <p style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)', margin: '2px 0 0', fontFamily: 'Inter, sans-serif' }}>{usuario?.cargo === 'admin' ? 'Titular' : 'Colaborador'}</p>
                     <p style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.2)', margin: '6px 0 0', fontFamily: 'Inter, sans-serif', letterSpacing: '0.3px' }}>ID #{usuario?.id?.slice(-8).toUpperCase() || '--------'}</p>
                   </div>
+                  {usuario?.setores?.length > 0 && (
+                    <div style={{ padding: '12px 16px', borderBottom: '1px solid #27272a' }}>
+                      <p style={{ fontSize: '0.62rem', fontWeight: '700', color: 'rgba(255,255,255,0.35)', margin: '0 0 8px', fontFamily: 'Inter, sans-serif', textTransform: 'uppercase', letterSpacing: '0.8px' }}>Meus setores</p>
+                      <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                        {usuario.setores.map(setor => (
+                          <span key={setor._id || setor} style={{ fontSize: '0.6rem', fontWeight: '600', padding: '1px 7px', borderRadius: '4px', background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.7)', border: '1px solid #27272a', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <div style={{ width: '5px', height: '5px', borderRadius: '50%', background: setor.cor || 'var(--verde)', flexShrink: 0 }} />
+                            {setor.nome || setor}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   <button
                     onClick={() => { setPainelAberto(false); sair() }}
                     style={{
@@ -716,7 +730,6 @@ export default function Layout({ children, menuItens, paginaAtual, setPagina }) 
                     <Icone.LogOut size={15} /> Sair
                   </button>
                 </div>
-              </>
             )}
           </div>
         </div>
@@ -885,8 +898,6 @@ export default function Layout({ children, menuItens, paginaAtual, setPagina }) 
           {children}
         </div>
       </main>
-
-      <WidgetFeedback />
     </div>
   )
 }
