@@ -432,7 +432,7 @@ function ModalNovaImplantacao({ fechar, onCriado, nomeInicial = '' }) {
 }
 
 // ── Tela principal ──
-export default function Implantacao({ setPagina, setClienteDetalheId, nomeNovoOnboarding, onNomeNovoOnboardingUsado }) {
+export default function Implantacao({ setPagina, setClienteDetalheId, nomeNovoOnboarding, onNomeNovoOnboardingUsado, onImplantacaoCriada }) {
   const [implantacoes, setImplantacoes] = useState([])
   const [carregando, setCarregando] = useState(true)
   const [busca, setBusca] = useState('')
@@ -656,7 +656,7 @@ export default function Implantacao({ setPagina, setClienteDetalheId, nomeNovoOn
       {modalAberto && (
         <ModalNovaImplantacao
           fechar={() => { setModalAberto(false); setNomeParaNovaImplantacao('') }}
-          onCriado={buscar}
+          onCriado={() => { buscar(); onImplantacaoCriada && onImplantacaoCriada() }}
           nomeInicial={nomeParaNovaImplantacao}
         />
       )}

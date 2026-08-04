@@ -1,6 +1,6 @@
 const express = require('express');
 const registrarLog = require('../services/log');
-const { autenticar, apenasAdmin, temPermissao } = require('../middleware/auth');
+const { autenticar, temPermissao } = require('../middleware/auth');
 const ModeloOnboarding = require('../models/ModeloOnboarding');
 
 const router = express.Router();
@@ -74,7 +74,7 @@ router.put('/:id', autenticar, temPermissao('gerenciarModelos'), async (req, res
 });
 
 // DELETE /api/modelos-onboarding/:id
-router.delete('/:id', autenticar, apenasAdmin, async (req, res) => {
+router.delete('/:id', autenticar, temPermissao('gerenciarModelos'), async (req, res) => {
   try {
     await ModeloOnboarding.findOneAndUpdate(
       { _id: req.params.id, empresa: req.usuario.empresa._id },

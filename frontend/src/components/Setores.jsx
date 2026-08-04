@@ -10,6 +10,7 @@ const CORES = [
 function ModalSetor({ setor, fechar, onSalvo, funcionarios = [] }) {
   const [nome, setNome] = useState(setor?.nome || '')
   const [cor, setCor] = useState(setor?.cor || '#2DAA59')
+  const [responsavel, setResponsavel] = useState(setor?.responsavel?._id || setor?.responsavel || '')
   const [membrosSelecionados, setMembrosSelecionados] = useState(setor?.membros?.map(m => m._id || m) || [])
   const [carregando, setCarregando] = useState(false)
   const [erro, setErro] = useState('')
@@ -21,15 +22,23 @@ function ModalSetor({ setor, fechar, onSalvo, funcionarios = [] }) {
     )
   }
 
+  // O responsável precisa ter acesso à Demanda desse setor — se ele ainda não é membro,
+  // marca automaticamente (o backend garante isso de qualquer forma, isso é só pra não
+  // mostrar o checkbox desmarcado enquanto salva).
+  const escolherResponsavel = (id) => {
+    setResponsavel(id)
+    if (id && !membrosSelecionados.includes(id)) setMembrosSelecionados(prev => [...prev, id])
+  }
+
   const salvar = async () => {
     if (!nome.trim()) return setErro('Nome é obrigatório.')
     setCarregando(true); setErro('')
     try {
       if (setor?._id) {
-        await api.put(`/setores/${setor._id}`, { nome, cor, membros: membrosSelecionados })
+        await api.put(`/setores/${setor._id}`, { nome, cor, responsavel: responsavel || null, membros: membrosSelecionados })
         mostrar('Setor atualizado!', 'sucesso')
       } else {
-        await api.post('/setores', { nome, cor, membros: membrosSelecionados })
+        await api.post('/setores', { nome, cor, responsavel: responsavel || null, membros: membrosSelecionados })
         mostrar('Setor criado!', 'sucesso')
       }
       onSalvo()
@@ -79,9 +88,25 @@ function ModalSetor({ setor, fechar, onSalvo, funcionarios = [] }) {
           </div>
           {funcionarios.length > 0 && (
             <div style={s.campo}>
-              <label style={s.label}>
-                Membros <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0, color: 'var(--texto-apagado)' }}>(opcional)</span>
-              </label>
+              <label style={s.label}>Responsável</label>
+              <select
+                style={s.input}
+                value={responsavel}
+                onChange={e => escolherResponsavel(e.target.value)}
+              >
+                <option value="">Nenhum</option>
+                {funcionarios.map(f => (
+                  <option key={f._id} value={f._id}>{f.nome}</option>
+                ))}
+              </select>
+              <p style={{ fontSize: '0.72rem', color: 'var(--texto-apagado)', margin: 0, lineHeight: '1.4' }}>
+                Só o titular e o responsável podem mudar a configuração da Demanda deste setor (ex: regime do Fiscal, situação do DP). Os outros membros continuam vendo e preenchendo normalmente.
+              </p>
+            </div>
+          )}
+          {funcionarios.length > 0 && (
+            <div style={s.campo}>
+              <label style={s.label}>Membros</label>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '180px', overflowY: 'auto' }}>
                 {funcionarios.map(f => (
                   <label key={f._id} style={{
@@ -185,6 +210,11 @@ export default function Setores({ funcionarios = [], onSalvo: onSalvoExterno }) 
                 <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: setor.cor, flexShrink: 0 }} />
                 <span style={s.cardNome}>{setor.nome}</span>
                 {setor.padrao && <span style={s.badge}>padrão</span>}
+                {setor.responsavel?.nome && (
+                  <span style={{ fontSize: '0.75rem', color: 'var(--texto-apagado)' }}>
+                    Responsável: {setor.responsavel.nome}
+                  </span>
+                )}
                 {setor.membros?.length > 0 && (
                   <span style={{ fontSize: '0.75rem', color: 'var(--texto-apagado)' }}>
                     {setor.membros.length} membro(s)
@@ -232,7 +262,7 @@ const s = {
   modalRodape: { display: 'flex', gap: '12px', justifyContent: 'flex-end', padding: '16px 24px', borderTop: '1px solid #2A3830' },
   campo: { display: 'flex', flexDirection: 'column', gap: '8px' },
   label: { fontSize: '0.7rem', fontWeight: '600', color: 'var(--texto-apagado)', textTransform: 'uppercase', letterSpacing: '1px', fontFamily: 'Inter, sans-serif' },
-  input: { background: 'var(--input)', border: '1px solid #2A3830', borderRadius: '10px', padding: '10px 14px', color: 'var(--texto)', fontSize: '0.9rem', fontFamily: 'Inter, sans-serif', width: '100%', boxSizing: 'border-box' },
+  input: { background: 'var(--input)', border: '1px solid #2A3830', borderRadius: '10px', padding: '10px 14px', color: 'var(--texto)', fontSize: '0.9rem', fontFamily: 'Inter, sans-serif', width: '100%', boxSizing: 'border-box', colorScheme: 'dark' },
   btnCancelar: { background: 'none', border: '1px solid #2A3830', borderRadius: '10px', color: 'var(--texto-apagado)', padding: '10px 20px', fontFamily: 'Inter, sans-serif', fontWeight: '500', fontSize: '0.875rem', cursor: 'pointer' },
   btnSalvar: { background: 'linear-gradient(135deg, #22C55E, #1A6B3C)', color: '#fff', border: 'none', borderRadius: '10px', padding: '10px 20px', fontFamily: 'Inter, sans-serif', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer' },
   erro: { color: '#FCA5A5', fontSize: '0.8rem', background: 'rgba(239,68,68,0.1)', padding: '8px 12px', borderRadius: '8px' },

@@ -284,8 +284,9 @@ function ModalVigenciaMudanca({ onEscolher, onCancelar }) {
   return createPortal(
     <div style={s.overlay} onClick={onCancelar}>
       <div style={s.modalPeq} onClick={e=>e.stopPropagation()}>
-        <div style={s.modalTopo}><p style={s.modalTit}>Essa mudança deve valer a partir de quando?</p><button style={s.btnX} onClick={onCancelar}>✕</button></div>
+        <div style={s.modalTopo}><p style={s.modalTit}>As Demandas mensais desse setor vão mudar</p><button style={s.btnX} onClick={onCancelar}>✕</button></div>
         <div style={{ padding:'20px 24px', display:'flex', flexDirection:'column', gap:'10px' }}>
+          <p style={{ fontSize:'0.82rem', color:'var(--texto-apagado)', margin:'0 0 4px', lineHeight:'1.4' }}>Essa mudança altera quais campos aparecem na Demanda mensal desse cliente. A partir de quando isso deve valer?</p>
           <button onClick={()=>onEscolher('agora')} style={{ textAlign:'left', padding:'14px 16px', borderRadius:'10px', border:'1px solid rgba(0,177,65,0.3)', background:'rgba(0,177,65,0.08)', cursor:'pointer', fontFamily:'Inter,sans-serif' }}>
             <p style={{ fontSize:'0.875rem', fontWeight:'700', color:'var(--verde)', margin:'0 0 4px' }}>A partir de agora <span style={{ fontWeight:'500' }}>(recomendado)</span></p>
             <p style={{ fontSize:'0.78rem', color:'var(--texto-apagado)', margin:0, lineHeight:'1.4' }}>Os meses já preenchidos continuam exatamente como estavam. Vale a partir da competência atual ({mesAtualLabel}), independente do mês que você está vendo agora.</p>
@@ -306,6 +307,7 @@ function ModalVigenciaMudanca({ onEscolher, onCancelar }) {
 // ── Formulário (página única com scroll) ──
 function FormCliente({ cliente, fechar, onSalvo }) {
   const { mostrar } = useToast()
+  const { usuario } = useAuth()
   const [carregando, setCarregando] = useState(false)
   const [buscandoCNPJ, setBuscandoCNPJ] = useState(false)
   const [buscandoCEP, setBuscandoCEP] = useState(false)
@@ -345,6 +347,12 @@ function FormCliente({ cliente, fechar, onSalvo }) {
   useEffect(() => {
     api.get('/setores').then(r => setSetoresList(r.data)).catch(()=>{})
   }, [])
+
+  // Só titular ou o responsável designado do Fiscal podem MUDAR um regime já definido — cliente
+  // sem regime ainda (novo cadastro) continua liberado pra qualquer um com acesso a essa tela.
+  const setorFiscal = setoresList.find(st => normalizarNome(st.nome) === 'fiscal')
+  const podeAlterarRegime = usuario?.cargo === 'admin' || !cliente?.regime
+    || (!!setorFiscal?.responsavel && (setorFiscal.responsavel._id || setorFiscal.responsavel) === usuario?.id)
 
   const pessoaFisica = ehPessoaFisica(form.cnpj)
   const set = (k,v) => { setForm(f=>({...f,[k]:v})); if(camposComErro.includes(k)) setCamposComErro(c=>c.filter(e=>e!==k)) }
@@ -538,11 +546,14 @@ function FormCliente({ cliente, fechar, onSalvo }) {
             <Campo label="Regime tributário" obrigatorio>
               {pessoaFisica || form.porte==='mei'
                 ? <div style={{...s.inp,color:'var(--texto-apagado)',background:'rgba(255,255,255,0.03)',display:'flex',alignItems:'center'}}>{pessoaFisica?'Pessoa Física':'MEI'}</div>
-                : <select style={inpErro('regime')} value={form.regime} onChange={e=>set('regime',e.target.value)}>
+                : <select style={{...inpErro('regime'), ...(!podeAlterarRegime?{opacity:0.6,cursor:'not-allowed'}:{})}} value={form.regime} disabled={!podeAlterarRegime} title={!podeAlterarRegime?'Só o titular ou o responsável pelo Fiscal pode mudar o regime já definido.':undefined} onChange={e=>set('regime',e.target.value)}>
                     <option value="">Selecione</option>
                     {REGIMES.filter(r=>r.value!=='mei'&&r.value!=='pessoa_fisica').map(r=><option key={r.value} value={r.value}>{r.label}</option>)}
                   </select>
               }
+              {!pessoaFisica && form.porte!=='mei' && !podeAlterarRegime && (
+                <p style={{ fontSize:'0.68rem', color:'var(--texto-apagado)', margin:'4px 0 0' }}>Só o titular ou o responsável pelo Fiscal pode mudar.</p>
+              )}
             </Campo>
             <Campo label="Status">
               <select style={s.inp} value={form.status} onChange={e=>set('status',e.target.value)}>
@@ -1116,6 +1127,10 @@ function BlocoExtratosBancarios({ clienteId, setor, bancos=[], valoresExtratos, 
 // ── Formulário de uma competência (mês atual ou mês passado, se quem vê tiver permissão) ──
 function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, configSetor, onAtualizado }) {
   const { mostrar } = useToast()
+  const { usuario } = useAuth()
+  // Só titular ou o responsável designado do setor podem mudar a configuração (situação/regime)
+  // — qualquer membro do setor continua vendo e preenchendo a Demanda normalmente.
+  const podeAlterarConfig = usuario?.cargo === 'admin' || (!!setor.responsavel && (setor.responsavel._id || setor.responsavel) === usuario?.id)
   const [carregando, setCarregando] = useState(true)
   const [salvando, setSalvando] = useState(false)
   const [lancamento, setLancamento] = useState(null)
@@ -1249,7 +1264,7 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
               <span style={{ fontSize:'0.72rem', color:'var(--texto)', fontWeight:'600' }}>{pillInfo.valor}</span>
               {pillInfo.hint && <span style={{ fontSize:'0.65rem', color:'var(--texto-apagado)' }}>· {pillInfo.hint}</span>}
             </div>
-            {config?.perguntaInicial && podeEditar && competencia === competenciaAtual() && (
+            {config?.perguntaInicial && podeEditar && podeAlterarConfig && competencia === competenciaAtual() && (
               <button onClick={()=>setEditandoSituacao(true)} style={{ background:'none', border:'1px solid var(--borda)', borderRadius:'7px', color:'var(--texto-apagado)', padding:'5px 12px', fontFamily:'Inter,sans-serif', fontSize:'0.72rem', fontWeight:'600', cursor:'pointer' }}>
                 Editar
               </button>

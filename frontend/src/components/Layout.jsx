@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import api from '../services/api'
 import ModalConfiguracoes from './ModalConfiguracoes'
+import ModalSuporte from './ModalSuporte'
 import Icone from './Icones'
 import Avatar from './Avatar'
 import Modal from './Modal'
@@ -532,6 +533,7 @@ export default function Layout({ children, menuItens, paginaAtual, setPagina }) 
   const [paginaBuscaAberta, setPaginaBuscaAberta] = useState(false)
   const [modalAcesso, setModalAcesso] = useState(false)
   const [modalConfig, setModalConfig] = useState(false)
+  const [modalSuporte, setModalSuporte] = useState(false)
   const [naoLidasChat, setNaoLidasChat] = useState(0)
   const [painelConfigAberto, setPainelConfigAberto] = useState(false)
   const [paginaConfig, setPaginaConfig] = useState(null)
@@ -874,6 +876,13 @@ export default function Layout({ children, menuItens, paginaAtual, setPagina }) 
             <span style={{ opacity: 0.7, display: 'flex' }}><Icone.Settings size={16} /></span>
             Preferências
           </button>
+          <button style={{
+            ...styles.configItem,
+            ...(paginaConfig === 'suporte' ? styles.configItemAtivo : {}),
+          }} onClick={() => { setPaginaConfig('suporte'); setModalSuporte(true) }}>
+            <span style={{ opacity: 0.7, display: 'flex' }}><Icone.MessageSquare size={16} /></span>
+            Suporte
+          </button>
         </div>
       )}
 
@@ -883,6 +892,10 @@ export default function Layout({ children, menuItens, paginaAtual, setPagina }) 
 
       {modalConfig && (
         <ModalConfiguracoes fechar={() => setModalConfig(false)} />
+      )}
+
+      {modalSuporte && (
+        <ModalSuporte fechar={() => setModalSuporte(false)} />
       )}
 
       {/* Conteúdo principal */}

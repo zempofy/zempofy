@@ -1645,7 +1645,7 @@ export default function DashboardAdmin() {
     if (pagina === 'chat') return <Chat setPagina={setPagina} />
     if (pagina === 'anotacoes') return <Anotacoes />
     if (pagina === 'mural') return <Mural />
-    if (pagina === 'implantacao') return <Implantacao setPagina={setPagina} setClienteDetalheId={setClienteDetalheId} nomeNovoOnboarding={nomeNovoOnboarding} onNomeNovoOnboardingUsado={()=>setNomeNovoOnboarding('')} />
+    if (pagina === 'implantacao') return <Implantacao setPagina={setPagina} setClienteDetalheId={setClienteDetalheId} nomeNovoOnboarding={nomeNovoOnboarding} onNomeNovoOnboardingUsado={()=>setNomeNovoOnboarding('')} onImplantacaoCriada={carregarDados} />
     if (pagina === 'modelos') return <ModelosOnboarding />
     if (pagina === 'checklist') return <BancoAtividades />
     if (pagina === 'setores') return <Setores funcionarios={funcionarios} onSalvo={async () => {

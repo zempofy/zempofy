@@ -599,7 +599,6 @@ export default function DashboardFuncionario() {
       ]
     },
     { id: 'anotacoes', label: 'Anotações', icone: <Icone.Edit size={16} /> },
-    { id: 'mural', label: 'Mural', icone: <Icone.Bell size={16} /> },
 
     // Separador Análise — só se tiver permissão de relatórios
     ...(temPermissao('verRelatorios') ? [
@@ -616,14 +615,14 @@ export default function DashboardFuncionario() {
         {pagina === 'tarefas-onboarding' && <PaginaMinhasTarefas tarefas={tarefas} recarregar={carregarDados} modo="onboarding" />}
         {pagina === 'tarefas-minhas' && <PaginaMinhasTarefas tarefas={tarefas} recarregar={carregarDados} modo="minhas" />}
         {pagina === 'agenda' && <Agenda cargo="funcionario" usuarioAtualId={usuario?.id} />}
-        {pagina === 'implantacao' && <Implantacao setPagina={setPagina} setClienteDetalheId={setClienteDetalheId} nomeNovoOnboarding={nomeNovoOnboarding} onNomeNovoOnboardingUsado={()=>setNomeNovoOnboarding('')} />}
+        {pagina === 'implantacao' && <Implantacao setPagina={setPagina} setClienteDetalheId={setClienteDetalheId} nomeNovoOnboarding={nomeNovoOnboarding} onNomeNovoOnboardingUsado={()=>setNomeNovoOnboarding('')} onImplantacaoCriada={carregarDados} />}
         {pagina === 'crm' && <CRM onIniciarOnboarding={(lead)=>{ setNomeNovoOnboarding(lead.nomeEmpresa || lead.nome); setPagina('implantacao') }} />}
         {pagina === 'modelos' && <ModelosOnboarding />}
         {pagina === 'checklist' && <BancoAtividades />}
         {pagina === 'clientes' && <Clientes detalheInicial={clienteDetalheId} abaInicial="onboardings" onDetalheAberto={()=>setClienteDetalheId(null)} />}
         {pagina === 'equipe' && <PaginaEquipeColaborador />}
         {pagina === 'setores' && <Setores funcionarios={[]} />}
-        {pagina === 'onboarding' && <Implantacao setPagina={setPagina} setClienteDetalheId={setClienteDetalheId} />}
+        {pagina === 'onboarding' && <Implantacao setPagina={setPagina} setClienteDetalheId={setClienteDetalheId} onImplantacaoCriada={carregarDados} />}
         {pagina === 'chat' && <Chat setPagina={setPagina} />}
         {pagina === 'anotacoes' && <Anotacoes />}
         {pagina === 'relatorios' && <Relatorios />}

@@ -12,9 +12,6 @@ export default function ModalConfiguracoes({ fechar }) {
   const isTitular = usuario?.cargo === 'admin'
   const [podeAtribuir, setPodeAtribuir] = useState(true)
   const [salvandoConfig, setSalvandoConfig] = useState(false)
-  const [assunto, setAssunto] = useState('')
-  const [descricao, setDescricao] = useState('')
-  const [enviandoSuporte, setEnviandoSuporte] = useState(false)
 
   useEffect(() => {
     if (!isTitular) return
@@ -22,25 +19,6 @@ export default function ModalConfiguracoes({ fechar }) {
       setPodeAtribuir(r.data.colaboradoresPodeAtribuirTitular ?? true)
     }).catch(() => {})
   }, [])
-
-  const enviarSuporte = async () => {
-    if (!assunto.trim() || !descricao.trim()) return
-    setEnviandoSuporte(true)
-    try {
-      await api.post('/feedback', {
-        assunto: assunto.trim(),
-        mensagem: descricao.trim(),
-        nome: usuario?.nome,
-        email: usuario?.email,
-        empresa: usuario?.empresa?.nome,
-      })
-      mostrar('Mensagem enviada! Vamos responder por e-mail.', 'sucesso')
-      setAssunto('')
-      setDescricao('')
-    } catch {
-      mostrar('Erro ao enviar mensagem.', 'erro')
-    } finally { setEnviandoSuporte(false) }
-  }
 
   const salvarPodeAtribuir = async (valor) => {
     setPodeAtribuir(valor)
@@ -153,37 +131,6 @@ export default function ModalConfiguracoes({ fechar }) {
           </div>
         </div>
 
-        {/* SUPORTE */}
-        <div style={styles.secao}>
-          <p style={styles.secaoTitulo}>Suporte</p>
-          <p style={styles.suporteTexto}>Encontrou um problema ou tem uma sugestão? Manda pra gente.</p>
-          <div>
-            <label style={styles.campoLabel}>Assunto</label>
-            <input
-              style={styles.input}
-              value={assunto}
-              onChange={e => setAssunto(e.target.value)}
-              placeholder="Resuma em poucas palavras"
-              maxLength={120}
-            />
-          </div>
-          <div>
-            <label style={styles.campoLabel}>Descrição</label>
-            <textarea
-              style={{ ...styles.input, minHeight: '90px', resize: 'vertical' }}
-              value={descricao}
-              onChange={e => setDescricao(e.target.value)}
-              placeholder="Descreva o problema ou a sugestão..."
-            />
-          </div>
-          <button
-            style={{ ...styles.btnEnviarSuporte, opacity: (assunto.trim() && descricao.trim()) ? 1 : 0.6 }}
-            onClick={enviarSuporte}
-            disabled={enviandoSuporte || !assunto.trim() || !descricao.trim()}
-          >
-            {enviandoSuporte ? 'Enviando...' : 'Enviar'}
-          </button>
-        </div>
       </div>
     </Modal>
   )
@@ -220,8 +167,4 @@ const styles = {
   toggleAtivo: { background: 'var(--verde)' },
   toggleBola: { position: 'absolute', top: '3px', left: '3px', width: '16px', height: '16px', borderRadius: '50%', background: '#fff', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' },
   toggleBolaAtiva: { left: '21px' },
-  suporteTexto: { fontSize: '0.8rem', color: 'var(--texto-apagado)', margin: 0, lineHeight: '1.4', fontFamily: 'Inter, sans-serif' },
-  campoLabel: { fontSize: '0.7rem', fontWeight: '600', color: 'var(--texto-apagado)', textTransform: 'uppercase', letterSpacing: '0.8px', display: 'block', margin: '0 0 6px', fontFamily: 'Inter, sans-serif' },
-  input: { width: '100%', background: 'var(--input)', border: '1px solid var(--borda)', borderRadius: '8px', padding: '9px 12px', color: 'var(--texto)', fontSize: '0.85rem', fontFamily: 'Inter, sans-serif', boxSizing: 'border-box', colorScheme: 'dark' },
-  btnEnviarSuporte: { alignSelf: 'flex-start', background: 'var(--gradiente-verde)', color: '#fff', border: 'none', borderRadius: '8px', padding: '9px 20px', fontFamily: 'Inter, sans-serif', fontWeight: '600', fontSize: '0.85rem', cursor: 'pointer' },
 }

@@ -1,7 +1,7 @@
 const express = require('express');
 const registrarLog = require('../services/log');
 const { enviarBoasVindas } = require('../services/email');
-const { autenticar, apenasAdmin } = require('../middleware/auth');
+const { autenticar, apenasAdmin, temPermissao } = require('../middleware/auth');
 const { enviarVerificacaoEmail } = require('../services/email');
 const crypto = require('crypto');
 const Usuario = require('../models/Usuario');
@@ -126,8 +126,8 @@ router.put('/:id', autenticar, apenasAdmin, async (req, res) => {
   }
 });
 
-// DELETE /api/usuarios/:id — só titular remove
-router.delete('/:id', autenticar, apenasAdmin, async (req, res) => {
+// DELETE /api/usuarios/:id — titular ou colaborador com permissão gerenciarMembros
+router.delete('/:id', autenticar, temPermissao('gerenciarMembros'), async (req, res) => {
   try {
     if (req.params.id === req.usuario._id.toString()) {
       return res.status(403).json({ erro: 'Você não pode remover a si mesmo.' });

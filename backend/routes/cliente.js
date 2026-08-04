@@ -70,7 +70,7 @@ router.get('/', autenticar, async (req, res) => {
   try {
     const clientes = await Cliente.find({ empresa: req.usuario.empresa._id })
       .populate('criadoPor', 'nome')
-      .populate('setores', 'nome cor').sort({ criadoEm: -1 }).lean();
+      .populate('setores', 'nome cor responsavel').sort({ criadoEm: -1 }).lean();
     res.json(clientes);
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao buscar clientes.' });
@@ -81,7 +81,7 @@ router.get('/', autenticar, async (req, res) => {
 router.get('/:id', autenticar, async (req, res) => {
   try {
     const cliente = await Cliente.findOne({ _id: req.params.id, empresa: req.usuario.empresa._id })
-      .populate('criadoPor', 'nome').populate('setores', 'nome cor')
+      .populate('criadoPor', 'nome').populate('setores', 'nome cor responsavel')
       .populate('particularidadesSetor.atualizadoPor', 'nome').lean();
     if (!cliente) return res.status(404).json({ erro: 'Cliente não encontrado.' });
 
@@ -152,8 +152,13 @@ router.put('/:id', autenticar, temPermissao('gerenciarClientes'), validar(client
     // Regime mudou de verdade (não é edição inicial nem o mesmo valor) — decide a vigência
     // conforme a escolha do usuário no diálogo (default 'agora' se não vier, ex: fluxos antigos).
     if (dados.regime !== undefined && dados.regime !== cliente.regime && cliente.regime) {
-      const modo = modoVigenciaRegime === 'inicio' ? 'inicio' : 'agora';
       const setorFiscal = await Setor.findOne({ empresa: cliente.empresa, nome: /^fiscal$/i, ativo: true }).select('_id').lean();
+      // Definir o regime pela primeira vez é liberado (ex: cadastro novo) — mas MUDAR um regime já
+      // definido só pode quem é titular ou o responsável designado do setor Fiscal.
+      if (!(await podeMudarConfigSetor(req.usuario, setorFiscal?._id?.toString()))) {
+        return res.status(403).json({ erro: 'Só o titular ou o responsável do Fiscal pode mudar o regime tributário.' });
+      }
+      const modo = modoVigenciaRegime === 'inicio' ? 'inicio' : 'agora';
       const { historico, competenciaMaisAntiga } = await prepararHistoricoParaMudanca({
         historicoAtual: cliente.historicoRegime,
         valorAntigo: cliente.regime,
@@ -204,6 +209,17 @@ const podeEditarCompetencia = (usuario, setorId, competencia, clienteAtivo, seto
 
 const temAcessoAoSetor = (usuario, setorId) =>
   usuario.cargo === 'admin' || usuario.setores?.some(s => (s._id || s).toString() === setorId);
+
+// Só o titular ou o responsável designado daquele setor podem MUDAR a configuração (situação do
+// DP/Contábil, regime do Fiscal) — qualquer membro do setor continua podendo ver/preencher a
+// Demanda normalmente (isso é `temAcessoAoSetor`, não muda). Setor sem responsável definido: só
+// o titular pode mudar, até alguém ser designado.
+const podeMudarConfigSetor = async (usuario, setorId) => {
+  if (usuario.cargo === 'admin') return true;
+  if (!setorId) return false;
+  const setor = await Setor.findById(setorId).select('responsavel').lean();
+  return !!setor?.responsavel && setor.responsavel.toString() === usuario._id.toString();
+};
 
 // Mesma normalização usada no frontend (CONFIG_DEMANDA é chaveado por nome de setor normalizado)
 const normalizarNome = (str = '') => str.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().trim();
@@ -365,6 +381,11 @@ router.patch('/:id/config-setor/:setorId', autenticar, async (req, res) => {
     const situacaoAntiga = configSetor.situacao;
 
     if (situacaoAntiga && situacaoAntiga !== situacao) {
+      // Responder a primeira vez é liberado pra quem tem acesso ao setor — mas MUDAR uma
+      // situação já definida só pode quem é titular ou o responsável designado do setor.
+      if (!(await podeMudarConfigSetor(req.usuario, req.params.setorId))) {
+        return res.status(403).json({ erro: 'Só o titular ou o responsável deste setor pode mudar essa configuração.' });
+      }
       const modo = modoVigencia === 'inicio' ? 'inicio' : 'agora';
       const { historico, competenciaMaisAntiga } = await prepararHistoricoParaMudanca({
         historicoAtual: configSetor.historicoSituacao,

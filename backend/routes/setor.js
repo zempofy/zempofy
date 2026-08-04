@@ -1,5 +1,5 @@
 const express = require('express');
-const { autenticar, apenasAdmin } = require('../middleware/auth');
+const { autenticar, apenasAdmin, temPermissao } = require('../middleware/auth');
 const Setor = require('../models/Setor');
 
 const router = express.Router();
@@ -19,7 +19,7 @@ router.get('/', autenticar, async (req, res) => {
     const setores = await Setor.find({
       empresa: req.usuario.empresa._id,
       ativo: true
-    }).populate('membros', 'nome email avatar cargo').sort({ padrao: -1, criadoEm: 1 }).lean();
+    }).populate('membros', 'nome email avatar cargo').populate('responsavel', 'nome email avatar cargo').sort({ padrao: -1, criadoEm: 1 }).lean();
     res.json(setores);
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao buscar setores.' });
@@ -46,18 +46,28 @@ router.post('/inicializar', autenticar, async (req, res) => {
 });
 
 // POST /api/setores - Criar novo setor
-router.post('/', autenticar, apenasAdmin, async (req, res) => {
-  const { nome, cor, membros } = req.body;
+router.post('/', autenticar, temPermissao('gerenciarSetores'), async (req, res) => {
+  const { nome, cor, membros, responsavel } = req.body;
   if (!nome?.trim()) return res.status(400).json({ erro: 'Nome é obrigatório.' });
   try {
+    // O responsável precisa ter acesso à Demanda desse setor pra poder responder a pergunta
+    // inicial (situação/regime) — garante que ele também entra como membro.
+    const membrosFinal = new Set((membros || []).map(m => m.toString()));
+    if (responsavel) membrosFinal.add(responsavel.toString());
+
     const setor = await Setor.create({
       nome: nome.trim(),
       cor: cor || '#2DAA59',
-      membros: membros || [],
+      responsavel: responsavel || null,
+      membros: [...membrosFinal],
       empresa: req.usuario.empresa._id,
       padrao: false
     });
-    const populado = await Setor.findById(setor._id).populate('membros', 'nome email avatar cargo').lean();
+
+    const Usuario = require('../models/Usuario');
+    await Promise.all([...membrosFinal].map(uid => Usuario.updateOne({ _id: uid }, { $addToSet: { setores: setor._id } })));
+
+    const populado = await Setor.findById(setor._id).populate('membros', 'nome email avatar cargo').populate('responsavel', 'nome email avatar cargo').lean();
     res.status(201).json(populado);
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao criar setor.' });
@@ -65,19 +75,23 @@ router.post('/', autenticar, apenasAdmin, async (req, res) => {
 });
 
 // PUT /api/setores/:id - Editar setor
-router.put('/:id', autenticar, apenasAdmin, async (req, res) => {
-  const { nome, cor, membros } = req.body;
+router.put('/:id', autenticar, temPermissao('gerenciarSetores'), async (req, res) => {
+  const { nome, cor, membros, responsavel } = req.body;
   try {
     const Usuario = require('../models/Usuario');
     const setorAntigo = await Setor.findOne({ _id: req.params.id, empresa: req.usuario.empresa._id }).lean();
     const membrosAntigos = setorAntigo?.membros?.map(m => m.toString()) || [];
-    const membrosNovos = (membros || []).map(m => m.toString());
+    // O responsável precisa ter acesso à Demanda desse setor pra poder responder a pergunta
+    // inicial (situação/regime) — garante que ele também entra como membro.
+    const membrosFinal = new Set((membros || []).map(m => m.toString()));
+    if (responsavel) membrosFinal.add(responsavel.toString());
+    const membrosNovos = [...membrosFinal];
 
     const setor = await Setor.findOneAndUpdate(
       { _id: req.params.id, empresa: req.usuario.empresa._id },
-      { nome: nome?.trim(), cor, membros: membros || [] },
+      { nome: nome?.trim(), cor, responsavel: responsavel || null, membros: membrosNovos },
       { new: true }
-    ).populate('membros', 'nome email avatar cargo');
+    ).populate('membros', 'nome email avatar cargo').populate('responsavel', 'nome email avatar cargo');
     if (!setor) return res.status(404).json({ erro: 'Setor não encontrado.' });
 
     // Sincronizar campo setores nos usuários
@@ -144,7 +158,7 @@ router.patch('/:id/membros/remover', autenticar, apenasAdmin, async (req, res) =
   }
 });
 
-router.delete('/:id', autenticar, apenasAdmin, async (req, res) => {
+router.delete('/:id', autenticar, temPermissao('gerenciarSetores'), async (req, res) => {
   try {
     const setor = await Setor.findOneAndUpdate(
       { _id: req.params.id, empresa: req.usuario.empresa._id },
