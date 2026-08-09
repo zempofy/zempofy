@@ -20,8 +20,8 @@ export function AuthProvider({ children }) {
     }
   }, [])
 
-  const login = async (email, senha) => {
-    const res = await api.post('/auth/login', { email, senha })
+  const login = async (email, senha, lembrar = false) => {
+    const res = await api.post('/auth/login', { email, senha, lembrar })
     const { token, usuario } = res.data
     localStorage.setItem('zempofy_token', token)
     api.defaults.headers.Authorization = `Bearer ${token}`

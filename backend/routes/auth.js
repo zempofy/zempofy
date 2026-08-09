@@ -10,12 +10,12 @@ const getUsuario = () => require('../models/Usuario');
 
 const router = express.Router();
 
-// Gerar token JWT
-function gerarToken(usuario) {
+// Gerar token JWT — "lembrar" (checkbox de login) estende a validade de 7 pra 30 dias
+function gerarToken(usuario, lembrar = false) {
   return jwt.sign(
     { id: usuario._id, cargo: usuario.cargo, empresa: usuario.empresa },
     process.env.JWT_SECRET,
-    { expiresIn: '7d' }
+    { expiresIn: lembrar ? '30d' : '7d' }
   );
 }
 
@@ -82,7 +82,7 @@ router.post('/cadastro', async (req, res) => {
 
 // POST /api/auth/login - Login
 router.post('/login', async (req, res) => {
-  const { email, senha } = req.body;
+  const { email, senha, lembrar } = req.body;
 
   if (!email || !senha) {
     return res.status(400).json({ erro: 'Informe e-mail e senha.' });
@@ -100,7 +100,7 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ erro: 'E-mail ou senha incorretos.' });
     }
 
-    const token = gerarToken(usuario);
+    const token = gerarToken(usuario, !!lembrar);
 
     // Não bloqueia a resposta do login por causa disso
     getUsuario().updateOne({ _id: usuario._id }, { $set: { ultimoAcesso: new Date() } }).catch(() => {});

@@ -606,7 +606,7 @@ export default function Layout({ children, menuItens, paginaAtual, setPagina }) 
             <IconeRecolher aberta={sidebarAberta} />
           </button>
           <button style={styles.logoBtn} onClick={() => setPagina('inicio')} title="Ir para início">
-            <img src="/logo-branca.png" alt="Zempofy" style={{ height: '36px', width: 'auto' }} />
+            <img src="/logo.svg" alt="Zempofy" style={{ height: '36px', width: 'auto' }} />
           </button>
         </div>
 
