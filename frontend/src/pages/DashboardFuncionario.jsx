@@ -15,6 +15,7 @@ import ModelosOnboarding from '../components/ModelosOnboarding'
 import BancoAtividades from '../components/BancoAtividades'
 import PaginaInicio from '../components/PaginaInicio'
 import Clientes from '../components/Clientes'
+import Demandas from '../components/Demandas'
 import Setores from '../components/Setores'
 import CRM from '../components/CRM'
 
@@ -578,14 +579,17 @@ export default function DashboardFuncionario() {
   // Verifica se tem algum item na seção Escritório pra mostrar o separador
   const menuItens = [
     { id: 'inicio', label: 'Início', icone: <Icone.Home size={16} /> },
-    { id: 'crm', label: 'CRM', icone: <Icone.Zap size={16} /> },
+    { id: 'crm', label: 'CRM', icone: <Icone.Target size={16} /> },
 
     // Escritório — Clientes sempre visível (acesso de visualização pra todos); Onboarding só com permissão
     { id: '__sep_escritorio', separador: true, label: 'Escritório' },
     ...(temPermissao('criarImplantacoes') || temPermissao('gerenciarOnboarding') ? [
-      { id: 'implantacao', label: 'Onboarding', icone: <Icone.ClipboardList size={16} /> },
+      { id: 'implantacao', label: 'Onboarding', icone: <Icone.Workflow size={16} /> },
     ] : []),
     { id: 'clientes', label: 'Clientes', icone: <Icone.Users size={16} /> },
+
+    // Demandas — sempre visível, sem gate de permissão (mesmo critério do item Clientes acima)
+    { id: 'demandas', label: 'Demandas', icone: <Icone.CalendarCheck size={16} /> },
 
     // Separador Pessoal — sempre visível
     { id: '__sep_pessoal', separador: true, label: 'Pessoal' },
@@ -620,6 +624,7 @@ export default function DashboardFuncionario() {
         {pagina === 'modelos' && <ModelosOnboarding />}
         {pagina === 'checklist' && <BancoAtividades />}
         {pagina === 'clientes' && <Clientes detalheInicial={clienteDetalheId} abaInicial="onboardings" onDetalheAberto={()=>setClienteDetalheId(null)} />}
+        {pagina === 'demandas' && <Demandas />}
         {pagina === 'equipe' && <PaginaEquipeColaborador />}
         {pagina === 'setores' && <Setores funcionarios={[]} />}
         {pagina === 'onboarding' && <Implantacao setPagina={setPagina} setClienteDetalheId={setClienteDetalheId} onImplantacaoCriada={carregarDados} />}

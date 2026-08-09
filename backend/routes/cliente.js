@@ -77,6 +77,38 @@ router.get('/', autenticar, async (req, res) => {
   }
 });
 
+// GET /api/clientes/demandas/:setorId/:competencia — status (dados brutos) de todos os clientes
+// do setor numa competência, em lote — usado pela tela Demandas pra não precisar de 1 chamada por cliente
+router.get('/demandas/:setorId/:competencia', autenticar, async (req, res) => {
+  try {
+    const { setorId, competencia } = req.params;
+    if (!/^\d{4}-\d{2}$/.test(competencia)) return res.status(400).json({ erro: 'Competência inválida.' });
+
+    const setor = await Setor.findOne({ _id: setorId, empresa: req.usuario.empresa._id }).select('nome').lean();
+    if (!setor) return res.status(404).json({ erro: 'Setor não encontrado.' });
+    const setorNome = normalizarNome(setor.nome);
+
+    const clientes = await Cliente.find({ empresa: req.usuario.empresa._id, setores: setorId })
+      .select('razaoSocial nomeFantasia regime historicoRegime configSetores status')
+      .lean();
+
+    const lancamentos = await LancamentoSetor.find({ empresa: req.usuario.empresa._id, setor: setorId, competencia })
+      .select('cliente dados').lean();
+    const dadosPorCliente = new Map(lancamentos.map(l => [l.cliente.toString(), l.dados || {}]));
+
+    res.json(clientes.map(c => ({
+      clienteId: c._id,
+      nome: c.razaoSocial || c.nomeFantasia,
+      status: c.status,
+      regime: resolverPorVigencia(c.historicoRegime, competencia, c.regime),
+      situacao: resolverPorVigencia(c.configSetores?.[setorNome]?.historicoSituacao, competencia, c.configSetores?.[setorNome]?.situacao),
+      dados: dadosPorCliente.get(c._id.toString()) || {},
+    })));
+  } catch (err) {
+    res.status(500).json({ erro: 'Erro ao buscar demandas.' });
+  }
+});
+
 // GET /api/clientes/:id
 router.get('/:id', autenticar, async (req, res) => {
   try {

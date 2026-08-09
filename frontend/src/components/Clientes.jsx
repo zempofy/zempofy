@@ -5,6 +5,7 @@ import { useToast } from './Toast'
 import Icone from './Icones'
 import ImportarClientes from './ImportarClientes'
 import { useAuth } from '../contexts/AuthContext'
+import * as XLSX from 'xlsx'
 
 // ── Máscaras ──
 const mascaraCNPJ = (v) => v.replace(/\D/g,'').slice(0,14)
@@ -20,6 +21,18 @@ const mascaraCNAE = (v) => { const d=v.replace(/\D/g,'').slice(0,7); return d.re
 // Máscara única do campo "CNPJ/CPF": aplica CPF enquanto tiver até 11 dígitos, CNPJ a partir do 12º
 const mascaraDocumento = (v) => { const d=v.replace(/\D/g,''); return d.length<=11 ? mascaraCPF(v) : mascaraCNPJ(v) }
 const ehPessoaFisica = (documento='') => documento.replace(/\D/g,'').length===11
+// Máscaras estritas pra exportação: só formata quando a quantidade de dígitos bate exatamente
+// com CNPJ/CPF ou celular/fixo — dado incompleto sai em branco em vez de mascarado errado
+const documentoParaExportar = (v='') => {
+  const d = v.replace(/\D/g,'')
+  if (d.length===14) return mascaraCNPJ(d)
+  if (d.length===11) return mascaraCPF(d)
+  return ''
+}
+const telefoneParaExportar = (v='') => {
+  const d = v.replace(/\D/g,'')
+  return (d.length===11 || d.length===10) ? mascaraTel(d) : ''
+}
 
 // ── Constantes ──
 const REGIMES = [
@@ -58,10 +71,12 @@ const normalizarNome = (str='') => str.normalize('NFD').replace(/\p{Diacritic}/g
 // as pílulas exibidas são calculadas em cima de quem realmente aparece nos clientes do setor.
 const SUBFILTROS_POR_SETOR = {
   fiscal: {
+    nome: 'Regime tributário',
     campo: (cliente) => cliente.regime,
     opcoesFixas: REGIMES.filter(r=>r.value!=='outro'),
   },
   'departamento pessoal': {
+    nome: 'Situação',
     campo: (cliente) => cliente.configSetores?.['departamento pessoal']?.situacao || null,
     opcoesFixas: [
       { value:'pro_labore', label:'Só pró-labore' },
@@ -71,6 +86,7 @@ const SUBFILTROS_POR_SETOR = {
     ],
   },
   contabil: {
+    nome: 'Periodicidade',
     campo: (cliente) => cliente.configSetores?.contabil?.situacao || null,
     opcoesFixas: [
       { value:'mensal', label:'Mês a mês' },
@@ -101,6 +117,7 @@ const CONFIG_DEMANDA = {
       simples_nacional: [
         { id:'totalVendas', label:'Venda', tipo:'moeda' },
         { id:'totalServicos', label:'Serviço', tipo:'moeda' },
+        { id:'faturamentoTotal', label:'Faturamento total', tipo:'calculado', formula: (valores) => (Number(valores.totalVendas)||0) + (Number(valores.totalServicos)||0) },
         { id:'das', label:'Guia simples', tipo:'moeda' },
         { id:'issRetido', label:'ISS retido', tipo:'moeda' },
         { id:'icmsDifal', label:'ICMS difal', tipo:'moeda' },
@@ -109,6 +126,7 @@ const CONFIG_DEMANDA = {
       lucro_presumido: [
         { id:'totalVendas', label:'Venda', tipo:'moeda' },
         { id:'totalServicos', label:'Serviço', tipo:'moeda' },
+        { id:'faturamentoTotal', label:'Faturamento total', tipo:'calculado', formula: (valores) => (Number(valores.totalVendas)||0) + (Number(valores.totalServicos)||0) },
         { id:'pis', label:'PIS', tipo:'moeda' },
         { id:'cofins', label:'COFINS', tipo:'moeda' },
         { id:'irpj', label:'IRPJ', tipo:'moeda' },
@@ -121,6 +139,7 @@ const CONFIG_DEMANDA = {
       lucro_real: [
         { id:'totalVendas', label:'Venda', tipo:'moeda' },
         { id:'totalServicos', label:'Serviço', tipo:'moeda' },
+        { id:'faturamentoTotal', label:'Faturamento total', tipo:'calculado', formula: (valores) => (Number(valores.totalVendas)||0) + (Number(valores.totalServicos)||0) },
         { id:'pis', label:'PIS', tipo:'moeda' },
         { id:'cofins', label:'COFINS', tipo:'moeda' },
         { id:'irpj', label:'IRPJ', tipo:'moeda' },
@@ -237,6 +256,7 @@ const nomeMes = (competencia) => MESES_NOME[Number(competencia.slice(5,7))-1]
 
 const labelRegime = (v) => REGIMES.find(r=>r.value===v)?.label || v
 const labelPorte = (v) => PORTES.find(r=>r.value===v)?.label || v
+const honorarioEfetivo = (cliente) => Number(cliente.honorario) || cliente.servicosContratados?.reduce((a,sv)=>a+(Number(sv.honorarioMensal)||0),0) || 0
 const statusInfo = (v) => STATUS_OPTS.find(s=>s.value===v) || STATUS_OPTS[0]
 const formatMoeda = (v) => v ? `R$ ${Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2})}` : '—'
 const formatData = (v) => v ? new Date(v).toLocaleDateString('pt-BR') : '—'
@@ -770,7 +790,7 @@ function BarraSetoresCliente({ setores, setorAtivo, setorClicavel, onInformacoes
 }
 
 // ── Tela de detalhe ──
-function TelaDetalhe({ clienteId, voltar, onAtualizado, abaInicial = 'info' }) {
+function TelaDetalhe({ clienteId, voltar, onAtualizado, abaInicial = 'info', setorInicial = null, competenciaInicial = null }) {
   const [dados, setDados] = useState(null)
   const [carregando, setCarregando] = useState(true)
   const [editando, setEditando] = useState(false)
@@ -810,6 +830,14 @@ function TelaDetalhe({ clienteId, voltar, onAtualizado, abaInicial = 'info' }) {
     finally { setCarregando(false) }
   }
   useEffect(()=>{buscar()},[clienteId])
+
+  // Ao vir de Demandas (ou outra navegação que já sabe qual setor abrir), seleciona o setor
+  // assim que os dados do cliente chegam — antes disso dados.setores ainda não existe
+  useEffect(() => {
+    if (!dados || !setorInicial) return
+    const setor = (dados.setores||[]).find(s => (s._id||s) === setorInicial)
+    if (setor) setSetorAtivo(setor)
+  }, [dados, setorInicial])
 
   const inativar = async () => {
     setMudandoStatus(true)
@@ -967,6 +995,7 @@ function TelaDetalhe({ clienteId, voltar, onAtualizado, abaInicial = 'info' }) {
       {aba==='demanda'&&setorAtivo&&(
         <AbaDemanda key={setorAtivo._id} clienteId={clienteId} setor={setorAtivo} clienteRegime={dados.regime}
           configSetor={dados.configSetores?.[normalizarNome(setorAtivo.nome)]}
+          competenciaInicial={setorInicial===setorAtivo._id ? competenciaInicial : null}
           onAtualizado={buscar}/>
       )}
 
@@ -998,13 +1027,29 @@ function TelaDetalhe({ clienteId, voltar, onAtualizado, abaInicial = 'info' }) {
 }
 
 const competenciaAtual = () => new Date().toISOString().slice(0,7)
+
+// Fiscal, DP e Contábil trabalham sempre em cima do mês anterior ao civil (é assim que
+// contabilidade funciona no Brasil — DAS/impostos vencem dia 20 do mês seguinte, folha é paga
+// nos primeiros dias do mês seguinte, fechamento contábil só sai depois que os extratos chegam).
+// Centralizado aqui pra decidir, por setor, se o padrão exibido é o mês anterior ("defasada") ou
+// o mês civil corrente ("atual") — quando "cada setor cria sua própria Demanda" virar spec, isso
+// deixa de ser fixo no código e passa a ser uma pergunta na criação do setor.
+const competenciaDefasada = () => {
+  const [ano, mes] = competenciaAtual().split('-').map(Number)
+  const d = new Date(ano, mes - 2, 1)
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`
+}
+const MODO_COMPETENCIA_POR_SETOR = { fiscal: 'defasada', 'departamento pessoal': 'defasada', contabil: 'defasada' }
+const competenciaPadraoDoSetor = (setorNome) =>
+  MODO_COMPETENCIA_POR_SETOR[normalizarNome(setorNome||'')] === 'defasada' ? competenciaDefasada() : competenciaAtual()
+
 const INICIO_DEMANDA_ANO = 2026
 const MESES_LABEL = ['01 - Janeiro','02 - Fevereiro','03 - Março','04 - Abril','05 - Maio','06 - Junho','07 - Julho','08 - Agosto','09 - Setembro','10 - Outubro','11 - Novembro','12 - Dezembro']
 
 // Renderiza o valor de um campo — editável (input por tipo) ou só leitura
 function CampoValor({ tipo, valor, onChange, disabled }) {
-  if (disabled) {
-    if (tipo === 'moeda') return <div style={{ ...s.inp, background:'var(--card)', color:'var(--texto)' }}>{formatMoeda(valor)}</div>
+  if (disabled || tipo === 'calculado') {
+    if (tipo === 'moeda' || tipo === 'calculado') return <div style={{ ...s.inp, background:'var(--card)', color:'var(--texto)' }}>{formatMoeda(valor)}</div>
     if (tipo === 'booleano') return <div style={{ ...s.inp, background:'var(--card)', color:'var(--texto)' }}>{valor===true?'Sim':valor===false?'Não':'—'}</div>
     return <div style={{ ...s.inp, background:'var(--card)', color:'var(--texto)' }}>{(valor===0?'0':valor)||'—'}</div>
   }
@@ -1254,7 +1299,7 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
     <div>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:'10px', marginBottom:'18px' }}>
         <p style={{ fontSize:'0.8rem', color:'var(--texto-apagado)', margin:0 }}>
-          Competência {competencia}{!podeEditar ? ' · Somente leitura' : ''}
+          Competência: {nomeMes(competencia)} de {competencia.slice(0,4)}{!podeEditar ? ' · Somente leitura' : ''}
           {lancamento?.preenchidoPor?.nome && ` · Preenchido por ${lancamento.preenchidoPor.nome}`}
         </p>
         {pillInfo && (
@@ -1264,7 +1309,7 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
               <span style={{ fontSize:'0.72rem', color:'var(--texto)', fontWeight:'600' }}>{pillInfo.valor}</span>
               {pillInfo.hint && <span style={{ fontSize:'0.65rem', color:'var(--texto-apagado)' }}>· {pillInfo.hint}</span>}
             </div>
-            {config?.perguntaInicial && podeEditar && podeAlterarConfig && competencia === competenciaAtual() && (
+            {config?.perguntaInicial && podeEditar && podeAlterarConfig && competencia === competenciaPadraoDoSetor(setor.nome) && (
               <button onClick={()=>setEditandoSituacao(true)} style={{ background:'none', border:'1px solid var(--borda)', borderRadius:'7px', color:'var(--texto-apagado)', padding:'5px 12px', fontFamily:'Inter,sans-serif', fontSize:'0.72rem', fontWeight:'600', cursor:'pointer' }}>
                 Editar
               </button>
@@ -1301,7 +1346,7 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
             <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))', gap:'14px' }}>
               {bloco.campos.map(c => (
                 <Campo key={c.id} label={c.label}>
-                  <CampoValor tipo={c.tipo} valor={valores[c.id]} onChange={v=>setValor(c.id, v)} disabled={!podeEditar} />
+                  <CampoValor tipo={c.tipo} valor={c.tipo==='calculado' ? c.formula(valores) : valores[c.id]} onChange={v=>setValor(c.id, v)} disabled={!podeEditar} />
                 </Campo>
               ))}
             </div>
@@ -1365,7 +1410,7 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
 
       {podeEditar && (
         <button style={s.btnSalv} onClick={salvar} disabled={salvando}>
-          {salvando ? 'Salvando...' : `Salvar demanda de ${nomeMes(competencia)}`}
+          {salvando ? 'Salvando...' : `Salvar competência de ${nomeMes(competencia)}`}
         </button>
       )}
     </div>
@@ -1423,8 +1468,8 @@ function AbaParticularidades({ clienteId, setor, clienteAtivo, particularidades=
 }
 
 // ── Demanda mensal (atalho pro mês corrente) ──
-function AbaDemanda({ clienteId, setor, clienteRegime, configSetor, onAtualizado }) {
-  return <FormularioCompetencia clienteId={clienteId} setor={setor} clienteRegime={clienteRegime} competencia={competenciaAtual()} configSetor={configSetor} onAtualizado={onAtualizado}/>
+function AbaDemanda({ clienteId, setor, clienteRegime, configSetor, onAtualizado, competenciaInicial }) {
+  return <FormularioCompetencia clienteId={clienteId} setor={setor} clienteRegime={clienteRegime} competencia={competenciaInicial || competenciaPadraoDoSetor(setor.nome)} configSetor={configSetor} onAtualizado={onAtualizado}/>
 }
 
 // ── Histórico: pastas de ano → mês → dados daquele mês ──
@@ -1447,9 +1492,12 @@ function AbaHistorico({ clienteId, setor, clienteRegime, configSetor, onAtualiza
   if (carregando) return <p style={{ color:'var(--texto-apagado)' }}>Carregando...</p>
 
   const preenchidos = new Set(lancamentos.map(l => l.competencia))
-  const atual = competenciaAtual()
-  const anoAtual = Number(atual.slice(0,4))
-  const mesAtualNum = Number(atual.slice(5,7))
+  const anoAtual = Number(competenciaAtual().slice(0,4))
+  // Teto de navegação pra frente: setor em modo "defasada" nunca deveria abrir o mês civil
+  // atual, só a competência (mês anterior) e os passados — ver competenciaPadraoDoSetor
+  const teto = competenciaPadraoDoSetor(setor.nome)
+  const anoTeto = Number(teto.slice(0,4))
+  const mesTetoNum = Number(teto.slice(5,7))
 
   const btnPasta = { display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'8px', padding:'20px 12px', background:'var(--card)', border:'1px solid var(--borda)', borderRadius:'12px', cursor:'pointer', fontFamily:'Inter,sans-serif', fontSize:'0.82rem', fontWeight:'600', color:'var(--texto)' }
   const btnVoltar = { background:'none', border:'none', color:'var(--texto-apagado)', cursor:'pointer', fontFamily:'Inter,sans-serif', fontSize:'0.82rem', padding:'0 0 16px', display:'flex', alignItems:'center', gap:'6px' }
@@ -1468,7 +1516,7 @@ function AbaHistorico({ clienteId, setor, clienteRegime, configSetor, onAtualiza
 
   // Nível 2 — meses do ano selecionado
   if (anoSelecionado) {
-    const ultimoMes = anoSelecionado === anoAtual ? mesAtualNum : 12
+    const ultimoMes = anoSelecionado < anoTeto ? 12 : (anoSelecionado === anoTeto ? mesTetoNum : 0)
     return (
       <div>
         <button onClick={()=>setAnoSelecionado(null)} style={btnVoltar}><Icone.ChevronLeft size={14}/> Anos</button>
@@ -1510,7 +1558,7 @@ function AbaHistorico({ clienteId, setor, clienteRegime, configSetor, onAtualiza
 function CardCliente({ cliente, onClick }) {
   const st = statusInfo(cliente.status)
   const inativo = cliente.status==='inativo'
-  const honorarioTotal = Number(cliente.honorario) || cliente.servicosContratados?.reduce((a,sv)=>a+(Number(sv.honorarioMensal)||0),0) || 0
+  const honorarioTotal = honorarioEfetivo(cliente)
   const nomeCliente = cliente.razaoSocial||cliente.nome||'—'
   return (
     <div onClick={onClick} style={{ background:'var(--card)', border:'1px solid var(--borda)', borderRadius:'14px', padding:'20px', cursor:'pointer', position:'relative', transition:'border-color 0.15s, transform 0.1s, opacity 0.15s', opacity: inativo?0.55:1 }}
@@ -1570,7 +1618,7 @@ function CardCliente({ cliente, onClick }) {
 }
 
 // ── Componente principal ──
-export default function Clientes({ detalheInicial = null, abaInicial = 'info', onDetalheAberto }) {
+export default function Clientes({ detalheInicial = null, abaInicial = 'info', setorInicial = null, competenciaInicial = null, onDetalheAberto }) {
   const [clientes, setClientes] = useState([])
   const [setoresList, setSetoresList] = useState([])
   const [carregando, setCarregando] = useState(true)
@@ -1580,6 +1628,10 @@ export default function Clientes({ detalheInicial = null, abaInicial = 'info', o
   // undefined = "Todos" (sem subfiltro ativo) — precisa ser diferente de null porque
   // o DP tem uma opção real de valor null ("Não configurado")
   const [subFiltro, setSubFiltro] = useState(undefined)
+  const [setorDropdownAberto, setSetorDropdownAberto] = useState(false)
+  const [subFiltroDropdownAberto, setSubFiltroDropdownAberto] = useState(false)
+  const setorDropdownRef = useRef(null)
+  const subFiltroDropdownRef = useRef(null)
   const [formAberto, setFormAberto] = useState(false)
   const [importarAberto, setImportarAberto] = useState(false)
   const [detalheId, setDetalheId] = useState(() => {
@@ -1624,6 +1676,18 @@ export default function Clientes({ detalheInicial = null, abaInicial = 'info', o
   useEffect(()=>{carregar()},[])
   useEffect(()=>{ setSubFiltro(undefined) }, [filtroSetor])
 
+  useEffect(() => {
+    if (!setorDropdownAberto && !subFiltroDropdownAberto) return
+    const fecharFora = (e) => {
+      if (setorDropdownAberto && !setorDropdownRef.current?.contains(e.target)) setSetorDropdownAberto(false)
+      if (subFiltroDropdownAberto && !subFiltroDropdownRef.current?.contains(e.target)) setSubFiltroDropdownAberto(false)
+    }
+    const fecharEsc = (e) => { if (e.key === 'Escape') { setSetorDropdownAberto(false); setSubFiltroDropdownAberto(false) } }
+    document.addEventListener('mousedown', fecharFora)
+    document.addEventListener('keydown', fecharEsc)
+    return () => { document.removeEventListener('mousedown', fecharFora); document.removeEventListener('keydown', fecharEsc) }
+  }, [setorDropdownAberto, subFiltroDropdownAberto])
+
   const setorFiltroAtivo = filtroSetor ? setoresList.find(x=>x._id===filtroSetor) : null
   const subFiltroConfig = setorFiltroAtivo ? SUBFILTROS_POR_SETOR[normalizarNome(setorFiltroAtivo.nome)] : null
 
@@ -1648,7 +1712,40 @@ export default function Clientes({ detalheInicial = null, abaInicial = 'info', o
     return nomeA.localeCompare(nomeB, 'pt-BR', { numeric: true })
   })
 
-  if (detalheId) return <TelaDetalhe clienteId={detalheId} abaInicial={detalheInicial===detalheId?abaInicial:'info'} voltar={()=>{ setDetalheId(null); onDetalheAberto&&onDetalheAberto() }} onAtualizado={carregar}/>
+  const temFiltroAtivo = !!busca || !!filtroSetor || subFiltro!==undefined || filtroPessoaFisica
+
+  // Exporta exatamente os clientes visíveis no momento (respeitando busca/setor/subfiltro/pessoa física já aplicados)
+  const exportarExcel = () => {
+    const cabecalho = ['RAZÃO SOCIAL','CNPJ/CPF','PORTE','REGIME','SETORES','HONORARIO','E-MAIL','TELEFONE']
+    const linhas = filtrados.map(c => ({
+      'RAZÃO SOCIAL': c.razaoSocial || '',
+      'CNPJ/CPF': documentoParaExportar(c.cnpj || ''),
+      'PORTE': c.porte ? labelPorte(c.porte) : '',
+      'REGIME': c.regime ? labelRegime(c.regime) : '',
+      'SETORES': (c.setores || []).map(s => s.nome || s).filter(Boolean).join(', '),
+      'HONORARIO': honorarioEfetivo(c),
+      'E-MAIL': c.email || '',
+      'TELEFONE': telefoneParaExportar(c.telefone || ''),
+    }))
+    const ws = XLSX.utils.json_to_sheet(linhas, { header: cabecalho })
+    const range = XLSX.utils.decode_range(ws['!ref'])
+    for (let r = 1; r <= range.e.r; r++) {
+      const endereco = XLSX.utils.encode_cell({ r, c: 5 }) // coluna HONORARIO
+      if (ws[endereco]) ws[endereco].z = '"R$" #,##0.00'
+    }
+    cabecalho.forEach((_, i) => {
+      const endereco = XLSX.utils.encode_cell({ r: 0, c: i })
+      if (ws[endereco]) ws[endereco].s = { font: { bold: true } }
+    })
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Clientes')
+    const hoje = new Date().toISOString().slice(0, 10)
+    XLSX.writeFile(wb, `clientes-zempofy-${hoje}.xlsx`)
+  }
+
+  if (detalheId) return <TelaDetalhe clienteId={detalheId} abaInicial={detalheInicial===detalheId?abaInicial:'info'}
+    setorInicial={detalheInicial===detalheId?setorInicial:null} competenciaInicial={detalheInicial===detalheId?competenciaInicial:null}
+    voltar={()=>{ setDetalheId(null); onDetalheAberto&&onDetalheAberto() }} onAtualizado={carregar}/>
   if (formAberto) return <FormCliente fechar={()=>setFormAberto(false)} onSalvo={carregar}/>
   if (importarAberto) return <ImportarClientes fechar={()=>setImportarAberto(false)} onImportado={()=>{ carregar(); setImportarAberto(false) }}/>
 
@@ -1657,10 +1754,15 @@ export default function Clientes({ detalheInicial = null, abaInicial = 'info', o
       <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:'20px', flexWrap:'wrap', gap:'12px' }}>
         <div>
           <h1 style={{ fontSize:'1.5rem', fontWeight:'700', color:'var(--texto)', margin:0, letterSpacing:'-0.03em' }}>Clientes</h1>
-          <p style={{ fontSize:'0.82rem', color:'var(--texto-apagado)', marginTop:'5px' }}>{clientes.length} cliente(s) cadastrado(s)</p>
+          <p style={{ fontSize:'0.82rem', color:'var(--texto-apagado)', marginTop:'5px' }}>
+            {temFiltroAtivo
+              ? <><span style={{ fontWeight:'700', color:'var(--texto)' }}>{filtrados.length}</span> <span style={{ color:'var(--texto-apagado)' }}>de {clientes.length} clientes</span></>
+              : <>{clientes.length} clientes cadastrados</>}
+          </p>
         </div>
         {temPermissao('gerenciarClientes') && (
           <div style={{ display:'flex', gap:'8px' }}>
+            <button onClick={exportarExcel} style={{ ...s.btnPrimario, background:'none', border:'1px solid var(--borda)', color:'var(--texto)', boxShadow:'none', display:'flex', alignItems:'center', gap:'6px' }}><Icone.Download size={14}/> Exportar</button>
             <button onClick={()=>setImportarAberto(true)} style={{ ...s.btnPrimario, background:'none', border:'1px solid var(--borda)', color:'var(--texto)', boxShadow:'none', display:'flex', alignItems:'center', gap:'6px' }}><Icone.Upload size={14}/> Importar</button>
             <button onClick={()=>setFormAberto(true)} style={{ ...s.btnPrimario, display:'flex', alignItems:'center', gap:'6px' }}><Icone.Plus size={14}/> Novo cliente</button>
           </div>
@@ -1668,19 +1770,28 @@ export default function Clientes({ detalheInicial = null, abaInicial = 'info', o
       </div>
 
       {/* Busca + filtro por setor */}
-      <div style={{ display:'flex', gap:'10px', marginBottom:'20px', flexWrap:'wrap', alignItems:'center' }}>
+      <div style={{ display:'flex', gap:'10px', marginBottom: opcoesVisiveis.length>0 ? '10px' : '20px', flexWrap:'wrap', alignItems:'center' }}>
         <input style={{ ...s.inp, flex:1, minWidth:'200px' }} value={busca} onChange={e=>setBusca(e.target.value)} placeholder="Buscar por nome, CNPJ ou CPF..." />
         {setoresList.length>0&&(
-          <div style={{ display:'flex', gap:'6px', flexWrap:'wrap' }}>
-            <button onClick={()=>setFiltroSetor(null)} style={{ padding:'7px 14px', borderRadius:'8px', fontSize:'0.78rem', fontWeight:'600', cursor:'pointer', fontFamily:'Inter,sans-serif', border:`1px solid ${!filtroSetor?'rgba(0,177,65,0.3)':'var(--borda)'}`, background:!filtroSetor?'rgba(0,177,65,0.08)':'var(--input)', color:!filtroSetor?'var(--verde)':'var(--texto-apagado)' }}>
-              Todos
+          <div ref={setorDropdownRef} style={{ position:'relative' }}>
+            <button onClick={()=>setSetorDropdownAberto(v=>!v)} style={{ padding:'7px 14px', borderRadius:'8px', fontSize:'0.78rem', fontWeight:'600', cursor:'pointer', fontFamily:'Inter,sans-serif', display:'flex', alignItems:'center', gap:'8px', border:`1px solid ${filtroSetor?'rgba(0,177,65,0.3)':'var(--borda)'}`, background:filtroSetor?'rgba(0,177,65,0.08)':'var(--input)', color:filtroSetor?'var(--verde)':'var(--texto-apagado)' }}>
+              {filtroSetor && setorFiltroAtivo && <div style={{ width:'7px', height:'7px', borderRadius:'50%', background:setorFiltroAtivo.cor||'var(--verde)' }}/>}
+              {filtroSetor && setorFiltroAtivo ? setorFiltroAtivo.nome : 'Todos os setores'}
+              <Icone.ChevronDown size={14}/>
             </button>
-            {setoresList.map(setor=>(
-              <button key={setor._id} onClick={()=>setFiltroSetor(filtroSetor===setor._id?null:setor._id)} style={{ padding:'7px 14px', borderRadius:'8px', fontSize:'0.78rem', fontWeight:'600', cursor:'pointer', fontFamily:'Inter,sans-serif', display:'flex', alignItems:'center', gap:'6px', border:`1px solid ${filtroSetor===setor._id?'rgba(0,177,65,0.3)':'var(--borda)'}`, background:filtroSetor===setor._id?'rgba(0,177,65,0.08)':'var(--input)', color:filtroSetor===setor._id?'var(--verde)':'var(--texto-apagado)' }}>
-                <div style={{ width:'7px', height:'7px', borderRadius:'50%', background:setor.cor||'var(--verde)' }}/>
-                {setor.nome}
-              </button>
-            ))}
+            {setorDropdownAberto && (
+              <div style={{ position:'absolute', top:'calc(100% + 4px)', left:0, minWidth:'210px', background:'var(--card)', border:'1px solid var(--borda)', borderRadius:'8px', boxShadow:'0 8px 24px rgba(0,0,0,0.4)', zIndex:10, padding:'6px', display:'flex', flexDirection:'column', gap:'2px' }}>
+                <button onClick={()=>{ setFiltroSetor(null); setSetorDropdownAberto(false) }} style={{ padding:'8px 10px', borderRadius:'6px', fontSize:'0.8rem', fontWeight:'600', cursor:'pointer', fontFamily:'Inter,sans-serif', border:'none', textAlign:'left', background:!filtroSetor?'rgba(0,177,65,0.08)':'none', color:!filtroSetor?'var(--verde)':'var(--texto)' }}>
+                  Todos os setores
+                </button>
+                {setoresList.map(setor=>(
+                  <button key={setor._id} onClick={()=>{ setFiltroSetor(setor._id); setSetorDropdownAberto(false) }} style={{ padding:'8px 10px', borderRadius:'6px', fontSize:'0.8rem', fontWeight:'600', cursor:'pointer', fontFamily:'Inter,sans-serif', display:'flex', alignItems:'center', gap:'8px', border:'none', textAlign:'left', background:filtroSetor===setor._id?'rgba(0,177,65,0.08)':'none', color:filtroSetor===setor._id?'var(--verde)':'var(--texto)' }}>
+                    <div style={{ width:'7px', height:'7px', borderRadius:'50%', background:setor.cor||'var(--verde)' }}/>
+                    {setor.nome}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
         <button onClick={()=>setFiltroPessoaFisica(v=>!v)} style={{ padding:'7px 14px', borderRadius:'8px', fontSize:'0.78rem', fontWeight:'600', cursor:'pointer', fontFamily:'Inter,sans-serif', display:'flex', alignItems:'center', gap:'6px', border:`1px solid ${filtroPessoaFisica?'rgba(0,177,65,0.3)':'var(--borda)'}`, background:filtroPessoaFisica?'rgba(0,177,65,0.08)':'var(--input)', color:filtroPessoaFisica?'var(--verde)':'var(--texto-apagado)' }}>
@@ -1690,15 +1801,25 @@ export default function Clientes({ detalheInicial = null, abaInicial = 'info', o
 
       {/* Subfiltro (ex: Regime quando setor Fiscal está selecionado) */}
       {opcoesVisiveis.length > 0 && (
-        <div style={{ display:'flex', gap:'6px', flexWrap:'wrap', marginBottom:'20px' }}>
-          <button onClick={()=>setSubFiltro(undefined)} style={{ padding:'5px 12px', borderRadius:'7px', fontSize:'0.72rem', fontWeight:'600', cursor:'pointer', fontFamily:'Inter,sans-serif', border:`1px solid ${subFiltro===undefined?'rgba(0,177,65,0.3)':'var(--borda)'}`, background:subFiltro===undefined?'rgba(0,177,65,0.08)':'transparent', color:subFiltro===undefined?'var(--verde)':'var(--texto-apagado)' }}>
-            Todos
+        <div ref={subFiltroDropdownRef} style={{ position:'relative', display:'inline-block', marginBottom:'20px' }}>
+          <button onClick={()=>setSubFiltroDropdownAberto(v=>!v)} style={{ padding:'5px 12px', borderRadius:'7px', fontSize:'0.72rem', fontWeight:'600', cursor:'pointer', fontFamily:'Inter,sans-serif', display:'flex', alignItems:'center', gap:'6px', border:'1px solid var(--borda)', background:'transparent', color:'var(--texto-apagado)' }}>
+            {subFiltro===undefined
+              ? `Todos · ${subFiltroConfig.nome}`
+              : `${opcoesVisiveis.find(op=>op.value===subFiltro)?.label} · ${subFiltroConfig.nome}`}
+            <Icone.ChevronDown size={12}/>
           </button>
-          {opcoesVisiveis.map(op=>(
-            <button key={String(op.value)} onClick={()=>setSubFiltro(subFiltro===op.value?undefined:op.value)} style={{ padding:'5px 12px', borderRadius:'7px', fontSize:'0.72rem', fontWeight:'600', cursor:'pointer', fontFamily:'Inter,sans-serif', border:`1px solid ${subFiltro===op.value?'rgba(0,177,65,0.3)':'var(--borda)'}`, background:subFiltro===op.value?'rgba(0,177,65,0.08)':'transparent', color:subFiltro===op.value?'var(--verde)':'var(--texto-apagado)' }}>
-              {op.label}
-            </button>
-          ))}
+          {subFiltroDropdownAberto && (
+            <div style={{ position:'absolute', top:'calc(100% + 4px)', left:0, minWidth:'190px', background:'var(--card)', border:'1px solid var(--borda)', borderRadius:'8px', boxShadow:'0 8px 24px rgba(0,0,0,0.4)', zIndex:10, padding:'6px', display:'flex', flexDirection:'column', gap:'2px' }}>
+              <button onClick={()=>{ setSubFiltro(undefined); setSubFiltroDropdownAberto(false) }} style={{ padding:'7px 10px', borderRadius:'6px', fontSize:'0.76rem', fontWeight:'600', cursor:'pointer', fontFamily:'Inter,sans-serif', border:'none', textAlign:'left', background:subFiltro===undefined?'rgba(0,177,65,0.08)':'none', color:subFiltro===undefined?'var(--verde)':'var(--texto)' }}>
+                Todos
+              </button>
+              {opcoesVisiveis.map(op=>(
+                <button key={String(op.value)} onClick={()=>{ setSubFiltro(op.value); setSubFiltroDropdownAberto(false) }} style={{ padding:'7px 10px', borderRadius:'6px', fontSize:'0.76rem', fontWeight:'600', cursor:'pointer', fontFamily:'Inter,sans-serif', border:'none', textAlign:'left', background:subFiltro===op.value?'rgba(0,177,65,0.08)':'none', color:subFiltro===op.value?'var(--verde)':'var(--texto)' }}>
+                  {op.label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -1737,3 +1858,7 @@ const s = {
   secCard: { background:'var(--card)', border:'1px solid var(--borda)', borderRadius:'12px', padding:'18px 20px' },
   secTit: { fontSize:'0.75rem', fontWeight:'700', color:'var(--texto-apagado)', textTransform:'uppercase', letterSpacing:'1px', margin:'0 0 14px', fontFamily:'Inter,sans-serif' },
 }
+
+// Reaproveitado pela tela Demandas — mesma lógica de campos configurados por setor/regime/situação,
+// pra não duplicar o critério de "pendente vs concluído"
+export { CONFIG_DEMANDA, blocosFixosDoSetor, normalizarNome, competenciaAtual, competenciaDefasada, competenciaPadraoDoSetor, nomeMes, MESES_NOME, INICIO_DEMANDA_ANO }

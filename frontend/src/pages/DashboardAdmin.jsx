@@ -17,6 +17,7 @@ import ModelosOnboarding from '../components/ModelosOnboarding'
 import Setores from '../components/Setores'
 import BancoAtividades from '../components/BancoAtividades'
 import Clientes from '../components/Clientes'
+import Demandas from '../components/Demandas'
 import CRM from '../components/CRM'
 import ConfigAlertas from '../components/ConfigAlertas'
 import PaginaInicio from '../components/PaginaInicio'
@@ -1596,14 +1597,14 @@ export default function DashboardAdmin() {
   // Sidebar dinâmico — cada item só aparece se tiver permissão
   const menuItens = [
     { id: 'inicio', label: 'Início', icone: <Icone.Home size={16} /> },
-    { id: 'crm', label: 'CRM', icone: <Icone.Zap size={16} /> },
+    { id: 'crm', label: 'CRM', icone: <Icone.Target size={16} /> },
 
     // Separador — Escritório
     { id: '__sep_escritorio', separador: true, label: 'Escritório' },
 
     // Implantação — uso diário
     ...(isTitular || temPermissao('gerenciarOnboarding') ? [
-      { id: 'implantacao', label: 'Onboarding', icone: <Icone.ClipboardList size={16} /> }
+      { id: 'implantacao', label: 'Onboarding', icone: <Icone.Workflow size={16} /> }
     ] : []),
 
     // Clientes
@@ -1611,7 +1612,9 @@ export default function DashboardAdmin() {
       { id: 'clientes', label: 'Clientes', icone: <Icone.Users size={16} /> }
     ] : []),
 
-
+    // Demandas — sempre visível, sem gate de permissão (preencher a demanda do próprio setor é
+    // trabalho operacional do dia a dia, não depende de gerenciar cadastro de cliente)
+    { id: 'demandas', label: 'Demandas', icone: <Icone.CalendarCheck size={16} /> },
 
     // Separador — Pessoal
     { id: '__sep_pessoal', separador: true, label: 'Pessoal' },
@@ -1642,6 +1645,7 @@ export default function DashboardAdmin() {
     if (pagina === 'historico') return <PaginaHistorico />
     if (pagina === 'agenda') return <Agenda cargo="admin" usuarios={funcionarios} usuarioAtualId={usuario?.id} />
     if (pagina === 'clientes') return <Clientes detalheInicial={clienteDetalheId} abaInicial="onboardings" onDetalheAberto={()=>setClienteDetalheId(null)} />
+    if (pagina === 'demandas') return <Demandas />
     if (pagina === 'chat') return <Chat setPagina={setPagina} />
     if (pagina === 'anotacoes') return <Anotacoes />
     if (pagina === 'mural') return <Mural />

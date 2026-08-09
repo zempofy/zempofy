@@ -777,11 +777,6 @@ export default function Layout({ children, menuItens, paginaAtual, setPagina }) 
             <span style={styles.navIcone}><Icone.Settings size={18} /></span>
             {sidebarAberta && <span style={styles.navLabel}>Configurações</span>}
           </button>
-          {sidebarAberta && (
-            <div style={styles.sidebarRodape}>
-              <span style={styles.sidebarVersao}>Zempofy</span>
-            </div>
-          )}
         </div>
       </aside>
 
@@ -1124,19 +1119,6 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
     gap: '2px',
-  },
-
-  // Rodapé da sidebar
-  sidebarRodape: {
-    padding: '12px 14px',
-    borderTop: '1px solid rgba(255,255,255,0.05)',
-    flexShrink: 0,
-  },
-  sidebarVersao: {
-    fontSize: '0.65rem',
-    color: 'rgba(255,255,255,0.18)',
-    fontFamily: 'Inter, sans-serif',
-    letterSpacing: '0.3px',
   },
 
   // ── Conteúdo ──
