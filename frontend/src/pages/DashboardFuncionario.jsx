@@ -563,11 +563,13 @@ export default function DashboardFuncionario() {
   const [clienteDetalheId, setClienteDetalheId] = useState(null)
   const [nomeNovoOnboarding, setNomeNovoOnboarding] = useState('')
   const [tarefas, setTarefas] = useState([])
+  const [funcionarios, setFuncionarios] = useState([])
 
   const carregarDados = async () => {
     try {
-      const res = await api.get('/tarefas')
-      setTarefas(res.data)
+      const [resTarefas, resFuncionarios] = await Promise.all([api.get('/tarefas'), api.get('/usuarios')])
+      setTarefas(resTarefas.data)
+      setFuncionarios(resFuncionarios.data.filter(u => u._id !== usuario?.id))
     } catch (err) {
       console.error(err)
     }
@@ -626,7 +628,7 @@ export default function DashboardFuncionario() {
         {pagina === 'clientes' && <Clientes detalheInicial={clienteDetalheId} abaInicial="onboardings" onDetalheAberto={()=>setClienteDetalheId(null)} />}
         {pagina === 'demandas' && <Demandas />}
         {pagina === 'equipe' && <PaginaEquipeColaborador />}
-        {pagina === 'setores' && <Setores funcionarios={[]} />}
+        {pagina === 'setores' && <Setores funcionarios={funcionarios} />}
         {pagina === 'onboarding' && <Implantacao setPagina={setPagina} setClienteDetalheId={setClienteDetalheId} onImplantacaoCriada={carregarDados} />}
         {pagina === 'chat' && <Chat setPagina={setPagina} />}
         {pagina === 'anotacoes' && <Anotacoes />}

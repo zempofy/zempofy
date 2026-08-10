@@ -1622,6 +1622,7 @@ export default function Clientes({ detalheInicial = null, abaInicial = 'info', s
   const [clientes, setClientes] = useState([])
   const [setoresList, setSetoresList] = useState([])
   const [carregando, setCarregando] = useState(true)
+  const [erroCarregar, setErroCarregar] = useState(false)
   const [busca, setBusca] = useState('')
   const [filtroSetor, setFiltroSetor] = useState(null)
   const [filtroPessoaFisica, setFiltroPessoaFisica] = useState(false)
@@ -1654,6 +1655,7 @@ export default function Clientes({ detalheInicial = null, abaInicial = 'info', s
 
   const carregar = async () => {
     setCarregando(true)
+    setErroCarregar(false)
     try {
       const [rC, rS, rI] = await Promise.all([api.get('/clientes'), api.get('/setores'), api.get('/implantacoes')])
       const impsAtivas = rI.data.filter(i => i.status !== 'concluida')
@@ -1670,7 +1672,7 @@ export default function Clientes({ detalheInicial = null, abaInicial = 'info', s
       })
       setClientes(clientesComBadge)
       setSetoresList(rS.data)
-    } catch { mostrar('Erro ao carregar clientes.','erro') }
+    } catch { mostrar('Erro ao carregar clientes.','erro'); setErroCarregar(true) }
     finally { setCarregando(false) }
   }
   useEffect(()=>{carregar()},[])
@@ -1755,9 +1757,11 @@ export default function Clientes({ detalheInicial = null, abaInicial = 'info', s
         <div>
           <h1 style={{ fontSize:'1.5rem', fontWeight:'700', color:'var(--texto)', margin:0, letterSpacing:'-0.03em' }}>Clientes</h1>
           <p style={{ fontSize:'0.82rem', color:'var(--texto-apagado)', marginTop:'5px' }}>
-            {temFiltroAtivo
-              ? <><span style={{ fontWeight:'700', color:'var(--texto)' }}>{filtrados.length}</span> <span style={{ color:'var(--texto-apagado)' }}>de {clientes.length} clientes</span></>
-              : <>{clientes.length} clientes cadastrados</>}
+            {erroCarregar
+              ? 'Não foi possível carregar'
+              : temFiltroAtivo
+                ? <><span style={{ fontWeight:'700', color:'var(--texto)' }}>{filtrados.length}</span> <span style={{ color:'var(--texto-apagado)' }}>de {clientes.length} clientes</span></>
+                : <>{clientes.length} clientes cadastrados</>}
           </p>
         </div>
         {temPermissao('gerenciarClientes') && (
@@ -1825,7 +1829,12 @@ export default function Clientes({ detalheInicial = null, abaInicial = 'info', s
 
       {/* Grid */}
       {carregando?<p style={{ color:'var(--texto-apagado)' }}>Carregando...</p>
-      :filtrados.length===0?(
+      :erroCarregar?(
+        <div style={{ textAlign:'center', padding:'60px 0', color:'var(--texto-apagado)' }}>
+          <p style={{ marginBottom:'12px', fontSize:'0.9rem' }}>Não foi possível carregar os clientes. Verifique sua conexão.</p>
+          <button onClick={carregar} style={s.btnSecundario}>Tentar novamente</button>
+        </div>
+      ):filtrados.length===0?(
         <div style={{ textAlign:'center', padding:'60px 0', color:'var(--texto-apagado)' }}>
           {busca||filtroSetor?<p>Nenhum cliente encontrado.</p>:<>
             <p style={{ marginBottom:'12px', fontSize:'0.9rem' }}>Nenhum cliente cadastrado ainda.</p>

@@ -1,8 +1,16 @@
 const express = require('express');
-const { autenticar, apenasAdmin, temPermissao } = require('../middleware/auth');
+const { autenticar, temPermissao } = require('../middleware/auth');
 const Setor = require('../models/Setor');
 
 const router = express.Router();
+
+// Admin e quem tem gerenciarSetores sempre podem; além disso, o responsável designado
+// daquele setor específico também pode gerenciar (só) os membros dele.
+const podeGerenciarMembros = async (req, setorId) => {
+  if (req.usuario.cargo === 'admin' || req.usuario.permissoes?.gerenciarSetores) return true;
+  const setor = await Setor.findOne({ _id: setorId, empresa: req.usuario.empresa._id }).select('responsavel').lean();
+  return !!setor?.responsavel && setor.responsavel.toString() === req.usuario._id.toString();
+};
 
 const SETORES_PADRAO = [
   { nome: 'Comercial', cor: '#378ADD' },
@@ -111,10 +119,13 @@ router.put('/:id', autenticar, temPermissao('gerenciarSetores'), async (req, res
 // DELETE /api/setores/:id - Desativar setor (soft delete)
 
 // PATCH /api/setores/:id/membros — adiciona ou remove membro
-router.patch('/:id/membros', autenticar, apenasAdmin, async (req, res) => {
+router.patch('/:id/membros', autenticar, async (req, res) => {
   const { usuarioId, acao } = req.body; // acao: 'adicionar' | 'remover'
   if (!usuarioId) return res.status(400).json({ erro: 'usuarioId é obrigatório.' });
   try {
+    if (!(await podeGerenciarMembros(req, req.params.id))) {
+      return res.status(403).json({ erro: 'Você não tem permissão pra gerenciar os membros deste setor.' });
+    }
     const op = acao === 'remover' ? { $pull: { membros: usuarioId } } : { $addToSet: { membros: usuarioId } }
     const setor = await Setor.findOneAndUpdate(
       { _id: req.params.id, empresa: req.usuario.empresa._id },
@@ -138,10 +149,13 @@ router.patch('/:id/membros', autenticar, apenasAdmin, async (req, res) => {
 });
 
 // PATCH /api/setores/:id/membros/remover (compatibilidade)
-router.patch('/:id/membros/remover', autenticar, apenasAdmin, async (req, res) => {
+router.patch('/:id/membros/remover', autenticar, async (req, res) => {
   const { usuarioId } = req.body;
   if (!usuarioId) return res.status(400).json({ erro: 'usuarioId é obrigatório.' });
   try {
+    if (!(await podeGerenciarMembros(req, req.params.id))) {
+      return res.status(403).json({ erro: 'Você não tem permissão pra gerenciar os membros deste setor.' });
+    }
     const setor = await Setor.findOneAndUpdate(
       { _id: req.params.id, empresa: req.usuario.empresa._id },
       { $pull: { membros: usuarioId } },

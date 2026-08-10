@@ -110,9 +110,10 @@ router.post('/', autenticar, temPermissao('criarImplantacoes'), async (req, res)
       for (let idx = 0; idx < setoresOrdenados.length; idx++) {
         const s = setoresOrdenados[idx];
 
-        // Busca o setor para pegar o primeiro membro
+        // Prioriza o responsável designado do setor; sem isso, cai pro primeiro membro; sem
+        // nenhum dos dois, cai pra quem criou a implantação.
         const setorCompleto = await Setor.findById(s.setor).lean();
-        const responsavelId = setorCompleto?.membros?.[0] || req.usuario._id;
+        const responsavelId = setorCompleto?.responsavel || setorCompleto?.membros?.[0] || req.usuario._id;
 
         // Busca as atividades do checklist pelos IDs salvos no modelo
         const atividades = await AtividadeChecklist.find({

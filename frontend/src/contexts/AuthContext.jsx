@@ -6,19 +6,31 @@ const AuthContext = createContext(null)
 export function AuthProvider({ children }) {
   const [usuario, setUsuario] = useState(null)
   const [carregando, setCarregando] = useState(true)
+  const [erroConexao, setErroConexao] = useState(false)
 
-  useEffect(() => {
+  // Só derruba a sessão quando o servidor de fato rejeita o token (401/403).
+  // Falha de rede/servidor fora do ar (sem response, ou 5xx) não significa "sessão inválida" —
+  // manter o token e deixar a pessoa tentar de novo, em vez de forçar login de novo à toa.
+  const verificarSessao = () => {
     const token = localStorage.getItem('zempofy_token')
-    if (token) {
-      api.defaults.headers.Authorization = `Bearer ${token}`
-      api.get('/auth/me')
-        .then(res => setUsuario(res.data))
-        .catch(() => localStorage.removeItem('zempofy_token'))
-        .finally(() => setCarregando(false))
-    } else {
-      setCarregando(false)
-    }
-  }, [])
+    if (!token) { setCarregando(false); return }
+    setCarregando(true)
+    setErroConexao(false)
+    api.defaults.headers.Authorization = `Bearer ${token}`
+    api.get('/auth/me')
+      .then(res => setUsuario(res.data))
+      .catch(err => {
+        if (err.response?.status === 401 || err.response?.status === 403) {
+          localStorage.removeItem('zempofy_token')
+          delete api.defaults.headers.Authorization
+        } else {
+          setErroConexao(true)
+        }
+      })
+      .finally(() => setCarregando(false))
+  }
+
+  useEffect(() => { verificarSessao() }, [])
 
   const login = async (email, senha, lembrar = false) => {
     const res = await api.post('/auth/login', { email, senha, lembrar })
@@ -59,7 +71,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ usuario, carregando, login, cadastrar, sair, recarregarUsuario, temPermissao }}>
+    <AuthContext.Provider value={{ usuario, carregando, erroConexao, tentarNovamente: verificarSessao, login, cadastrar, sair, recarregarUsuario, temPermissao }}>
       {children}
     </AuthContext.Provider>
   )

@@ -1,12 +1,18 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const Empresa = require('../models/Empresa');
+const Setor = require('../models/Setor');
 const { autenticar } = require('../middleware/auth');
 const { enviarVerificacaoEmail } = require('../services/email');
 const crypto = require('crypto');
 
 // Lazy require para evitar dependência circular com middleware/auth
 const getUsuario = () => require('../models/Usuario');
+
+// Usado pelo frontend pra decidir se mostra o item "Setores" pra quem é responsável de
+// algum setor mas não tem a permissão gerenciarSetores (ver rota PATCH /setores/:id/membros)
+const souResponsavelDeSetor = async (usuarioId, empresaId) =>
+  Setor.exists({ empresa: empresaId, responsavel: usuarioId, ativo: true });
 
 const router = express.Router();
 
@@ -116,6 +122,7 @@ router.post('/login', async (req, res) => {
         permissoes: usuario.permissoes || {},
         setores: usuario.setores || [],
         emailVerificado: usuario.emailVerificado || false,
+        souResponsavelDeSetor: !!(await souResponsavelDeSetor(usuario._id, usuario.empresa._id)),
         empresa: { id: usuario.empresa._id, nome: usuario.empresa.nome }
       }
     });
@@ -126,7 +133,7 @@ router.post('/login', async (req, res) => {
 });
 
 // GET /api/auth/me - Retorna dados do usuário logado
-router.get('/me', autenticar, (req, res) => {
+router.get('/me', autenticar, async (req, res) => {
   const u = req.usuario;
   res.json({
     id: u._id,
@@ -137,6 +144,7 @@ router.get('/me', autenticar, (req, res) => {
     permissoes: u.permissoes || {},
     setores: u.setores || [],
     emailVerificado: u.emailVerificado || false,
+    souResponsavelDeSetor: !!(await souResponsavelDeSetor(u._id, u.empresa._id)),
     empresa: { id: u.empresa._id, nome: u.empresa.nome }
   });
 });

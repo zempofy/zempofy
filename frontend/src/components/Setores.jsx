@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react'
 import api from '../services/api'
 import { useToast } from './Toast'
+import { useAuth } from '../contexts/AuthContext'
 
 const CORES = [
   '#2DAA59', '#378ADD', '#EF9F27', '#7F77DD',
   '#D85A30', '#1D9E75', '#D4537E', '#888780'
 ]
 
-function ModalSetor({ setor, fechar, onSalvo, funcionarios = [] }) {
+function ModalSetor({ setor, fechar, onSalvo, funcionarios = [], somenteMembros = false }) {
   const [nome, setNome] = useState(setor?.nome || '')
   const [cor, setCor] = useState(setor?.cor || '#2DAA59')
   const [responsavel, setResponsavel] = useState(setor?.responsavel?._id || setor?.responsavel || '')
@@ -31,10 +32,21 @@ function ModalSetor({ setor, fechar, onSalvo, funcionarios = [] }) {
   }
 
   const salvar = async () => {
-    if (!nome.trim()) return setErro('Nome é obrigatório.')
+    if (!somenteMembros && !nome.trim()) return setErro('Nome é obrigatório.')
     setCarregando(true); setErro('')
     try {
-      if (setor?._id) {
+      if (somenteMembros) {
+        // Responsável do setor só pode mexer em membros — nunca nome/cor/responsável — por
+        // isso usa a rota granular (adiciona/remove um por vez) em vez do PUT completo.
+        const membrosAntigos = (setor?.membros || []).map(m => m._id || m)
+        const adicionados = membrosSelecionados.filter(id => !membrosAntigos.includes(id))
+        const removidos = membrosAntigos.filter(id => !membrosSelecionados.includes(id))
+        await Promise.all([
+          ...adicionados.map(usuarioId => api.patch(`/setores/${setor._id}/membros`, { usuarioId, acao: 'adicionar' })),
+          ...removidos.map(usuarioId => api.patch(`/setores/${setor._id}/membros`, { usuarioId, acao: 'remover' })),
+        ])
+        mostrar('Membros atualizados!', 'sucesso')
+      } else if (setor?._id) {
         await api.put(`/setores/${setor._id}`, { nome, cor, responsavel: responsavel || null, membros: membrosSelecionados })
         mostrar('Setor atualizado!', 'sucesso')
       } else {
@@ -54,39 +66,43 @@ function ModalSetor({ setor, fechar, onSalvo, funcionarios = [] }) {
     <div style={s.overlay} onClick={fechar}>
       <div style={s.modal} onClick={e => e.stopPropagation()}>
         <div style={s.modalTopo}>
-          <span style={s.modalTitulo}>{setor ? 'Editar setor' : 'Novo setor'}</span>
+          <span style={s.modalTitulo}>{somenteMembros ? `Membros — ${setor?.nome}` : (setor ? 'Editar setor' : 'Novo setor')}</span>
           <button style={s.btnX} onClick={fechar}>✕</button>
         </div>
         <div style={s.modalCorpo}>
           {erro && <p style={s.erro}>{erro}</p>}
-          <div style={s.campo}>
-            <label style={s.label}>Nome do setor</label>
-            <input
-              style={s.input}
-              value={nome}
-              onChange={e => setNome(e.target.value)}
-              placeholder="Ex: Legalização"
-              autoFocus
-              onKeyDown={e => e.key === 'Enter' && salvar()}
-            />
-          </div>
-          <div style={s.campo}>
-            <label style={s.label}>Cor</label>
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-              {CORES.map(c => (
-                <button
-                  key={c}
-                  onClick={() => setCor(c)}
-                  style={{
-                    width: '28px', height: '28px', borderRadius: '50%',
-                    background: c, border: cor === c ? '3px solid var(--texto)' : '2px solid transparent',
-                    cursor: 'pointer', padding: 0
-                  }}
-                />
-              ))}
+          {!somenteMembros && (
+            <div style={s.campo}>
+              <label style={s.label}>Nome do setor</label>
+              <input
+                style={s.input}
+                value={nome}
+                onChange={e => setNome(e.target.value)}
+                placeholder="Ex: Legalização"
+                autoFocus
+                onKeyDown={e => e.key === 'Enter' && salvar()}
+              />
             </div>
-          </div>
-          {funcionarios.length > 0 && (
+          )}
+          {!somenteMembros && (
+            <div style={s.campo}>
+              <label style={s.label}>Cor</label>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {CORES.map(c => (
+                  <button
+                    key={c}
+                    onClick={() => setCor(c)}
+                    style={{
+                      width: '28px', height: '28px', borderRadius: '50%',
+                      background: c, border: cor === c ? '3px solid var(--texto)' : '2px solid transparent',
+                      cursor: 'pointer', padding: 0
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+          {!somenteMembros && funcionarios.length > 0 && (
             <div style={s.campo}>
               <label style={s.label}>Responsável</label>
               <select
@@ -147,7 +163,15 @@ export default function Setores({ funcionarios = [], onSalvo: onSalvoExterno }) 
   const [carregando, setCarregando] = useState(true)
   const [modalAberto, setModalAberto] = useState(false)
   const [setorEditando, setSetorEditando] = useState(null)
+  const [modoSomenteMembros, setModoSomenteMembros] = useState(false)
   const { mostrar } = useToast()
+  const { usuario, temPermissao } = useAuth()
+
+  const souGestor = usuario?.cargo === 'admin' || temPermissao('gerenciarSetores')
+  const souResponsavelDe = (setor) => {
+    const respId = setor.responsavel?._id || setor.responsavel
+    return !!respId && respId === usuario?.id
+  }
 
   const buscar = async () => {
     setCarregando(true)
@@ -185,8 +209,9 @@ export default function Setores({ funcionarios = [], onSalvo: onSalvoExterno }) 
     }
   }
 
-  const abrir = (setor = null) => {
+  const abrir = (setor = null, somenteMembros = false) => {
     setSetorEditando(setor)
+    setModoSomenteMembros(somenteMembros)
     setModalAberto(true)
   }
 
@@ -195,47 +220,52 @@ export default function Setores({ funcionarios = [], onSalvo: onSalvoExterno }) 
       <div style={s.header}>
         <div>
           <h1 style={s.titulo}>Setores</h1>
-          <p style={s.subtitulo}>Gerencie os setores do seu escritório</p>
+          <p style={s.subtitulo}>{souGestor ? 'Gerencie os setores do seu escritório' : 'Setores em que você é responsável'}</p>
         </div>
-        <button style={s.btnNovo} onClick={() => abrir()}>+ Novo setor</button>
+        {souGestor && <button style={s.btnNovo} onClick={() => abrir()}>+ Novo setor</button>}
       </div>
 
       {carregando ? (
         <p style={s.vazio}>Carregando...</p>
       ) : (
         <div style={s.lista}>
-          {setores.map(setor => (
-            <div key={setor._id} style={s.card}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
-                <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: setor.cor, flexShrink: 0 }} />
-                <span style={s.cardNome}>{setor.nome}</span>
-                {setor.padrao && <span style={s.badge}>padrão</span>}
-                {setor.responsavel?.nome && (
-                  <span style={{ fontSize: '0.75rem', color: 'var(--texto-apagado)' }}>
-                    Responsável: {setor.responsavel.nome}
-                  </span>
-                )}
-                {setor.membros?.length > 0 && (
-                  <span style={{ fontSize: '0.75rem', color: 'var(--texto-apagado)' }}>
-                    {setor.membros.length} membro(s)
-                  </span>
-                )}
+          {setores.map(setor => {
+            const souResponsavel = !souGestor && souResponsavelDe(setor)
+            return (
+              <div key={setor._id} style={s.card}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
+                  <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: setor.cor, flexShrink: 0 }} />
+                  <span style={s.cardNome}>{setor.nome}</span>
+                  {setor.padrao && <span style={s.badge}>padrão</span>}
+                  {setor.responsavel?.nome && (
+                    <span style={{ fontSize: '0.75rem', color: 'var(--texto-apagado)' }}>
+                      Responsável: {setor.responsavel.nome}
+                    </span>
+                  )}
+                  {setor.membros?.length > 0 && (
+                    <span style={{ fontSize: '0.75rem', color: 'var(--texto-apagado)' }}>
+                      {setor.membros.length} membro(s)
+                    </span>
+                  )}
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  {souGestor && <button style={s.btnAcao} onClick={() => abrir(setor)}>Editar</button>}
+                  {souGestor && <button style={{ ...s.btnAcao, color: '#FCA5A5' }} onClick={() => excluir(setor._id)}>Remover</button>}
+                  {souResponsavel && <button style={s.btnAcao} onClick={() => abrir(setor, true)}>Gerenciar membros</button>}
+                </div>
               </div>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button style={s.btnAcao} onClick={() => abrir(setor)}>Editar</button>
-                <button style={{ ...s.btnAcao, color: '#FCA5A5' }} onClick={() => excluir(setor._id)}>Remover</button>
-              </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
 
       {modalAberto && (
         <ModalSetor
           setor={setorEditando}
-          fechar={() => { setModalAberto(false); setSetorEditando(null) }}
+          fechar={() => { setModalAberto(false); setSetorEditando(null); setModoSomenteMembros(false) }}
           onSalvo={() => { buscar(); onSalvoExterno && onSalvoExterno(); }}
           funcionarios={funcionarios}
+          somenteMembros={modoSomenteMembros}
         />
       )}
     </div>

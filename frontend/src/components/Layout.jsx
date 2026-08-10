@@ -826,13 +826,14 @@ export default function Layout({ children, menuItens, paginaAtual, setPagina }) 
             </>
           )}
 
-          {/* Equipe — só com permissão */}
-          {(isTitular || temPermissao('gerenciarEquipe')) && (
+          {/* Equipe — Colaboradores só com permissão; Setores também libera pra quem é
+              responsável designado de algum setor, mesmo sem gerenciarSetores */}
+          {(isTitular || temPermissao('gerenciarEquipe') || temPermissao('gerenciarMembros') || temPermissao('gerenciarSetores') || usuario?.souResponsavelDeSetor) && (
             <>
               <p style={styles.configSecao}>Equipe</p>
               {[
                 ...(isTitular || temPermissao('gerenciarEquipe') || temPermissao('gerenciarMembros') ? [{ id: 'equipe', label: 'Colaboradores', icone: <Icone.Users size={16} /> }] : []),
-                ...(isTitular || temPermissao('gerenciarSetores') ? [{ id: 'setores', label: 'Setores', icone: <Icone.UsersThree size={16} /> }] : []),
+                ...(isTitular || temPermissao('gerenciarSetores') || usuario?.souResponsavelDeSetor ? [{ id: 'setores', label: 'Setores', icone: <Icone.UsersThree size={16} /> }] : []),
               ].map(item => (
                 <button key={item.id} style={{
                   ...styles.configItem,
