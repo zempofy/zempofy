@@ -4,6 +4,7 @@ const Empresa = require('../models/Empresa');
 const Setor = require('../models/Setor');
 const { autenticar } = require('../middleware/auth');
 const { enviarVerificacaoEmail } = require('../services/email');
+const { verificarTurnstile } = require('../services/turnstile');
 const crypto = require('crypto');
 
 // Lazy require para evitar dependência circular com middleware/auth
@@ -27,10 +28,14 @@ function gerarToken(usuario, lembrar = false) {
 
 // POST /api/auth/cadastro - Cadastrar nova empresa + admin
 router.post('/cadastro', async (req, res) => {
-  const { nomeEmpresa, cnpj, nomeAdmin, email, senha } = req.body;
+  const { nomeEmpresa, cnpj, nomeAdmin, email, senha, tokenTurnstile } = req.body;
 
   if (!nomeEmpresa || !cnpj || !nomeAdmin || !email || !senha) {
     return res.status(400).json({ erro: 'Preencha todos os campos.' });
+  }
+
+  if (!(await verificarTurnstile(tokenTurnstile))) {
+    return res.status(400).json({ erro: 'Verificação de segurança falhou. Tente novamente.' });
   }
 
   try {
@@ -152,8 +157,13 @@ router.get('/me', autenticar, async (req, res) => {
 // POST /api/auth/esqueci-senha
 router.post('/esqueci-senha', async (req, res) => {
   try {
-    const { email } = req.body;
+    const { email, tokenTurnstile } = req.body;
     if (!email) return res.status(400).json({ erro: 'E-mail obrigatório.' });
+
+    if (!(await verificarTurnstile(tokenTurnstile))) {
+      return res.status(400).json({ erro: 'Verificação de segurança falhou. Tente novamente.' });
+    }
+
     const usuario = await getUsuario().findOne({ email: email.toLowerCase() });
     // Sempre retorna sucesso pra não revelar se e-mail existe
     if (!usuario) return res.json({ mensagem: 'Se o e-mail estiver cadastrado, você receberá as instruções.' });

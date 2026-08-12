@@ -1,6 +1,9 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import Turnstile from '../components/Turnstile'
+
+const turnstileObrigatorio = !!import.meta.env.VITE_TURNSTILE_SITE_KEY
 
 export default function Cadastro() {
   const { cadastrar } = useAuth()
@@ -12,6 +15,8 @@ export default function Cadastro() {
   const [verConfirmar, setVerConfirmar] = useState(false)
   const [aceitouTermos, setAceitouTermos] = useState(false)
   const [modalTermos, setModalTermos] = useState(false)
+  const [tokenTurnstile, setTokenTurnstile] = useState('')
+  const turnstileRef = useRef(null)
 
   const mascaraCNPJ = (valor) => valor
     .replace(/\D/g, '').slice(0, 14)
@@ -28,10 +33,12 @@ export default function Cadastro() {
     if (form.senha.length < 6) return setErro('A senha precisa ter pelo menos 6 caracteres.')
     setCarregando(true)
     try {
-      await cadastrar({ nomeEmpresa: form.nomeEmpresa, cnpj: form.cnpj, nomeAdmin: form.nomeAdmin, email: form.email, senha: form.senha })
+      await cadastrar({ nomeEmpresa: form.nomeEmpresa, cnpj: form.cnpj, nomeAdmin: form.nomeAdmin, email: form.email, senha: form.senha, tokenTurnstile })
       navigate('/admin')
     } catch (err) {
       setErro(err.response?.data?.erro || 'Erro ao criar conta.')
+      turnstileRef.current?.reset()
+      setTokenTurnstile('')
     } finally {
       setCarregando(false)
     }
@@ -173,7 +180,9 @@ export default function Cadastro() {
             </span>
           </label>
 
-          <button type="submit" style={styles.botao} disabled={carregando}>
+          <Turnstile ref={turnstileRef} onVerify={setTokenTurnstile} onExpire={() => setTokenTurnstile('')} />
+
+          <button type="submit" style={styles.botao} disabled={carregando || (turnstileObrigatorio && !tokenTurnstile)}>
             {carregando ? 'Criando conta...' : 'Criar empresa grátis'}
           </button>
         </form>

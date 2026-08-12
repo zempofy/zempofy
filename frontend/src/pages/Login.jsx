@@ -2,6 +2,9 @@ import { useState, useRef, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import api from '../services/api'
+import Turnstile from '../components/Turnstile'
+
+const turnstileObrigatorio = !!import.meta.env.VITE_TURNSTILE_SITE_KEY
 
 export default function Login() {
   const { login } = useAuth()
@@ -12,11 +15,14 @@ export default function Login() {
   const [emailEsqueci, setEmailEsqueci] = useState('')
   const [esqueciEnviado, setEsqueciEnviado] = useState(false)
   const [esqueciCarregando, setEsqueciCarregando] = useState(false)
+  const [erroEsqueci, setErroEsqueci] = useState('')
+  const [tokenTurnstileEsqueci, setTokenTurnstileEsqueci] = useState('')
   const [erro, setErro] = useState('')
   const [carregando, setCarregando] = useState(false)
 
   const canvasRef = useRef(null)
   const paginaRef = useRef(null)
+  const turnstileEsqueciRef = useRef(null)
 
   // Grade de pontos reagindo ao mouse — canvas puro, sem dependência externa
   useEffect(() => {
@@ -90,15 +96,34 @@ export default function Login() {
 
   const enviarEsqueci = async () => {
     if (!emailEsqueci) return
+    if (turnstileObrigatorio && !tokenTurnstileEsqueci) return
+    setErroEsqueci('')
     setEsqueciCarregando(true)
     try {
-      await api.post('/auth/esqueci-senha', { email: emailEsqueci })
+      await api.post('/auth/esqueci-senha', { email: emailEsqueci, tokenTurnstile: tokenTurnstileEsqueci })
+      setEsqueciEnviado(true)
     } catch (err) {
-      // Endpoint sempre retorna sucesso mesmo se o e-mail não existir; erro aqui é só de rede
+      turnstileEsqueciRef.current?.reset()
+      setTokenTurnstileEsqueci('')
+      if (err.response?.status === 400) {
+        // Falha real (ex: token Turnstile expirado) — mostra o erro e deixa tentar de novo
+        setErroEsqueci(err.response?.data?.erro || 'Verificação de segurança falhou. Tente novamente.')
+      } else {
+        // Endpoint sempre retorna sucesso quando processa normalmente (não revela se o
+        // e-mail existe); só cai aqui em erro de rede — mostra sucesso mesmo assim
+        setEsqueciEnviado(true)
+      }
     } finally {
       setEsqueciCarregando(false)
-      setEsqueciEnviado(true)
     }
+  }
+
+  const fecharEsqueci = () => {
+    setTelaEsqueci(false)
+    setEmailEsqueci('')
+    setEsqueciEnviado(false)
+    setErroEsqueci('')
+    setTokenTurnstileEsqueci('')
   }
 
   const handleSubmit = async (e) => {
@@ -195,6 +220,7 @@ export default function Login() {
             {!esqueciEnviado ? (<>
               <h2 style={{ fontSize: '1.1rem', fontWeight: '700', color: '#fff', margin: '0 0 8px', fontFamily: 'Inter,sans-serif' }}>Esqueci minha senha</h2>
               <p style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.5)', margin: '0 0 20px', fontFamily: 'Inter,sans-serif' }}>Digite seu e-mail e enviaremos as instruções para redefinir sua senha.</p>
+              {erroEsqueci && <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '8px', padding: '10px 14px', color: '#FCA5A5', fontSize: '0.8rem', marginBottom: '12px', fontFamily: 'Inter,sans-serif' }}>{erroEsqueci}</div>}
               <input
                 style={{ width: '100%', padding: '10px 14px', background: '#1c1c1f', border: '1px solid #27272a', borderRadius: '8px', color: '#fff', fontSize: '0.875rem', fontFamily: 'Inter,sans-serif', boxSizing: 'border-box', marginBottom: '12px' }}
                 type="email" placeholder="seu@email.com"
@@ -202,11 +228,12 @@ export default function Login() {
                 onKeyDown={e => e.key === 'Enter' && enviarEsqueci()}
                 autoFocus
               />
+              <Turnstile ref={turnstileEsqueciRef} onVerify={setTokenTurnstileEsqueci} onExpire={() => setTokenTurnstileEsqueci('')} />
               <div style={{ display: 'flex', gap: '8px' }}>
-                <button onClick={enviarEsqueci} disabled={esqueciCarregando} style={{ flex: 1, background: 'linear-gradient(135deg,#00b141,#008f34)', color: '#fff', border: 'none', borderRadius: '8px', padding: '10px', fontFamily: 'Inter,sans-serif', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer' }}>
+                <button onClick={enviarEsqueci} disabled={esqueciCarregando || (turnstileObrigatorio && !tokenTurnstileEsqueci)} style={{ flex: 1, background: 'linear-gradient(135deg,#00b141,#008f34)', color: '#fff', border: 'none', borderRadius: '8px', padding: '10px', fontFamily: 'Inter,sans-serif', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer' }}>
                   {esqueciCarregando ? 'Enviando...' : 'Enviar instruções'}
                 </button>
-                <button onClick={() => { setTelaEsqueci(false); setEmailEsqueci(''); setEsqueciEnviado(false) }} style={{ background: 'none', border: '1px solid #27272a', borderRadius: '8px', color: 'rgba(255,255,255,0.5)', padding: '10px 14px', cursor: 'pointer', fontFamily: 'Inter,sans-serif', fontSize: '0.875rem' }}>
+                <button onClick={fecharEsqueci} style={{ background: 'none', border: '1px solid #27272a', borderRadius: '8px', color: 'rgba(255,255,255,0.5)', padding: '10px 14px', cursor: 'pointer', fontFamily: 'Inter,sans-serif', fontSize: '0.875rem' }}>
                   Cancelar
                 </button>
               </div>
@@ -215,7 +242,7 @@ export default function Login() {
                 <p style={{ fontSize: '2rem', marginBottom: '12px' }}>📧</p>
                 <h2 style={{ fontSize: '1.1rem', fontWeight: '700', color: '#fff', margin: '0 0 8px', fontFamily: 'Inter,sans-serif' }}>E-mail enviado!</h2>
                 <p style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.5)', margin: '0 0 20px', fontFamily: 'Inter,sans-serif', lineHeight: '1.5' }}>Se o e-mail estiver cadastrado, você receberá as instruções em breve. Verifique também sua caixa de spam.</p>
-                <button onClick={() => { setTelaEsqueci(false); setEmailEsqueci(''); setEsqueciEnviado(false) }} style={{ background: 'linear-gradient(135deg,#00b141,#008f34)', color: '#fff', border: 'none', borderRadius: '8px', padding: '10px 20px', fontFamily: 'Inter,sans-serif', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer' }}>
+                <button onClick={fecharEsqueci} style={{ background: 'linear-gradient(135deg,#00b141,#008f34)', color: '#fff', border: 'none', borderRadius: '8px', padding: '10px 20px', fontFamily: 'Inter,sans-serif', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer' }}>
                   Voltar para o login
                 </button>
               </div>
