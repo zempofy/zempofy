@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const express = require('express');
 const router = express.Router();
 const Empresa = require('../models/Empresa');
@@ -7,9 +8,19 @@ const Cliente = require('../models/Cliente');
 
 const verificarChave = (req, res, next) => {
   const chave = req.headers['x-admin-key'];
-  if (!chave || chave !== process.env.ADMIN_SECRET_KEY) {
+  const esperada = process.env.ADMIN_SECRET_KEY;
+
+  if (!chave || !esperada) {
     return res.status(401).json({ erro: 'Acesso negado. Faça login.' });
   }
+
+  const bufChave = Buffer.from(chave);
+  const bufEsperada = Buffer.from(esperada);
+
+  if (bufChave.length !== bufEsperada.length || !crypto.timingSafeEqual(bufChave, bufEsperada)) {
+    return res.status(401).json({ erro: 'Acesso negado. Faça login.' });
+  }
+
   next();
 };
 

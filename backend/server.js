@@ -84,6 +84,7 @@ const limitadorAuth = rateLimit({
 });
 app.use('/api/auth/login', limitadorAuth);
 app.use('/api/auth/cadastro', limitadorAuth);
+app.use('/api/auth/esqueci-senha', limitadorAuth);
 
 // ── Job: alerta de onboarding parado ──
 const verificarOnboardingsParados = async () => {
