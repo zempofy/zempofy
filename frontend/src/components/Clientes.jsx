@@ -1074,7 +1074,10 @@ function TelaDetalhe({ clienteId, voltar, onAtualizado, abaInicial = 'info', set
             <div style={s.modalTopo}><p style={s.modalTit}>Excluir cliente</p><button style={s.btnX} onClick={()=>{setConfirmExcluir(false);setCienteExclusao(false)}}>✕</button></div>
             <div style={{ padding:'20px 24px' }}>
               <p style={{ fontSize:'0.875rem', color:'var(--texto)', margin:'0 0 12px', fontFamily:'Inter,sans-serif' }}>Tem certeza que deseja excluir <strong>{nomeCliente}</strong> da carteira?</p>
-              <p style={{ fontSize:'0.8rem', color:'#f87171', background:'rgba(248,113,113,0.08)', border:'1px solid rgba(248,113,113,0.25)', borderRadius:'8px', padding:'10px 12px', margin:'0 0 14px', fontFamily:'Inter,sans-serif', display:'flex', alignItems:'flex-start', gap:'8px' }}><Icone.AlertTriangle size={14} style={{flexShrink:0,marginTop:'1px'}}/> Essa ação é <strong>permanente</strong>. Todo o cadastro, histórico e lançamentos deste cliente serão apagados e não há como desfazer.</p>
+              <div style={{ background:'rgba(248,113,113,0.08)', border:'1px solid rgba(248,113,113,0.25)', borderRadius:'8px', padding:'10px 12px', margin:'0 0 14px' }}>
+                <p style={{ fontSize:'0.8rem', color:'#f87171', fontWeight:'700', margin:'0 0 4px', fontFamily:'Inter,sans-serif', display:'flex', alignItems:'center', gap:'8px' }}><Icone.AlertTriangle size={14} style={{flexShrink:0}}/> Essa ação é permanente.</p>
+                <p style={{ fontSize:'0.8rem', color:'#f87171', margin:0, fontFamily:'Inter,sans-serif', lineHeight:'1.4' }}>Todo o cadastro, histórico e lançamentos deste cliente serão apagados e não há como desfazer.</p>
+              </div>
               <label style={{ display:'flex', alignItems:'flex-start', gap:'8px', cursor:'pointer', fontSize:'0.8rem', color:'var(--texto-apagado)', fontFamily:'Inter,sans-serif' }}>
                 <input type="checkbox" checked={cienteExclusao} onChange={e=>setCienteExclusao(e.target.checked)} style={{ marginTop:'2px', accentColor:'#f87171', width:'15px', height:'15px', flexShrink:0, cursor:'pointer' }} />
                 Estou ciente de que essa exclusão é permanente e não pode ser desfeita.
