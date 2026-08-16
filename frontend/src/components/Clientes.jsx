@@ -301,23 +301,49 @@ function InfoLinha({ label, valor }) {
 function ModalVigenciaMudanca({ onEscolher, onCancelar }) {
   const agora = competenciaAtual()
   const mesAtualLabel = `${nomeMes(agora)} de ${agora.slice(0,4)}`
+  const [selecionado, setSelecionado] = useState(null)
+  const [salvando, setSalvando] = useState(false)
+
+  const OPCOES = [
+    { valor:'agora', titulo:'A partir de agora', sufixo:' (recomendado)', desc:`Os meses já preenchidos continuam exatamente como estavam. Vale a partir da competência atual (${mesAtualLabel}), independente do mês que você está vendo agora.` },
+    { valor:'inicio', titulo:'Desde o início', sufixo:'', desc:'Corrige também os meses já preenchidos com essa configuração. Use se a configuração inicial estava errada.' },
+  ]
+
+  const confirmar = async () => {
+    if (!selecionado) return
+    setSalvando(true)
+    try { await onEscolher(selecionado) }
+    finally { setSalvando(false) }
+  }
+
   return createPortal(
     <div style={s.overlay} onClick={onCancelar}>
       <div style={s.modalPeq} onClick={e=>e.stopPropagation()}>
         <div style={s.modalTopo}><p style={s.modalTit}>As Demandas mensais desse setor vão mudar</p><button style={s.btnX} onClick={onCancelar}>✕</button></div>
         <div style={{ padding:'20px 24px', display:'flex', flexDirection:'column', gap:'10px' }}>
           <p style={{ fontSize:'0.82rem', color:'var(--texto-apagado)', margin:'0 0 4px', lineHeight:'1.4' }}>Essa mudança altera quais campos aparecem na Demanda mensal desse cliente. A partir de quando isso deve valer?</p>
-          <button onClick={()=>onEscolher('agora')} style={{ textAlign:'left', padding:'14px 16px', borderRadius:'10px', border:'1px solid rgba(0,177,65,0.3)', background:'rgba(0,177,65,0.08)', cursor:'pointer', fontFamily:'Inter,sans-serif' }}>
-            <p style={{ fontSize:'0.875rem', fontWeight:'700', color:'var(--verde)', margin:'0 0 4px' }}>A partir de agora <span style={{ fontWeight:'500' }}>(recomendado)</span></p>
-            <p style={{ fontSize:'0.78rem', color:'var(--texto-apagado)', margin:0, lineHeight:'1.4' }}>Os meses já preenchidos continuam exatamente como estavam. Vale a partir da competência atual ({mesAtualLabel}), independente do mês que você está vendo agora.</p>
-          </button>
-          <button onClick={()=>onEscolher('inicio')} style={{ textAlign:'left', padding:'14px 16px', borderRadius:'10px', border:'1px solid var(--borda)', background:'var(--card)', cursor:'pointer', fontFamily:'Inter,sans-serif' }}>
-            <p style={{ fontSize:'0.875rem', fontWeight:'700', color:'var(--texto)', margin:'0 0 4px' }}>Desde o início</p>
-            <p style={{ fontSize:'0.78rem', color:'var(--texto-apagado)', margin:0, lineHeight:'1.4' }}>Corrige também os meses já preenchidos com essa configuração. Use se a configuração inicial estava errada.</p>
-          </button>
+          {OPCOES.map(op => {
+            const marcado = selecionado===op.valor
+            return (
+              <button key={op.valor} onClick={()=>setSelecionado(op.valor)} style={{
+                textAlign:'left', padding:'14px 16px', borderRadius:'10px', cursor:'pointer', fontFamily:'Inter,sans-serif',
+                border:`1px solid ${marcado?'rgba(0,177,65,0.4)':'var(--borda)'}`,
+                background: marcado?'rgba(0,177,65,0.08)':'var(--card)',
+              }}>
+                <p style={{ fontSize:'0.875rem', fontWeight:'700', color: marcado?'var(--verde)':'var(--texto)', margin:'0 0 4px', display:'flex', alignItems:'center', gap:'8px' }}>
+                  <span style={{ width:'16px', height:'16px', borderRadius:'50%', border:`2px solid ${marcado?'var(--verde)':'var(--texto-apagado)'}`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                    {marcado && <span style={{ width:'8px', height:'8px', borderRadius:'50%', background:'var(--verde)' }}/>}
+                  </span>
+                  {op.titulo}<span style={{ fontWeight:'500' }}>{op.sufixo}</span>
+                </p>
+                <p style={{ fontSize:'0.78rem', color:'var(--texto-apagado)', margin:0, lineHeight:'1.4', paddingLeft:'24px' }}>{op.desc}</p>
+              </button>
+            )
+          })}
         </div>
         <div style={s.modalRodape}>
           <button style={s.btnCanc} onClick={onCancelar}>Cancelar</button>
+          <button style={s.btnSalv} onClick={confirmar} disabled={!selecionado || salvando}>{salvando?'Salvando...':'Salvar'}</button>
         </div>
       </div>
     </div>, document.body
@@ -795,6 +821,9 @@ function TelaDetalhe({ clienteId, voltar, onAtualizado, abaInicial = 'info', set
   const [carregando, setCarregando] = useState(true)
   const [editando, setEditando] = useState(false)
   const [confirmInativar, setConfirmInativar] = useState(false)
+  const [confirmExcluir, setConfirmExcluir] = useState(false)
+  const [cienteExclusao, setCienteExclusao] = useState(false)
+  const [excluindo, setExcluindo] = useState(false)
   const [mudandoStatus, setMudandoStatus] = useState(false)
   const [aba, setAba] = useState(abaInicial)
   const [setorAtivo, setSetorAtivo] = useState(null)
@@ -832,11 +861,14 @@ function TelaDetalhe({ clienteId, voltar, onAtualizado, abaInicial = 'info', set
   useEffect(()=>{buscar()},[clienteId])
 
   // Ao vir de Demandas (ou outra navegação que já sabe qual setor abrir), seleciona o setor
-  // assim que os dados do cliente chegam — antes disso dados.setores ainda não existe
+  // assim que os dados do cliente chegam — antes disso dados.setores ainda não existe.
+  // Só aplica uma vez: sem o ref, todo refetch (ex: depois de salvar algo) reaplicava o
+  // setorInicial e derrubava a aba que a pessoa tivesse trocado manualmente na tela.
+  const setorInicialAplicado = useRef(false)
   useEffect(() => {
-    if (!dados || !setorInicial) return
+    if (!dados || !setorInicial || setorInicialAplicado.current) return
     const setor = (dados.setores||[]).find(s => (s._id||s) === setorInicial)
-    if (setor) setSetorAtivo(setor)
+    if (setor) { setSetorAtivo(setor); setorInicialAplicado.current = true }
   }, [dados, setorInicial])
 
   const inativar = async () => {
@@ -858,6 +890,18 @@ function TelaDetalhe({ clienteId, voltar, onAtualizado, abaInicial = 'info', set
       buscar(); onAtualizado()
     } catch { mostrar('Erro ao reativar.', 'erro') }
     finally { setMudandoStatus(false) }
+  }
+
+  const excluir = async () => {
+    setExcluindo(true)
+    try {
+      await api.delete(`/clientes/${clienteId}`)
+      mostrar('Cliente excluído permanentemente.', 'aviso')
+      onAtualizado(); voltar()
+    } catch (err) {
+      mostrar(err.response?.data?.erro || 'Erro ao excluir.', 'erro')
+      setExcluindo(false)
+    }
   }
 
   if (carregando) return <p style={{ color:'var(--texto-apagado)' }}>Carregando...</p>
@@ -890,9 +934,10 @@ function TelaDetalhe({ clienteId, voltar, onAtualizado, abaInicial = 'info', set
               {dados.status!=='inativo' && (
                 <button onClick={()=>setEditando(true)} style={{ ...s.btnAcao, display:'flex', alignItems:'center', gap:'5px' }}><Icone.Edit size={13}/>Editar</button>
               )}
-              {dados.status==='inativo' ? (
+              {dados.status==='inativo' ? (<>
                 <button onClick={reativar} disabled={mudandoStatus} style={{ ...s.btnAcao, color:'var(--verde)', borderColor:'rgba(0,177,65,0.3)', display:'flex', alignItems:'center', gap:'5px' }}><Icone.CheckCircle size={13}/>{mudandoStatus?'Reativando...':'Reativar'}</button>
-              ) : (
+                <button onClick={()=>setConfirmExcluir(true)} disabled={mudandoStatus} style={{ ...s.btnAcao, color:'#f87171', borderColor:'rgba(248,113,113,0.3)', display:'flex', alignItems:'center', gap:'5px' }}><Icone.Trash size={13}/>Excluir da carteira</button>
+              </>) : (
                 <button onClick={()=>setConfirmInativar(true)} style={{ ...s.btnAcao, color:'#f87171', borderColor:'rgba(248,113,113,0.3)', display:'flex', alignItems:'center', gap:'5px' }}><Icone.X size={13}/>Inativar</button>
               )}
             </div>
@@ -1022,6 +1067,26 @@ function TelaDetalhe({ clienteId, voltar, onAtualizado, abaInicial = 'info', set
           </div>
         </div>, document.body
       )}
+
+      {confirmExcluir&&createPortal(
+        <div style={s.overlay} onClick={()=>{setConfirmExcluir(false);setCienteExclusao(false)}}>
+          <div style={{ ...s.modalPeq }} onClick={e=>e.stopPropagation()}>
+            <div style={s.modalTopo}><p style={s.modalTit}>Excluir cliente</p><button style={s.btnX} onClick={()=>{setConfirmExcluir(false);setCienteExclusao(false)}}>✕</button></div>
+            <div style={{ padding:'20px 24px' }}>
+              <p style={{ fontSize:'0.875rem', color:'var(--texto)', margin:'0 0 12px', fontFamily:'Inter,sans-serif' }}>Tem certeza que deseja excluir <strong>{nomeCliente}</strong> da carteira?</p>
+              <p style={{ fontSize:'0.8rem', color:'#f87171', background:'rgba(248,113,113,0.08)', border:'1px solid rgba(248,113,113,0.25)', borderRadius:'8px', padding:'10px 12px', margin:'0 0 14px', fontFamily:'Inter,sans-serif', display:'flex', alignItems:'flex-start', gap:'8px' }}><Icone.AlertTriangle size={14} style={{flexShrink:0,marginTop:'1px'}}/> Essa ação é <strong>permanente</strong>. Todo o cadastro, histórico e lançamentos deste cliente serão apagados e não há como desfazer.</p>
+              <label style={{ display:'flex', alignItems:'flex-start', gap:'8px', cursor:'pointer', fontSize:'0.8rem', color:'var(--texto-apagado)', fontFamily:'Inter,sans-serif' }}>
+                <input type="checkbox" checked={cienteExclusao} onChange={e=>setCienteExclusao(e.target.checked)} style={{ marginTop:'2px', accentColor:'#f87171', width:'15px', height:'15px', flexShrink:0, cursor:'pointer' }} />
+                Estou ciente de que essa exclusão é permanente e não pode ser desfeita.
+              </label>
+            </div>
+            <div style={s.modalRodape}>
+              <button style={s.btnCanc} onClick={()=>{setConfirmExcluir(false);setCienteExclusao(false)}}>Cancelar</button>
+              <button style={{ ...s.btnSalv, background:'rgba(248,113,113,0.15)', border:'1px solid rgba(248,113,113,0.3)', color:'#f87171', opacity: cienteExclusao?1:0.5 }} onClick={excluir} disabled={excluindo||!cienteExclusao}>{excluindo?'Excluindo...':'Excluir permanentemente'}</button>
+            </div>
+          </div>
+        </div>, document.body
+      )}
     </div>
   )
 }
@@ -1050,7 +1115,7 @@ const MESES_LABEL = ['01 - Janeiro','02 - Fevereiro','03 - Março','04 - Abril',
 function CampoValor({ tipo, valor, onChange, disabled }) {
   if (disabled || tipo === 'calculado') {
     if (tipo === 'moeda' || tipo === 'calculado') return <div style={{ ...s.inp, background:'var(--card)', color:'var(--texto)' }}>{formatMoeda(valor)}</div>
-    if (tipo === 'booleano') return <div style={{ ...s.inp, background:'var(--card)', color:'var(--texto)' }}>{valor===true?'Sim':valor===false?'Não':'—'}</div>
+    if (tipo === 'booleano') return <div style={{ ...s.inp, background:'var(--card)', color: valor===false?'var(--erro)':'var(--texto)' }}>{valor===true?'Sim':valor===false?'Não':'—'}</div>
     return <div style={{ ...s.inp, background:'var(--card)', color:'var(--texto)' }}>{(valor===0?'0':valor)||'—'}</div>
   }
   if (tipo === 'moeda') {
@@ -1065,14 +1130,19 @@ function CampoValor({ tipo, valor, onChange, disabled }) {
   if (tipo === 'booleano') {
     return (
       <div style={{ display:'flex', gap:'8px' }}>
-        {[{v:true,l:'Sim'},{v:false,l:'Não'}].map(op=>(
-          <button key={String(op.v)} type="button" onClick={()=>onChange(op.v)} style={{
-            flex:1, padding:'9px', borderRadius:'8px', cursor:'pointer', fontFamily:'Inter,sans-serif', fontSize:'0.85rem', fontWeight:'600',
-            border:`1px solid ${valor===op.v?'rgba(0,177,65,0.3)':'var(--borda)'}`,
-            background: valor===op.v?'rgba(0,177,65,0.08)':'var(--input)',
-            color: valor===op.v?'var(--verde)':'var(--texto-apagado)',
-          }}>{op.l}</button>
-        ))}
+        {[{v:true,l:'Sim'},{v:false,l:'Não'}].map(op=>{
+          const ativo = valor===op.v
+          const corAtiva = op.v===false ? 'var(--erro)' : 'var(--verde)'
+          const corAtivaRgb = op.v===false ? '239,68,68' : '0,177,65'
+          return (
+            <button key={String(op.v)} type="button" onClick={()=>onChange(op.v)} style={{
+              flex:1, padding:'9px', borderRadius:'8px', cursor:'pointer', fontFamily:'Inter,sans-serif', fontSize:'0.85rem', fontWeight:'600',
+              border:`1px solid ${ativo?`rgba(${corAtivaRgb},0.3)`:'var(--borda)'}`,
+              background: ativo?`rgba(${corAtivaRgb},0.08)`:'var(--input)',
+              color: ativo?corAtiva:'var(--texto-apagado)',
+            }}>{op.l}</button>
+          )
+        })}
       </div>
     )
   }
@@ -1153,7 +1223,8 @@ function BlocoExtratosBancarios({ clienteId, setor, bancos=[], valoresExtratos, 
           {bancoSelecionado==='outro' && (
             <div style={{ flex:1, minWidth:'180px' }}>
               <Campo label="Nome do banco">
-                <input style={s.inp} value={nomeOutro} onChange={e=>setNomeOutro(e.target.value)} placeholder="Nome do banco" autoFocus />
+                <input style={s.inp} value={nomeOutro} onChange={e=>setNomeOutro(e.target.value)} placeholder="Nome do banco" autoFocus
+                  onKeyDown={e=>{ if(e.key==='Enter'){ e.preventDefault(); adicionar() } }} />
               </Campo>
             </div>
           )}

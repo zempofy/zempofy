@@ -211,11 +211,17 @@ router.put('/:id', autenticar, temPermissao('gerenciarClientes'), validar(client
   }
 });
 
-// DELETE /api/clientes/:id
+// DELETE /api/clientes/:id — exclusão permanente. Só é permitida com o cliente já inativo,
+// pra evitar apagar por engano um cliente que ainda está ativo na carteira.
 router.delete('/:id', autenticar, temPermissao('gerenciarClientes'), async (req, res) => {
   try {
-    const cliente = await Cliente.findOneAndDelete({ _id: req.params.id, empresa: req.usuario.empresa._id });
-    if (cliente) registrarLog({ empresa: req.usuario.empresa._id, usuario: req.usuario._id, tipo: 'cliente_excluido', categoria: 'cliente', descricao: 'Removeu o cliente ' + cliente.razaoSocial });
+    const cliente = await Cliente.findOne({ _id: req.params.id, empresa: req.usuario.empresa._id });
+    if (!cliente) return res.status(404).json({ erro: 'Cliente não encontrado.' });
+    if (cliente.status !== 'inativo') {
+      return res.status(403).json({ erro: 'Só é possível excluir um cliente depois de inativá-lo.' });
+    }
+    await cliente.deleteOne();
+    registrarLog({ empresa: req.usuario.empresa._id, usuario: req.usuario._id, tipo: 'cliente_excluido', categoria: 'cliente', descricao: 'Excluiu permanentemente o cliente ' + cliente.razaoSocial });
     res.json({ mensagem: 'Cliente removido.' });
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao remover cliente.' });
