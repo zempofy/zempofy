@@ -91,7 +91,7 @@ router.get('/demandas/:setorId/:competencia', autenticar, async (req, res) => {
     if (!setor) return res.status(404).json({ erro: 'Setor não encontrado.' });
     const setorNome = normalizarNome(setor.nome);
 
-    const clientes = await Cliente.find({ empresa: req.usuario.empresa._id, setores: setorId })
+    const clientes = await Cliente.find({ empresa: req.usuario.empresa._id, setores: setorId, status: { $ne: 'inativo' } })
       .select('razaoSocial nomeFantasia regime historicoRegime configSetores status')
       .lean();
 
