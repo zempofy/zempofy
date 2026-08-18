@@ -1,5 +1,6 @@
 const express = require('express');
 const { enviarTarefaAtribuida, enviarEtapaDesbloqueada } = require('../services/email');
+const { pularEtapasVaziasEmCadeia } = require('../services/implantacao');
 const { autenticar } = require('../middleware/auth');
 const Tarefa = require('../models/Tarefa');
 const Implantacao = require('../models/Implantacao');
@@ -39,45 +40,53 @@ async function sincronizarImplantacao(tarefaId, novoStatus, usuarioId) {
         if (proxima && proxima.status === 'bloqueada') {
           proxima.status = 'em_andamento';
           proxima.iniciadaEm = new Date();
-          // Dispara e-mail pra quem vai agir na próxima etapa
-          setImmediate(async () => {
-            try {
-              const Setor = require('../models/Setor');
-              const Usuario = require('../models/Usuario');
-              const setorProximo = await Setor.findById(proxima.setor).lean();
-              const tarefasProximas = await Tarefa.find({
-                _id: { $in: proxima.tarefas.map(t => t.tarefa) }
-              }).populate('responsavel', 'email nome').lean();
+          pularEtapasVaziasEmCadeia(implantacao);
 
-              // Emails dos responsáveis das tarefas
-              let emailsProximos = [...new Set(
-                tarefasProximas.map(t => t.responsavel?.email).filter(Boolean)
-              )];
+          // Etapa que realmente ficou em andamento depois do pulo automático — pode ser a
+          // própria "proxima", ou uma mais à frente se ela (e as seguintes) estavam vazias.
+          // Se não sobrou nenhuma (implantação inteira concluída no pulo), não envia e-mail.
+          const etapaEmAndamento = implantacao.etapas.find(e => e.status === 'em_andamento');
+          if (etapaEmAndamento) {
+            // Dispara e-mail pra quem vai agir na etapa que ficou em andamento
+            setImmediate(async () => {
+              try {
+                const Setor = require('../models/Setor');
+                const Usuario = require('../models/Usuario');
+                const setorProximo = await Setor.findById(etapaEmAndamento.setor).lean();
+                const tarefasProximas = await Tarefa.find({
+                  _id: { $in: etapaEmAndamento.tarefas.map(t => t.tarefa) }
+                }).populate('responsavel', 'email nome').lean();
 
-              // Fallback: se nenhuma tarefa tem responsável, usa todos os membros do setor
-              if (!emailsProximos.length && setorProximo?.membros?.length) {
-                const membros = await Usuario.find({
-                  _id: { $in: setorProximo.membros },
-                  ativo: true,
-                }).select('email').lean();
-                emailsProximos = membros.map(m => m.email).filter(Boolean);
-              }
+                // Emails dos responsáveis das tarefas
+                let emailsProximos = [...new Set(
+                  tarefasProximas.map(t => t.responsavel?.email).filter(Boolean)
+                )];
 
-              // Usar implantacao já carregada em vez de buscar de novo
-              if (emailsProximos.length) {
-                await enviarEtapaDesbloqueada({
-                  destinatarios: emailsProximos,
-                  nomeCliente: implantacao.nomeCliente,
-                  setor: setorProximo?.nome || 'próximo setor',
-                  empresa: '',
-                });
-                console.log('✅ E-mail etapa desbloqueada enviado para:', emailsProximos);
-              } else {
-                console.log('⚠️ Nenhum e-mail encontrado para a próxima etapa. Setor:', proxima.setor);
-                console.log('Tarefas próxima etapa:', proxima.tarefas);
-              }
-            } catch (e) { console.error('Erro e-mail etapa:', e); }
-          });
+                // Fallback: se nenhuma tarefa tem responsável, usa todos os membros do setor
+                if (!emailsProximos.length && setorProximo?.membros?.length) {
+                  const membros = await Usuario.find({
+                    _id: { $in: setorProximo.membros },
+                    ativo: true,
+                  }).select('email').lean();
+                  emailsProximos = membros.map(m => m.email).filter(Boolean);
+                }
+
+                // Usar implantacao já carregada em vez de buscar de novo
+                if (emailsProximos.length) {
+                  await enviarEtapaDesbloqueada({
+                    destinatarios: emailsProximos,
+                    nomeCliente: implantacao.nomeCliente,
+                    setor: setorProximo?.nome || 'próximo setor',
+                    empresa: '',
+                  });
+                  console.log('✅ E-mail etapa desbloqueada enviado para:', emailsProximos);
+                } else {
+                  console.log('⚠️ Nenhum e-mail encontrado para a próxima etapa. Setor:', etapaEmAndamento.setor);
+                  console.log('Tarefas próxima etapa:', etapaEmAndamento.tarefas);
+                }
+              } catch (e) { console.error('Erro e-mail etapa:', e); }
+            });
+          }
         } else if (!proxima) {
           implantacao.status = 'concluida';
           implantacao.concluidaEm = new Date();

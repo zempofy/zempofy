@@ -346,9 +346,9 @@ const dataParaISO = (v) => {
   return `${nums.slice(4)}-${nums.slice(2,4)}-${nums.slice(0,2)}`
 }
 
-function ModalNovaImplantacao({ fechar, onCriado, nomeInicial = '' }) {
+function ModalNovaImplantacao({ fechar, onCriado, nomeInicial = '', clienteId = null, cnpjInicial = '' }) {
   const [nomeCliente, setNomeCliente] = useState(nomeInicial)
-  const [cnpj, setCnpj] = useState('')
+  const [cnpj, setCnpj] = useState(cnpjInicial)
   const [modeloId, setModeloId] = useState('')
   const [modelos, setModelos] = useState([])
   const [inicioServicos, setInicioServicos] = useState('')  // formato DD/MM/AAAA
@@ -368,7 +368,7 @@ function ModalNovaImplantacao({ fechar, onCriado, nomeInicial = '' }) {
     if (!inicioISO) return setErro('Data de início dos serviços é obrigatória (DD/MM/AAAA).')
     setCarregando(true); setErro('')
     try {
-      await api.post('/implantacoes', { nomeCliente, cnpj, modeloId: modeloId || undefined, inicioServicos: inicioISO })
+      await api.post('/implantacoes', { nomeCliente, cnpj, modeloId: modeloId || undefined, inicioServicos: inicioISO, clienteId: clienteId || undefined })
       toast('Implantação criada!', 'sucesso')
       onCriado(); fechar()
     } catch (err) {
@@ -432,13 +432,14 @@ function ModalNovaImplantacao({ fechar, onCriado, nomeInicial = '' }) {
 }
 
 // ── Tela principal ──
-export default function Implantacao({ setPagina, setClienteDetalheId, nomeNovoOnboarding, onNomeNovoOnboardingUsado, onImplantacaoCriada }) {
+export default function Implantacao({ setPagina, setClienteDetalheId, nomeNovoOnboarding, onNomeNovoOnboardingUsado, clienteParaOnboarding, onClienteParaOnboardingUsado, onImplantacaoCriada }) {
   const [implantacoes, setImplantacoes] = useState([])
   const [carregando, setCarregando] = useState(true)
   const [busca, setBusca] = useState('')
   const [concluídosAbertos, setConcluídosAbertos] = useState(false)
   const [modalAberto, setModalAberto] = useState(false)
   const [nomeParaNovaImplantacao, setNomeParaNovaImplantacao] = useState('')
+  const [clienteParaNovaImplantacao, setClienteParaNovaImplantacao] = useState(null)
 
   // Veio do CRM com um nome de lead pra pré-preencher — abre o modal de nova implantação já com ele.
   // Guarda numa variável local (não depende mais do prop) pra não perder o valor se o pai limpar o estado dele.
@@ -449,6 +450,17 @@ export default function Implantacao({ setPagina, setClienteDetalheId, nomeNovoOn
       onNomeNovoOnboardingUsado && onNomeNovoOnboardingUsado()
     }
   }, [nomeNovoOnboarding])
+
+  // Veio da Carteira de Clientes ("Iniciar onboarding" num cliente já cadastrado) — pré-preenche
+  // nome, CNPJ e já vincula o clienteId real na implantação que vai ser criada.
+  useEffect(() => {
+    if (clienteParaOnboarding) {
+      setNomeParaNovaImplantacao(clienteParaOnboarding.nome || '')
+      setClienteParaNovaImplantacao(clienteParaOnboarding)
+      setModalAberto(true)
+      onClienteParaOnboardingUsado && onClienteParaOnboardingUsado()
+    }
+  }, [clienteParaOnboarding])
 
   // ── Tour ──
   const [tourAtivo, setTourAtivo] = useState(false)
@@ -655,9 +667,11 @@ export default function Implantacao({ setPagina, setClienteDetalheId, nomeNovoOn
 
       {modalAberto && (
         <ModalNovaImplantacao
-          fechar={() => { setModalAberto(false); setNomeParaNovaImplantacao('') }}
+          fechar={() => { setModalAberto(false); setNomeParaNovaImplantacao(''); setClienteParaNovaImplantacao(null) }}
           onCriado={() => { buscar(); onImplantacaoCriada && onImplantacaoCriada() }}
           nomeInicial={nomeParaNovaImplantacao}
+          clienteId={clienteParaNovaImplantacao?.id}
+          cnpjInicial={clienteParaNovaImplantacao?.cnpj || ''}
         />
       )}
     </div>

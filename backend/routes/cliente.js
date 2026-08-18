@@ -10,6 +10,9 @@ const { competenciaAtual, resolverPorVigencia, aplicarMudancaComHistorico, busca
 
 const router = express.Router();
 
+// Existe alguma Implantacao vinculada a este cliente que ainda não terminou?
+const temOnboardingAtivo = (clienteId) => Implantacao.exists({ cliente: clienteId, status: { $ne: 'concluida' } });
+
 // ── Mescla de cadastro em duplicata de CNPJ ──
 // Quando o mesmo CNPJ é cadastrado de novo (manual ou importação), atualiza o registro existente
 // em vez de criar um duplicado. Só sobrescreve campos que vieram preenchidos na nova entrada —
@@ -181,6 +184,12 @@ router.put('/:id', autenticar, temPermissao('gerenciarClientes'), validar(client
     const cliente = await Cliente.findOne({ _id: req.params.id, empresa: req.usuario.empresa._id });
     if (!cliente) return res.status(404).json({ erro: 'Cliente não encontrado.' });
 
+    // Inativar só é permitido com o onboarding concluído (ou sem onboarding nenhum) —
+    // senão a implantação fica com um cliente inativo no meio do processo.
+    if (dados.status === 'inativo' && cliente.status !== 'inativo' && await temOnboardingAtivo(cliente._id)) {
+      return res.status(403).json({ erro: 'Não é possível inativar: esta empresa ainda está em onboarding.' });
+    }
+
     // Regime mudou de verdade (não é edição inicial nem o mesmo valor) — decide a vigência
     // conforme a escolha do usuário no diálogo (default 'agora' se não vier, ex: fluxos antigos).
     if (dados.regime !== undefined && dados.regime !== cliente.regime && cliente.regime) {
@@ -220,6 +229,13 @@ router.delete('/:id', autenticar, temPermissao('gerenciarClientes'), async (req,
     if (cliente.status !== 'inativo') {
       return res.status(403).json({ erro: 'Só é possível excluir um cliente depois de inativá-lo.' });
     }
+
+    // Implantações antigas (criadas antes do campo `cliente` existir) não têm essa ligação —
+    // a trava não pega esses casos, é uma limitação conhecida e aceita.
+    if (await temOnboardingAtivo(cliente._id)) {
+      return res.status(403).json({ erro: 'Este cliente ainda está em onboarding. Conclua ou cancele a implantação antes de excluir.' });
+    }
+
     await cliente.deleteOne();
     registrarLog({ empresa: req.usuario.empresa._id, usuario: req.usuario._id, tipo: 'cliente_excluido', categoria: 'cliente', descricao: 'Excluiu permanentemente o cliente ' + cliente.razaoSocial });
     res.json({ mensagem: 'Cliente removido.' });

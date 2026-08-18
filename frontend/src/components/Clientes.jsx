@@ -4,6 +4,7 @@ import api from '../services/api'
 import { useToast } from './Toast'
 import Icone from './Icones'
 import ImportarClientes from './ImportarClientes'
+import ModalConfirmacao from './ModalConfirmacao'
 import { useAuth } from '../contexts/AuthContext'
 import * as XLSX from 'xlsx'
 
@@ -816,7 +817,7 @@ function BarraSetoresCliente({ setores, setorAtivo, setorClicavel, onInformacoes
 }
 
 // ── Tela de detalhe ──
-function TelaDetalhe({ clienteId, voltar, onAtualizado, abaInicial = 'info', setorInicial = null, competenciaInicial = null }) {
+function TelaDetalhe({ clienteId, voltar, onAtualizado, abaInicial = 'info', setorInicial = null, competenciaInicial = null, onIniciarOnboarding }) {
   const [dados, setDados] = useState(null)
   const [carregando, setCarregando] = useState(true)
   const [editando, setEditando] = useState(false)
@@ -876,10 +877,9 @@ function TelaDetalhe({ clienteId, voltar, onAtualizado, abaInicial = 'info', set
     try {
       await api.put(`/clientes/${clienteId}`, { status: 'inativo' })
       mostrar('Cliente inativado.', 'aviso')
-      setConfirmInativar(false)
       buscar(); onAtualizado()
-    } catch { mostrar('Erro ao inativar.', 'erro') }
-    finally { setMudandoStatus(false) }
+    } catch (err) { mostrar(err.response?.data?.erro || 'Erro ao inativar.', 'erro') }
+    finally { setMudandoStatus(false); setConfirmInativar(false) }
   }
 
   const reativar = async () => {
@@ -1006,6 +1006,11 @@ function TelaDetalhe({ clienteId, voltar, onAtualizado, abaInicial = 'info', set
 
       {aba==='onboardings'&&(
         <div style={{ display:'flex', flexDirection:'column', gap:'10px' }}>
+          {temPermissao('criarImplantacoes') && dados.status!=='inativo' && !dados.onboardings?.some(o=>o.status!=='concluida') && (
+            <button onClick={()=>onIniciarOnboarding&&onIniciarOnboarding(dados)} style={{ ...s.btnPrimario, alignSelf:'flex-start', display:'flex', alignItems:'center', gap:'6px' }}>
+              <Icone.ClipboardList size={13}/>Iniciar onboarding
+            </button>
+          )}
           {dados.onboardings?.length?dados.onboardings.map(o=>{
             const conc=o.etapas?.filter(e=>e.status==='concluida').length||0
             const tot=o.etapas?.length||0
@@ -1110,6 +1115,12 @@ const competenciaDefasada = () => {
 const MODO_COMPETENCIA_POR_SETOR = { fiscal: 'defasada', 'departamento pessoal': 'defasada', contabil: 'defasada' }
 const competenciaPadraoDoSetor = (setorNome) =>
   MODO_COMPETENCIA_POR_SETOR[normalizarNome(setorNome||'')] === 'defasada' ? competenciaDefasada() : competenciaAtual()
+
+const mudarCompetencia = (competencia, delta) => {
+  const [ano, mes] = competencia.split('-').map(Number)
+  const d = new Date(ano, mes - 1 + delta, 1)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+}
 
 const INICIO_DEMANDA_ANO = 2026
 const MESES_LABEL = ['01 - Janeiro','02 - Fevereiro','03 - Março','04 - Abril','05 - Maio','06 - Junho','07 - Julho','08 - Agosto','09 - Setembro','10 - Outubro','11 - Novembro','12 - Dezembro']
@@ -1244,7 +1255,7 @@ function BlocoExtratosBancarios({ clienteId, setor, bancos=[], valoresExtratos, 
 }
 
 // ── Formulário de uma competência (mês atual ou mês passado, se quem vê tiver permissão) ──
-function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, configSetor, onAtualizado }) {
+function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, configSetor, onAtualizado, onAlteracaoNaoSalva }) {
   const { mostrar } = useToast()
   const { usuario } = useAuth()
   // Só titular ou o responsável designado do setor podem mudar a configuração (situação/regime)
@@ -1282,6 +1293,11 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
 
   const setValor = (id, v) => setValores(vs => ({ ...vs, [id]: v }))
   const podeEditar = !!lancamento?.podeEditar
+
+  // Compara com o que veio salvo do servidor pra saber se tem algo digitado que ainda não foi
+  // pro banco — usado pra avisar antes de trocar de competência e perder isso.
+  const alteracaoNaoSalva = !carregando && JSON.stringify(valores) !== JSON.stringify(lancamento?.dados || {})
+  useEffect(() => { onAlteracaoNaoSalva && onAlteracaoNaoSalva(alteracaoNaoSalva) }, [alteracaoNaoSalva])
 
   const salvar = async () => {
     setSalvando(true)
@@ -1372,24 +1388,26 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
   return (
     <div>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:'10px', marginBottom:'18px' }}>
-        <p style={{ fontSize:'0.8rem', color:'var(--texto-apagado)', margin:0 }}>
-          Competência: {nomeMes(competencia)} de {competencia.slice(0,4)}{!podeEditar ? ' · Somente leitura' : ''}
-          {lancamento?.preenchidoPor?.nome && ` · Preenchido por ${lancamento.preenchidoPor.nome}`}
-        </p>
-        {pillInfo && (
-          <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
-            <div style={{ display:'flex', alignItems:'center', gap:'6px', background:'var(--input)', border:'1px solid var(--borda)', borderRadius:'99px', padding:'5px 12px' }}>
-              <span style={{ fontSize:'0.72rem', color:'var(--texto-apagado)' }}>{pillInfo.label}:</span>
-              <span style={{ fontSize:'0.72rem', color:'var(--texto)', fontWeight:'600' }}>{pillInfo.valor}</span>
-              {pillInfo.hint && <span style={{ fontSize:'0.65rem', color:'var(--texto-apagado)' }}>· {pillInfo.hint}</span>}
+        <div>
+          {pillInfo && (
+            <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
+              <div style={{ display:'flex', alignItems:'center', gap:'6px', background:'var(--input)', border:'1px solid var(--borda)', borderRadius:'99px', padding:'5px 12px' }}>
+                <span style={{ fontSize:'0.72rem', color:'var(--texto-apagado)' }}>{pillInfo.label}:</span>
+                <span style={{ fontSize:'0.72rem', color:'var(--texto)', fontWeight:'600' }}>{pillInfo.valor}</span>
+                {pillInfo.hint && <span style={{ fontSize:'0.65rem', color:'var(--texto-apagado)' }}>· {pillInfo.hint}</span>}
+              </div>
+              {config?.perguntaInicial && podeEditar && podeAlterarConfig && competencia === competenciaPadraoDoSetor(setor.nome) && (
+                <button onClick={()=>setEditandoSituacao(true)} style={{ background:'none', border:'1px solid var(--borda)', borderRadius:'7px', color:'var(--texto-apagado)', padding:'5px 12px', fontFamily:'Inter,sans-serif', fontSize:'0.72rem', fontWeight:'600', cursor:'pointer' }}>
+                  Editar
+                </button>
+              )}
             </div>
-            {config?.perguntaInicial && podeEditar && podeAlterarConfig && competencia === competenciaPadraoDoSetor(setor.nome) && (
-              <button onClick={()=>setEditandoSituacao(true)} style={{ background:'none', border:'1px solid var(--borda)', borderRadius:'7px', color:'var(--texto-apagado)', padding:'5px 12px', fontFamily:'Inter,sans-serif', fontSize:'0.72rem', fontWeight:'600', cursor:'pointer' }}>
-                Editar
-              </button>
-            )}
-          </div>
-        )}
+          )}
+        </div>
+        <p style={{ fontSize:'0.8rem', color:'var(--texto-apagado)', margin:0, textAlign:'right' }}>
+          {!podeEditar && 'Somente leitura'}
+          {lancamento?.preenchidoPor?.nome && `${!podeEditar ? ' · ' : ''}Preenchido por ${lancamento.preenchidoPor.nome}`}
+        </p>
       </div>
 
       {config?.temBancos && (
@@ -1543,7 +1561,47 @@ function AbaParticularidades({ clienteId, setor, clienteAtivo, particularidades=
 
 // ── Demanda mensal (atalho pro mês corrente) ──
 function AbaDemanda({ clienteId, setor, clienteRegime, configSetor, onAtualizado, competenciaInicial }) {
-  return <FormularioCompetencia clienteId={clienteId} setor={setor} clienteRegime={clienteRegime} competencia={competenciaInicial || competenciaPadraoDoSetor(setor.nome)} configSetor={configSetor} onAtualizado={onAtualizado}/>
+  const [competencia, setCompetencia] = useState(competenciaInicial || competenciaPadraoDoSetor(setor.nome))
+  const [temAlteracaoNaoSalva, setTemAlteracaoNaoSalva] = useState(false)
+  const [deltaPendente, setDeltaPendente] = useState(null)
+  const podeVoltar = competencia > `${INICIO_DEMANDA_ANO}-01`
+
+  const irPara = (delta) => {
+    if (temAlteracaoNaoSalva) { setDeltaPendente(delta); return }
+    setCompetencia(c => mudarCompetencia(c, delta))
+  }
+
+  return (
+    <div>
+      <div style={{ display:'flex', justifyContent:'flex-end', marginBottom:'14px' }}>
+        <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:'4px' }}>
+          <span style={{ fontSize:'0.65rem', fontWeight:'700', color:'var(--texto-apagado)', textTransform:'uppercase', letterSpacing:'0.8px' }}>Competência</span>
+          <div style={{ display:'flex', alignItems:'center', gap:'4px' }}>
+            <button onClick={()=>podeVoltar&&irPara(-1)} disabled={!podeVoltar} style={{ width:'30px', height:'30px', borderRadius:'7px', border:'1px solid var(--borda)', background:'var(--input)', color: podeVoltar?'var(--texto)':'var(--texto-apagado)', cursor: podeVoltar?'pointer':'default', display:'flex', alignItems:'center', justifyContent:'center', opacity: podeVoltar?1:0.4 }}>
+              <Icone.ChevronLeft size={14}/>
+            </button>
+            <span style={{ fontSize:'0.82rem', fontWeight:'600', color:'var(--texto)', fontFamily:'Inter,sans-serif', minWidth:'130px', textAlign:'center' }}>
+              {nomeMes(competencia)} {competencia.slice(0,4)}
+            </span>
+            <button onClick={()=>irPara(1)} style={{ width:'30px', height:'30px', borderRadius:'7px', border:'1px solid var(--borda)', background:'var(--input)', color:'var(--texto)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
+              <Icone.ChevronRight size={14}/>
+            </button>
+          </div>
+        </div>
+      </div>
+      <FormularioCompetencia clienteId={clienteId} setor={setor} clienteRegime={clienteRegime} competencia={competencia} configSetor={configSetor} onAtualizado={onAtualizado} onAlteracaoNaoSalva={setTemAlteracaoNaoSalva}/>
+
+      {deltaPendente !== null && (
+        <ModalConfirmacao
+          titulo="Alterações não salvas"
+          mensagem="Você preencheu informações nesta competência que ainda não foram salvas. Se mudar de mês agora, elas serão perdidas. Deseja continuar mesmo assim?"
+          textoBotao="Mudar mesmo assim" perigo
+          onConfirmar={() => { setCompetencia(c => mudarCompetencia(c, deltaPendente)); setDeltaPendente(null) }}
+          onCancelar={() => setDeltaPendente(null)}
+        />
+      )}
+    </div>
+  )
 }
 
 // ── Histórico: pastas de ano → mês → dados daquele mês ──
@@ -1635,7 +1693,7 @@ function CardCliente({ cliente, onClick }) {
   const honorarioTotal = honorarioEfetivo(cliente)
   const nomeCliente = cliente.razaoSocial||cliente.nome||'—'
   return (
-    <div onClick={onClick} style={{ background:'var(--card)', border:'1px solid var(--borda)', borderRadius:'14px', padding:'20px', cursor:'pointer', position:'relative', transition:'border-color 0.15s, transform 0.1s, opacity 0.15s', opacity: inativo?0.55:1 }}
+    <div onClick={onClick} style={{ background:'var(--card)', border:`1px solid ${inativo?'var(--borda)':'rgba(0,177,65,0.18)'}`, borderRadius:'14px', padding:'18px 20px', cursor:'pointer', position:'relative', transition:'border-color 0.15s, transform 0.1s, opacity 0.15s', opacity: inativo?0.55:1 }}
       onMouseEnter={e=>{e.currentTarget.style.borderColor=inativo?'var(--borda)':'rgba(0,177,65,0.3)';e.currentTarget.style.transform='translateY(-1px)'}}
       onMouseLeave={e=>{e.currentTarget.style.borderColor='var(--borda)';e.currentTarget.style.transform='translateY(0)'}}>
       <div style={{ position:'absolute', top:'14px', right:'14px', width:'10px', height:'10px', borderRadius:'50%', background:st.cor, boxShadow:`0 0 6px ${st.cor}60` }} title={st.label}/>
@@ -1692,7 +1750,7 @@ function CardCliente({ cliente, onClick }) {
 }
 
 // ── Componente principal ──
-export default function Clientes({ detalheInicial = null, abaInicial = 'info', setorInicial = null, competenciaInicial = null, onDetalheAberto }) {
+export default function Clientes({ detalheInicial = null, abaInicial = 'info', setorInicial = null, competenciaInicial = null, onDetalheAberto, onIniciarOnboarding }) {
   const [clientes, setClientes] = useState([])
   const [setoresList, setSetoresList] = useState([])
   const [carregando, setCarregando] = useState(true)
@@ -1821,7 +1879,7 @@ export default function Clientes({ detalheInicial = null, abaInicial = 'info', s
 
   if (detalheId) return <TelaDetalhe clienteId={detalheId} abaInicial={detalheInicial===detalheId?abaInicial:'info'}
     setorInicial={detalheInicial===detalheId?setorInicial:null} competenciaInicial={detalheInicial===detalheId?competenciaInicial:null}
-    voltar={()=>{ setDetalheId(null); onDetalheAberto&&onDetalheAberto() }} onAtualizado={carregar}/>
+    voltar={()=>{ setDetalheId(null); onDetalheAberto&&onDetalheAberto() }} onAtualizado={carregar} onIniciarOnboarding={onIniciarOnboarding}/>
   if (formAberto) return <FormCliente fechar={()=>setFormAberto(false)} onSalvo={carregar}/>
   if (importarAberto) return <ImportarClientes fechar={()=>setImportarAberto(false)} onImportado={()=>{ carregar(); setImportarAberto(false) }}/>
 
@@ -1916,7 +1974,7 @@ export default function Clientes({ detalheInicial = null, abaInicial = 'info', s
           </>}
         </div>
       ):(
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(260px, 1fr))', gap:'14px' }}>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(250px, 1fr))', gap:'14px' }}>
           {filtrados.map(c=><CardCliente key={c._id} cliente={c} onClick={()=>setDetalheId(c._id)}/>)}
         </div>
       )}

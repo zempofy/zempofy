@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import api from '../services/api'
 import { useToast } from './Toast'
+import ModalConfirmacao from './ModalConfirmacao'
 
 function ModalAtividade({ setor, atividade, fechar, onSalvo, funcionarios }) {
   const [descricao, setDescricao] = useState(atividade?.descricao || '')
@@ -93,12 +94,13 @@ function ModalAtividade({ setor, atividade, fechar, onSalvo, funcionarios }) {
 function BlocoSetor({ setor, atividades, funcionarios, onAtualizado }) {
   const [modalAberto, setModalAberto] = useState(false)
   const [atividadeEditando, setAtividadeEditando] = useState(null)
+  const [confirmandoId, setConfirmandoId] = useState(null)
   const { mostrar: toast } = useToast()
 
   const excluir = async (id) => {
-    if (!confirm('Remover esta atividade?')) return
     try {
       await api.delete(`/checklist/${id}`)
+      setConfirmandoId(null)
       toast('Atividade removida.', 'sucesso')
       onAtualizado()
     } catch { toast('Erro ao remover.', 'erro') }
@@ -137,7 +139,7 @@ function BlocoSetor({ setor, atividades, funcionarios, onAtualizado }) {
               )}
               <div style={s.acoes} className="ck-acoes">
                 <button style={s.btnAcao} onClick={() => abrirEditar(at)}>Editar</button>
-                <button style={{ ...s.btnAcao, color: '#FCA5A5' }} onClick={() => excluir(at._id)}>Remover</button>
+                <button style={{ ...s.btnAcao, color: '#FCA5A5' }} onClick={() => setConfirmandoId(at._id)}>Remover</button>
               </div>
             </div>
           ))
@@ -151,6 +153,16 @@ function BlocoSetor({ setor, atividades, funcionarios, onAtualizado }) {
           fechar={() => setModalAberto(false)}
           onSalvo={onAtualizado}
           funcionarios={funcionarios}
+        />
+      )}
+
+      {confirmandoId && (
+        <ModalConfirmacao
+          titulo="Remover atividade"
+          mensagem="Remover esta atividade?"
+          textoBotao="Remover" perigo
+          onConfirmar={() => excluir(confirmandoId)}
+          onCancelar={() => setConfirmandoId(null)}
         />
       )}
     </div>

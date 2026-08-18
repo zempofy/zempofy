@@ -1570,6 +1570,7 @@ export default function DashboardAdmin() {
   }
   const [clienteDetalheId, setClienteDetalheId] = useState(null)
   const [nomeNovoOnboarding, setNomeNovoOnboarding] = useState('')
+  const [clienteParaOnboarding, setClienteParaOnboarding] = useState(null)
   const [tarefas, setTarefas] = useState([])
   const [funcionarios, setFuncionarios] = useState([])
 
@@ -1644,12 +1645,14 @@ export default function DashboardAdmin() {
     if (pagina === 'tarefas') return <PaginaTarefas tarefas={tarefas} funcionarios={funcionarios} recarregar={carregarDados} />
     if (pagina === 'historico') return <PaginaHistorico />
     if (pagina === 'agenda') return <Agenda cargo="admin" usuarios={funcionarios} usuarioAtualId={usuario?.id} />
-    if (pagina === 'clientes') return <Clientes detalheInicial={clienteDetalheId} abaInicial="onboardings" onDetalheAberto={()=>setClienteDetalheId(null)} />
+    if (pagina === 'clientes') return <Clientes detalheInicial={clienteDetalheId} abaInicial="onboardings" onDetalheAberto={()=>setClienteDetalheId(null)}
+      onIniciarOnboarding={(cliente)=>{ setClienteParaOnboarding({ id: cliente._id, nome: cliente.razaoSocial||cliente.nomeFantasia||'', cnpj: cliente.cnpj||'' }); setPagina('implantacao') }} />
     if (pagina === 'demandas') return <Demandas />
     if (pagina === 'chat') return <Chat setPagina={setPagina} />
     if (pagina === 'anotacoes') return <Anotacoes />
     if (pagina === 'mural') return <Mural />
-    if (pagina === 'implantacao') return <Implantacao setPagina={setPagina} setClienteDetalheId={setClienteDetalheId} nomeNovoOnboarding={nomeNovoOnboarding} onNomeNovoOnboardingUsado={()=>setNomeNovoOnboarding('')} onImplantacaoCriada={carregarDados} />
+    if (pagina === 'implantacao') return <Implantacao setPagina={setPagina} setClienteDetalheId={setClienteDetalheId} nomeNovoOnboarding={nomeNovoOnboarding} onNomeNovoOnboardingUsado={()=>setNomeNovoOnboarding('')}
+      clienteParaOnboarding={clienteParaOnboarding} onClienteParaOnboardingUsado={()=>setClienteParaOnboarding(null)} onImplantacaoCriada={carregarDados} />
     if (pagina === 'modelos') return <ModelosOnboarding />
     if (pagina === 'checklist') return <BancoAtividades />
     if (pagina === 'setores') return <Setores funcionarios={funcionarios} onSalvo={async () => {

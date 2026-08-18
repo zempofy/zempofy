@@ -8,6 +8,7 @@ const Tarefa = require('../models/Tarefa');
 const Setor = require('../models/Setor');
 const Usuario = require('../models/Usuario');
 const { enviarOnboardingCriado, enviarEtapaDesbloqueada } = require('../services/email');
+const { pularEtapasVaziasEmCadeia } = require('../services/implantacao');
 const Cliente = require('../models/Cliente');
 
 const router = express.Router();
@@ -92,7 +93,7 @@ router.get('/:id', autenticar, async (req, res) => {
 
 // POST /api/implantacoes - Cria nova implantação e gera tarefas reais para cada colaborador
 router.post('/', autenticar, temPermissao('criarImplantacoes'), async (req, res) => {
-  const { nomeCliente, cnpj, modeloId, inicioServicos } = req.body;
+  const { nomeCliente, cnpj, modeloId, inicioServicos, clienteId } = req.body;
   if (!nomeCliente?.trim()) return res.status(400).json({ erro: 'Nome do cliente é obrigatório.' });
   if (!inicioServicos) return res.status(400).json({ erro: 'Data de início dos serviços é obrigatória.' });
   try {
@@ -146,12 +147,20 @@ router.post('/', autenticar, temPermissao('criarImplantacoes'), async (req, res)
       }
     }
 
+    // Se o primeiro setor do modelo (ou os primeiros em sequência) não tiver nenhuma tarefa,
+    // pula direto pro primeiro que tiver — senão a implantação já nasce travada numa etapa vazia.
+    const dadosImplantacao = { etapas, status: 'em_andamento' };
+    pularEtapasVaziasEmCadeia(dadosImplantacao);
+
     const implantacao = await ImplantacaoModel.create({
       nomeCliente: nomeCliente.trim(),
       cnpj: cnpj?.trim() || '',
       inicioServicos: new Date(inicioServicos),
       modelo: modeloId || null,
-      etapas,
+      cliente: clienteId || undefined,
+      etapas: dadosImplantacao.etapas,
+      status: dadosImplantacao.status,
+      concluidaEm: dadosImplantacao.concluidaEm,
       empresa: req.usuario.empresa._id,
       criadoPor: req.usuario._id
     });
@@ -171,8 +180,9 @@ router.post('/', autenticar, temPermissao('criarImplantacoes'), async (req, res)
       // Regex tolerante a máscara — o cnpj salvo pode estar com ou sem pontuação
       const cnpjRegexTolerante = cnpjLimpo.split('').join('[.\\-/]*');
       const clienteExistente = await Cliente.findOne({ empresa: req.usuario.empresa._id, cnpj: { $regex: cnpjRegexTolerante } }).lean();
+      let clienteVinculadoId;
       if (!clienteExistente) {
-        await Cliente.create({
+        const clienteCriado = await Cliente.create({
           razaoSocial: nomeCliente.trim(),
           cnpj: cnpj.trim(),
           empresa: req.usuario.empresa._id,
@@ -185,14 +195,23 @@ router.post('/', autenticar, temPermissao('criarImplantacoes'), async (req, res)
           servicosContratados: [],
           socios: [],
         });
+        clienteVinculadoId = clienteCriado._id;
         console.log('✅ Cliente criado automaticamente via onboarding:', nomeCliente.trim());
       } else {
+        clienteVinculadoId = clienteExistente._id;
         // Atualizar setores do cliente existente
         const setoresAtuais = clienteExistente.setores?.map(s => s.toString()) || [];
         const novoSetores = [...new Set([...setoresAtuais, ...setoresIds])];
         if (novoSetores.length > setoresAtuais.length) {
           await Cliente.updateOne({ _id: clienteExistente._id }, { $set: { setores: novoSetores } });
         }
+      }
+
+      // Garante que a implantação fica ligada ao cliente de verdade, mesmo quando ele foi
+      // criado/encontrado automaticamente aqui (não passou pelo fluxo "Iniciar onboarding"
+      // a partir de um cliente já existente, que já manda o clienteId direto).
+      if (!implantacao.cliente || implantacao.cliente.toString() !== clienteVinculadoId.toString()) {
+        await ImplantacaoModel.updateOne({ _id: implantacao._id }, { $set: { cliente: clienteVinculadoId } });
       }
     }
 
@@ -288,6 +307,7 @@ router.patch('/:id/tarefas/:etapaId/:tarefaId/concluir', autenticar, async (req,
       if (proxima) {
         proxima.status = 'em_andamento';
         proxima.iniciadaEm = new Date();
+        pularEtapasVaziasEmCadeia(implantacao);
       } else {
         // Era a última etapa, implantação concluída!
         implantacao.status = 'concluida';

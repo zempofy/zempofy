@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import api from '../services/api'
 import { useToast } from './Toast'
 import { useAuth } from '../contexts/AuthContext'
+import ModalConfirmacao from './ModalConfirmacao'
 
 const CORES = [
   '#2DAA59', '#378ADD', '#EF9F27', '#7F77DD',
@@ -164,6 +165,7 @@ export default function Setores({ funcionarios = [], onSalvo: onSalvoExterno }) 
   const [modalAberto, setModalAberto] = useState(false)
   const [setorEditando, setSetorEditando] = useState(null)
   const [modoSomenteMembros, setModoSomenteMembros] = useState(false)
+  const [confirmandoId, setConfirmandoId] = useState(null)
   const { mostrar } = useToast()
   const { usuario, temPermissao } = useAuth()
 
@@ -199,9 +201,9 @@ export default function Setores({ funcionarios = [], onSalvo: onSalvoExterno }) 
   }, [carregando, setores.length])
 
   const excluir = async (id) => {
-    if (!confirm('Remover este setor?')) return
     try {
       await api.delete(`/setores/${id}`)
+      setConfirmandoId(null)
       mostrar('Setor removido.', 'aviso')
       buscar()
     } catch {
@@ -250,7 +252,7 @@ export default function Setores({ funcionarios = [], onSalvo: onSalvoExterno }) 
                 </div>
                 <div style={{ display: 'flex', gap: '8px' }}>
                   {souGestor && <button style={s.btnAcao} onClick={() => abrir(setor)}>Editar</button>}
-                  {souGestor && <button style={{ ...s.btnAcao, color: '#FCA5A5' }} onClick={() => excluir(setor._id)}>Remover</button>}
+                  {souGestor && <button style={{ ...s.btnAcao, color: '#FCA5A5' }} onClick={() => setConfirmandoId(setor._id)}>Remover</button>}
                   {souResponsavel && <button style={s.btnAcao} onClick={() => abrir(setor, true)}>Gerenciar membros</button>}
                 </div>
               </div>
@@ -266,6 +268,16 @@ export default function Setores({ funcionarios = [], onSalvo: onSalvoExterno }) 
           onSalvo={() => { buscar(); onSalvoExterno && onSalvoExterno(); }}
           funcionarios={funcionarios}
           somenteMembros={modoSomenteMembros}
+        />
+      )}
+
+      {confirmandoId && (
+        <ModalConfirmacao
+          titulo="Remover setor"
+          mensagem="Remover este setor?"
+          textoBotao="Remover" perigo
+          onConfirmar={() => excluir(confirmandoId)}
+          onCancelar={() => setConfirmandoId(null)}
         />
       )}
     </div>

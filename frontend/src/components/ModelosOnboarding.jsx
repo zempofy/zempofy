@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import api from '../services/api'
 import { useToast } from './Toast'
+import ModalConfirmacao from './ModalConfirmacao'
 
 
 // ── Balão de tour (inline) ──
@@ -550,6 +551,7 @@ export default function ModelosOnboarding() {
   const [carregando, setCarregando] = useState(true)
   const [modalNovo, setModalNovo] = useState(false)
   const [modeloDetalhe, setModeloDetalhe] = useState(null)
+  const [confirmandoId, setConfirmandoId] = useState(null)
   const { mostrar: toast } = useToast()
 
   // ── Tour ──
@@ -597,9 +599,9 @@ export default function ModelosOnboarding() {
   useEffect(() => { buscar() }, [])
 
   const excluir = async (id) => {
-    if (!confirm('Remover este modelo?')) return
     try {
       await api.delete(`/modelos-onboarding/${id}`)
+      setConfirmandoId(null)
       toast('Modelo removido.', 'sucesso')
       buscar()
     } catch { toast('Erro ao remover.', 'erro') }
@@ -687,7 +689,7 @@ export default function ModelosOnboarding() {
                 </div>
                 <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }} onClick={e => e.stopPropagation()}>
                   <button style={s.btnAcao} onClick={() => setModeloDetalhe(m)}>Editar</button>
-                  <button style={{ ...s.btnAcao, color: '#FCA5A5' }} onClick={() => excluir(m._id)}>Remover</button>
+                  <button style={{ ...s.btnAcao, color: '#FCA5A5' }} onClick={() => setConfirmandoId(m._id)}>Remover</button>
                 </div>
               </div>
             )
@@ -716,6 +718,16 @@ export default function ModelosOnboarding() {
           }}
         />
       )}
+
+      {confirmandoId && (
+        <ModalConfirmacao
+          titulo="Remover modelo"
+          mensagem="Remover este modelo?"
+          textoBotao="Remover" perigo
+          onConfirmar={() => excluir(confirmandoId)}
+          onCancelar={() => setConfirmandoId(null)}
+        />
+      )}
     </div>
   )
 }
@@ -726,8 +738,8 @@ const s = {
   subtitulo: { fontSize: '0.82rem', color: 'var(--texto-apagado)', marginTop: '5px', fontFamily: 'Inter, sans-serif' },
   btnNovo: { background: 'var(--gradiente-verde)', color: '#fff', border: 'none', borderRadius: '10px', padding: '10px 20px', fontFamily: 'Inter, sans-serif', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,177,65,0.25)', whiteSpace: 'nowrap' },
   btnVoltar: { background: 'none', border: 'none', color: 'var(--texto-apagado)', fontSize: '0.82rem', cursor: 'pointer', fontFamily: 'Inter, sans-serif', padding: '0', display: 'flex', alignItems: 'center', gap: '4px' },
-  grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(270px, 1fr))', gap: '12px' },
-  card: { background: 'var(--card)', border: '1px solid var(--borda)', borderRadius: '14px', padding: '20px', display: 'flex', flexDirection: 'column', cursor: 'pointer', transition: 'border-color 0.15s' },
+  grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '12px' },
+  card: { background: 'var(--card)', border: '1px solid var(--borda)', borderRadius: '14px', padding: '16px 18px', display: 'flex', flexDirection: 'column', cursor: 'pointer', transition: 'border-color 0.15s' },
   cardNovo: { alignItems: 'center', justifyContent: 'center', minHeight: '120px', border: '1px dashed var(--borda)' },
   cardNome: { fontSize: '0.95rem', fontWeight: '600', color: 'var(--texto)', margin: 0, fontFamily: 'Inter, sans-serif', letterSpacing: '-0.01em' },
   cardDesc: { fontSize: '0.8rem', color: 'var(--texto-apagado)', marginTop: '4px', fontFamily: 'Inter, sans-serif' },

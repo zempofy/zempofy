@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import api from '../services/api'
 import { useToast } from './Toast'
+import ModalConfirmacao from './ModalConfirmacao'
 // ── Balão de tour ──
 function Balao({ alvo, titulo, texto, passo, total, onProximo, onFechar, posicao = 'bottom' }) {
   const [coords, setCoords] = useState(null)
@@ -298,6 +299,7 @@ export default function BancoAtividades() {
   const [carregando, setCarregando] = useState(true)
   const [modalAberto, setModalAberto] = useState(false)
   const [atividadeEditando, setAtividadeEditando] = useState(null)
+  const [confirmandoId, setConfirmandoId] = useState(null)
   const { mostrar: toast } = useToast()
 
   // ── Tour ──
@@ -369,9 +371,9 @@ export default function BancoAtividades() {
   const abrirEditar = (at) => { setAtividadeEditando(at); setModalAberto(true) }
 
   const excluir = async (id) => {
-    if (!confirm('Remover esta atividade do banco?')) return
     try {
       await api.delete(`/checklist/${id}`)
+      setConfirmandoId(null)
       toast('Atividade removida.', 'sucesso')
       carregar()
     } catch { toast('Erro ao remover.', 'erro') }
@@ -419,7 +421,7 @@ export default function BancoAtividades() {
         <div style={s.blocos}>
           {setores.map((setor, idx) => (
             <div key={setor._id}>
-              <BlocoSetor setor={setor} atividades={atividadesDoSetor(setor._id)} onEditar={abrirEditar} onExcluir={excluir} />
+              <BlocoSetor setor={setor} atividades={atividadesDoSetor(setor._id)} onEditar={abrirEditar} onExcluir={setConfirmandoId} />
               {idx < setores.length - 1 && <hr style={s.divisor} />}
             </div>
           ))}
@@ -450,6 +452,16 @@ export default function BancoAtividades() {
           onProximo={proximoTourInterno}
           onFechar={fecharTourInterno}
           posicao={passoInternoAtual.posicao}
+        />
+      )}
+
+      {confirmandoId && (
+        <ModalConfirmacao
+          titulo="Remover atividade"
+          mensagem="Remover esta atividade do banco?"
+          textoBotao="Remover" perigo
+          onConfirmar={() => excluir(confirmandoId)}
+          onCancelar={() => setConfirmandoId(null)}
         />
       )}
     </div>

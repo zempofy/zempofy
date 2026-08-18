@@ -12,7 +12,13 @@ const statusDemanda = (setorNome, item, competencia) => {
   const config = CONFIG_DEMANDA[setorNome]
   const blocos = blocosFixosDoSetor(config, { regime: item.regime, situacao: item.situacao, competencia })
   const campos = blocos.flatMap(b => b.campos).filter(c => c.tipo !== 'calculado')
-  if (campos.length === 0) return 'pendente'
+  if (campos.length === 0) {
+    // Setor por regime (Fiscal): 0 campos = regime ainda não definido = pendente de verdade.
+    // Setor por situação (DP/Contábil): se a situação já foi respondida mas esse mês
+    // específico não tem nenhum módulo ativo (ex: Contábil semestral fora de jun/dez), não é
+    // pendência — não existe campo nenhum pra preencher nesse mês.
+    return (config?.modulos && item.situacao) ? 'concluido' : 'pendente'
+  }
   const completo = campos.every(c => {
     const v = item.dados?.[c.id]
     return !(v === undefined || v === null || v === '')
@@ -107,7 +113,9 @@ export default function Demandas() {
     .filter(d => filtro === 'todas' || d._status === filtro)
     .sort((a, b) => (a.nome || '').toLowerCase().localeCompare((b.nome || '').toLowerCase(), 'pt-BR', { numeric: true }))
 
-  const podeAvancar = competencia < competenciaPadraoDoSetor(setorSelecionado?.nome)
+  // Sem trava — o padrão (mês defasado) continua sendo a competência de abertura,
+  // mas dali a pessoa pode navegar livremente pra frente (ex: adiantar um lançamento fora da competência).
+  const podeAvancar = true
   const podeVoltar = competencia > `${INICIO_DEMANDA_ANO}-01`
 
   const chipsFiltro = [

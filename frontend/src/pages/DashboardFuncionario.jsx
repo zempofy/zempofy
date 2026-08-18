@@ -562,6 +562,7 @@ export default function DashboardFuncionario() {
   }
   const [clienteDetalheId, setClienteDetalheId] = useState(null)
   const [nomeNovoOnboarding, setNomeNovoOnboarding] = useState('')
+  const [clienteParaOnboarding, setClienteParaOnboarding] = useState(null)
   const [tarefas, setTarefas] = useState([])
   const [funcionarios, setFuncionarios] = useState([])
 
@@ -621,11 +622,13 @@ export default function DashboardFuncionario() {
         {pagina === 'tarefas-onboarding' && <PaginaMinhasTarefas tarefas={tarefas} recarregar={carregarDados} modo="onboarding" />}
         {pagina === 'tarefas-minhas' && <PaginaMinhasTarefas tarefas={tarefas} recarregar={carregarDados} modo="minhas" />}
         {pagina === 'agenda' && <Agenda cargo="funcionario" usuarioAtualId={usuario?.id} />}
-        {pagina === 'implantacao' && <Implantacao setPagina={setPagina} setClienteDetalheId={setClienteDetalheId} nomeNovoOnboarding={nomeNovoOnboarding} onNomeNovoOnboardingUsado={()=>setNomeNovoOnboarding('')} onImplantacaoCriada={carregarDados} />}
+        {pagina === 'implantacao' && <Implantacao setPagina={setPagina} setClienteDetalheId={setClienteDetalheId} nomeNovoOnboarding={nomeNovoOnboarding} onNomeNovoOnboardingUsado={()=>setNomeNovoOnboarding('')}
+          clienteParaOnboarding={clienteParaOnboarding} onClienteParaOnboardingUsado={()=>setClienteParaOnboarding(null)} onImplantacaoCriada={carregarDados} />}
         {pagina === 'crm' && <CRM onIniciarOnboarding={(lead)=>{ setNomeNovoOnboarding(lead.nomeEmpresa || lead.nome); setPagina('implantacao') }} />}
         {pagina === 'modelos' && <ModelosOnboarding />}
         {pagina === 'checklist' && <BancoAtividades />}
-        {pagina === 'clientes' && <Clientes detalheInicial={clienteDetalheId} abaInicial="onboardings" onDetalheAberto={()=>setClienteDetalheId(null)} />}
+        {pagina === 'clientes' && <Clientes detalheInicial={clienteDetalheId} abaInicial="onboardings" onDetalheAberto={()=>setClienteDetalheId(null)}
+          onIniciarOnboarding={(cliente)=>{ setClienteParaOnboarding({ id: cliente._id, nome: cliente.razaoSocial||cliente.nomeFantasia||'', cnpj: cliente.cnpj||'' }); setPagina('implantacao') }} />}
         {pagina === 'demandas' && <Demandas />}
         {pagina === 'equipe' && <PaginaEquipeColaborador />}
         {pagina === 'setores' && <Setores funcionarios={funcionarios} />}
