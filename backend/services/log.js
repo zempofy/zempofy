@@ -16,6 +16,10 @@ const CATEGORIAS = {
   clientes_importados:         'cliente',
   membro_adicionado:           'equipe',
   membro_removido:             'equipe',
+  membro_reativado:            'equipe',
+  membro_excluido_permanente:  'equipe',
+  membro_convite_reenviado:    'equipe',
+  membro_senha_resetada:       'equipe',
   tarefa_concluida:            'tarefa',
 };
 

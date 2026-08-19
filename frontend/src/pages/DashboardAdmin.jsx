@@ -13,13 +13,9 @@ import Anotacoes from '../components/Anotacoes'
 import Mural from '../components/Mural'
 import Avatar from '../components/Avatar'
 import Implantacao from '../components/Implantacao'
-import ModelosOnboarding from '../components/ModelosOnboarding'
-import Setores from '../components/Setores'
-import BancoAtividades from '../components/BancoAtividades'
 import Clientes from '../components/Clientes'
 import Demandas from '../components/Demandas'
 import CRM from '../components/CRM'
-import ConfigAlertas from '../components/ConfigAlertas'
 import PaginaInicio from '../components/PaginaInicio'
 
 // ============ PÁGINAS INTERNAS ============
@@ -53,21 +49,22 @@ function GuiaPrimeirosPassos({ setPagina, empresaId }) {
             label: 'Configurar setores',
             desc: 'Defina os setores do seu escritório',
             feito: resSetores.data.length > 0,
-            pagina: 'setores',
+            categoria: 'setores',
           },
           {
             id: 'atividades',
             label: 'Criar atividades no banco',
             desc: 'Cadastre as atividades padrão por setor',
             feito: resAtividades.data.length > 0,
-            pagina: 'checklist',
+            // Banco de atividades também vive dentro do modal de Configurações agora.
+            categoria: 'banco',
           },
           {
             id: 'modelos',
             label: 'Montar um modelo de onboarding',
             desc: 'Crie templates para cada tipo de cliente',
             feito: resModelos.data.length > 0,
-            pagina: 'modelos',
+            categoria: 'modelos',
           },
           {
             id: 'implantacao',
@@ -121,7 +118,11 @@ function GuiaPrimeirosPassos({ setPagina, empresaId }) {
           <button
             key={p.id}
             style={{ ...stylesGuia.passo, ...(p.feito ? stylesGuia.passoFeito : stylesGuia.passoPendente) }}
-            onClick={() => !p.feito && setPagina(p.pagina)}
+            onClick={() => !p.feito && (
+              p.categoria
+                ? window.dispatchEvent(new CustomEvent('zempofy:abrir-configuracoes', { detail: { categoria: p.categoria } }))
+                : setPagina(p.pagina)
+            )}
             disabled={p.feito}
           >
             <div style={{ ...stylesGuia.check, ...(p.feito ? stylesGuia.checkFeito : {}) }}>
@@ -210,368 +211,6 @@ const stylesGuia = {
   passoLabel: { fontSize: '0.82rem', fontWeight: '600', margin: 0, letterSpacing: '-0.01em' },
   passoDesc: { fontSize: '0.72rem', color: 'var(--texto-apagado)', margin: '2px 0 0' },
   seta: { fontSize: '0.85rem', color: 'var(--verde)', flexShrink: 0 },
-}
-
-function CheckItem({ ativo, label, desc, onClick, sub = false }) {
-  return (
-    <div onClick={onClick} style={{
-      display: 'flex', alignItems: 'center', gap: '12px',
-      padding: sub ? '8px 12px 8px 28px' : '10px 12px',
-      borderRadius: '8px', cursor: 'pointer',
-      background: ativo ? 'rgba(0,177,65,0.08)' : sub ? 'rgba(255,255,255,0.02)' : 'transparent',
-      border: ativo ? '1px solid rgba(0,177,65,0.2)' : '1px solid var(--borda)',
-      transition: 'all 0.15s',
-    }}>
-      <div style={{
-        width: '16px', height: '16px', borderRadius: '4px', flexShrink: 0,
-        border: ativo ? '2px solid var(--verde)' : '2px solid #3f3f46',
-        background: ativo ? 'var(--verde)' : 'transparent',
-        display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s',
-      }}>
-        {ativo && <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><polyline points="1.5 5 4 7.5 8.5 2.5"/></svg>}
-      </div>
-      <div style={{ flex: 1 }}>
-        <p style={{ margin: 0, fontSize: sub ? '0.82rem' : '0.875rem', fontWeight: '500', color: sub ? 'var(--texto-apagado)' : 'var(--texto)', fontFamily: 'Inter, sans-serif' }}>{label}</p>
-        <p style={{ margin: 0, fontSize: '0.72rem', color: 'var(--texto-apagado)' }}>{desc}</p>
-      </div>
-    </div>
-  )
-}
-
-const PERMISSOES_LABELS = [
-  { key: 'gerenciarEquipe', label: 'Gerenciar equipe', desc: 'Acesso à gestão de membros e setores', subpermissoes: [
-    { key: 'gerenciarMembros', label: 'Convidar e remover membros', desc: 'Adicionar e remover colaboradores' },
-    { key: 'gerenciarSetores', label: 'Gerenciar setores', desc: 'Criar e editar setores' },
-  ]},
-  { key: 'gerenciarOnboarding', label: 'Gerenciar onboarding', desc: 'Acesso aos onboardings e modelos', subpermissoes: [
-    { key: 'criarImplantacoes', label: 'Criar implantações', desc: 'Iniciar onboarding de novos clientes' },
-    { key: 'gerenciarModelos', label: 'Gerenciar modelos', desc: 'Criar e editar modelos de onboarding' },
-    { key: 'gerenciarBancoAtividades', label: 'Banco de atividades', desc: 'Gerenciar atividades do checklist' },
-  ]},
-  { key: 'gerenciarClientes', label: 'Gerenciar clientes', desc: 'Ver e editar a carteira de clientes' },
-  { key: 'verRelatorios', label: 'Ver relatórios', desc: 'Acessar métricas e relatórios da equipe' },
-  { key: 'publicarMural', label: 'Publicar no mural', desc: 'Postar avisos para a equipe' },
-  { key: 'criarTarefas', label: 'Criar tarefas para outros', desc: 'Atribuir tarefas a outros colaboradores' },
-]
-
-function PainelPermissoes({ permissoes, onChange }) {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '4px' }}>
-      {PERMISSOES_LABELS.map(p => (
-        <div key={p.key}>
-          <div
-            onClick={() => {
-              const novo = { ...permissoes, [p.key]: !permissoes[p.key] }
-              if (p.subpermissoes) {
-                if (!permissoes[p.key]) {
-                  // Ativando pai — ativa todas as subpermissões automaticamente
-                  p.subpermissoes.forEach(s => { novo[s.key] = true })
-                } else {
-                  // Desativando pai — desativa todas as subpermissões
-                  p.subpermissoes.forEach(s => { novo[s.key] = false })
-                }
-              }
-              onChange(novo)
-            }}
-            style={{
-              display: 'flex', alignItems: 'center', gap: '12px',
-              padding: '10px 12px', borderRadius: '8px', cursor: 'pointer',
-              background: permissoes[p.key] ? 'rgba(0,177,65,0.08)' : 'transparent',
-              border: permissoes[p.key] ? '1px solid rgba(0,177,65,0.2)' : '1px solid var(--borda)',
-              transition: 'all 0.15s',
-            }}
-          >
-            <div style={{
-              width: '16px', height: '16px', borderRadius: '4px', flexShrink: 0,
-              border: permissoes[p.key] ? '2px solid var(--verde)' : '2px solid #3f3f46',
-              background: permissoes[p.key] ? 'var(--verde)' : 'transparent',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s',
-            }}>
-              {permissoes[p.key] && <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><polyline points="1.5 5 4 7.5 8.5 2.5"/></svg>}
-            </div>
-            <div style={{ flex: 1 }}>
-              <p style={{ margin: 0, fontSize: '0.875rem', fontWeight: '500', color: 'var(--texto)', fontFamily: 'Inter, sans-serif' }}>{p.label}</p>
-              <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--texto-apagado)' }}>{p.desc}</p>
-            </div>
-          </div>
-
-          {/* Subpermissões — aparecem quando o pai está ativo */}
-          {p.subpermissoes && permissoes[p.key] && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '6px', paddingLeft: '8px', borderLeft: '2px solid rgba(0,177,65,0.2)' }}>
-              {p.subpermissoes.map(sub => (
-                <CheckItem
-                  key={sub.key}
-                  ativo={!!permissoes[sub.key]}
-                  label={sub.label}
-                  desc={sub.desc}
-                  sub
-                  onClick={e => { e.stopPropagation(); onChange({ ...permissoes, [sub.key]: !permissoes[sub.key] }) }}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      ))}
-    </div>
-  )
-}
-
-const PERMISSOES_VAZIAS = {
-  gerenciarEquipe: false, gerenciarMembros: false, gerenciarSetores: false,
-  gerenciarOnboarding: false,
-  criarImplantacoes: false, gerenciarModelos: false, gerenciarBancoAtividades: false,
-  gerenciarClientes: false, verRelatorios: false, publicarMural: false, criarTarefas: false,
-}
-
-function PaginaEquipe({ usuario, equipe, recarregar }) {
-  const [mostrarForm, setMostrarForm] = useState(false)
-  const [form, setForm] = useState({ nome: '', email: '', senha: '' })
-  const [setoresIds, setSetoresIds] = useState([])
-  const [permissoes, setPermissoes] = useState({ ...PERMISSOES_VAZIAS })
-  const [setores, setSetores] = useState([])
-  const [erro, setErro] = useState('')
-  const [carregando, setCarregando] = useState(false)
-  const [confirmandoId, setConfirmandoId] = useState(null)
-  const [editandoPermId, setEditandoPermId] = useState(null)
-  const [permEdicao, setPermEdicao] = useState({})
-  const [podeAtribuir, setPodeAtribuir] = useState(true)
-  const { mostrar } = useToast()
-
-  useEffect(() => {
-    api.get('/setores').then(r => setSetores(r.data)).catch(() => {})
-    if (usuario?.cargo === 'admin') {
-      api.get('/empresa').then(r => setPodeAtribuir(r.data.colaboradoresPodeAtribuirTitular ?? true)).catch(() => {})
-    }
-  }, [])
-
-  const toggleAtribuir = async (valor) => {
-    setPodeAtribuir(valor)
-    try {
-      await api.put('/empresa', { colaboradoresPodeAtribuirTitular: valor })
-      mostrar(valor ? 'Colaboradores podem te atribuir tarefas.' : 'Colaboradores não podem mais te atribuir tarefas.', 'sucesso')
-    } catch { mostrar('Erro ao salvar configuração.', 'erro') }
-  }
-
-  const membroParaRemover = equipe.find(f => f._id === confirmandoId)
-
-  const criar = async (e) => {
-    e.preventDefault()
-    if (setoresIds.length === 0) return setErro('Selecione pelo menos um setor.')
-    setErro(''); setCarregando(true)
-    try {
-      const res = await api.post('/usuarios', { ...form, permissoes, setores: setoresIds })
-      const uid = res.data?.id || res.data?._id
-      // Adicionar ao(s) setor(es) selecionado(s)
-      if (uid) {
-        await Promise.all(setoresIds.map(sid =>
-          api.patch(`/setores/${sid}/membros`, { usuarioId: uid }).catch(() => {})
-        ))
-      }
-      setForm({ nome: '', email: '', senha: '' })
-      setSetoresIds([])
-      setPermissoes({ ...PERMISSOES_VAZIAS })
-      setMostrarForm(false)
-      recarregar()
-      mostrar('Colaborador adicionado com sucesso!')
-    } catch (err) {
-      setErro(err.response?.data?.erro || 'Erro ao criar colaborador.')
-    } finally { setCarregando(false) }
-  }
-
-  const excluir = async (id) => {
-    await api.delete(`/usuarios/${id}`)
-    recarregar(); setConfirmandoId(null)
-    mostrar('Membro removido da equipe.', 'aviso')
-  }
-
-  const salvarPermissoes = async (id) => {
-    try {
-      await api.put(`/usuarios/${id}`, { permissoes: permEdicao })
-      recarregar(); setEditandoPermId(null)
-      mostrar('Permissões atualizadas!')
-    } catch { mostrar('Erro ao salvar permissões.', 'erro') }
-  }
-
-  return (
-    <div>
-      {confirmandoId && (
-        <ModalConfirmacao
-          titulo="Remover membro"
-          mensagem={`Tem certeza que deseja remover ${membroParaRemover?.nome} da equipe?`}
-          textoBotao="Remover" perigo
-          onConfirmar={() => excluir(confirmandoId)}
-          onCancelar={() => setConfirmandoId(null)}
-        />
-      )}
-
-      <div style={styles.cabecalho}>
-        <div>
-          <h1 style={styles.titulo}>Equipe</h1>
-          <p style={styles.subtitulo}>{equipe.length} pessoa(s) cadastrada(s)</p>
-        </div>
-        <button style={styles.btnPrimario} onClick={() => { setMostrarForm(!mostrarForm); setErro('') }}>
-          {mostrarForm ? '✕ Cancelar' : '+ Novo membro'}
-        </button>
-      </div>
-
-      {/* Toggle — colaboradores podem atribuir tarefas ao titular */}
-      {usuario?.cargo === 'admin' && (
-        <div style={{ background: 'var(--card)', border: '1px solid var(--borda)', borderRadius: '12px', padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-          <div>
-            <p style={{ fontSize: '0.875rem', fontWeight: '500', color: 'var(--texto)', margin: 0, fontFamily: 'Inter, sans-serif' }}>Colaboradores podem me atribuir tarefas</p>
-            <p style={{ fontSize: '0.75rem', color: 'var(--texto-apagado)', margin: '3px 0 0', fontFamily: 'Inter, sans-serif' }}>Permite que a equipe crie tarefas com você como responsável</p>
-          </div>
-          <div
-            onClick={() => toggleAtribuir(!podeAtribuir)}
-            style={{
-              width: '42px', height: '24px', borderRadius: '99px', cursor: 'pointer',
-              background: podeAtribuir ? 'var(--verde)' : 'rgba(255,255,255,0.1)',
-              position: 'relative', transition: 'background 0.2s', flexShrink: 0,
-            }}
-          >
-            <div style={{
-              position: 'absolute', top: '3px',
-              left: podeAtribuir ? '21px' : '3px',
-              width: '18px', height: '18px', borderRadius: '50%',
-              background: '#fff', transition: 'left 0.2s',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
-            }} />
-          </div>
-        </div>
-      )}
-
-      {mostrarForm && (
-        <div style={styles.formulario}>
-          <h3 style={{ color: 'var(--texto)', marginBottom: '16px', fontFamily: 'Inter, sans-serif' }}>Novo colaborador</h3>
-          {erro && <div style={styles.erro}>{erro}</div>}
-          <form onSubmit={criar} style={styles.formGrid}>
-            <div style={styles.campo}>
-              <label style={styles.label}>Nome</label>
-              <input style={styles.input} placeholder="Nome completo" value={form.nome} onChange={e => setForm({ ...form, nome: e.target.value })} required />
-            </div>
-            <div style={styles.campo}>
-              <label style={styles.label}>E-mail</label>
-              <input style={styles.input} type="email" placeholder="email@empresa.com" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} required />
-            </div>
-            <div style={styles.campo}>
-              <label style={styles.label}>Senha temporária</label>
-              <input style={styles.input} type="password" placeholder="Mínimo 6 caracteres" value={form.senha} onChange={e => setForm({ ...form, senha: e.target.value })} required />
-            </div>
-            <div style={{ ...styles.campo, gridColumn: '1 / -1' }}>
-              <label style={styles.label}>Setores <span style={{ color: '#f87171', marginLeft: '2px' }}>*</span></label>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                {setores.map(s => {
-                  const ativo = setoresIds.includes(s._id)
-                  return (
-                    <button key={s._id} type="button" onClick={() => {
-                      setSetoresIds(prev => ativo ? prev.filter(id => id !== s._id) : [...prev, s._id])
-                    }} style={{
-                      display: 'flex', alignItems: 'center', gap: '6px',
-                      padding: '6px 14px', borderRadius: '99px', cursor: 'pointer',
-                      fontSize: '0.8rem', fontFamily: 'Inter, sans-serif', fontWeight: '500',
-                      border: ativo ? `2px solid ${s.cor}` : '1px solid var(--borda)',
-                      background: ativo ? `${s.cor}22` : 'transparent',
-                      color: ativo ? s.cor : 'var(--texto-apagado)',
-                      transition: 'all 0.15s'
-                    }}>
-                      <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: s.cor }} />
-                      {s.nome}
-                    </button>
-                  )
-                })}
-              </div>
-              {setoresIds.length === 0 && <p style={{ fontSize: '0.75rem', color: '#f87171', margin: '4px 0 0' }}>Selecione pelo menos um setor</p>}
-            </div>
-            <button type="submit" style={styles.btnPrimario} disabled={carregando}>
-              {carregando ? 'Criando...' : 'Criar colaborador'}
-            </button>
-          </form>
-          <div style={{ marginTop: '20px' }}>
-            <label style={styles.label}>Permissões de acesso</label>
-            <PainelPermissoes permissoes={permissoes} onChange={setPermissoes} />
-          </div>
-        </div>
-      )}
-
-      <div style={styles.tabelaWrapper}>
-        {equipe.length === 0 ? (
-          <p style={{ color: 'var(--texto-apagado)', padding: '20px' }}>Nenhum membro cadastrado ainda.</p>
-        ) : (
-          equipe.map((f, idx) => (
-            <div key={f._id}>
-              <div style={styles.linhaTabela}>
-                <Avatar nome={f.nome} foto={f.avatar} size={40} fontSize={16} />
-                <div style={{ flex: 1 }}>
-                  <p style={styles.nomeFunc}>{f.nome}</p>
-                  <p style={styles.emailFunc}>{f.email}</p>
-                  {f.setores?.length > 0 && (
-                    <div style={{ display:'flex', gap:'4px', flexWrap:'wrap', marginTop:'4px' }}>
-                      {f.setores.map(setor => (
-                        <span key={setor._id||setor} style={{ fontSize:'0.6rem', fontWeight:'600', padding:'1px 7px', borderRadius:'4px', background:'var(--input)', color:'var(--texto-apagado)', border:'1px solid var(--borda)', display:'flex', alignItems:'center', gap:'4px' }}>
-                          <div style={{ width:'5px', height:'5px', borderRadius:'50%', background:setor.cor||'var(--verde)', flexShrink:0 }}/>
-                          {setor.nome||setor}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                <span style={{ ...styles.badgeCargo, color: 'var(--texto-apagado)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <Icone.User size={12} /> {f.cargo === 'admin' ? 'Titular' : 'Colaborador'}
-                </span>
-                {/* Menu "..." */}
-                <div style={{ position: 'relative' }}>
-                  <button
-                    style={styles.btnMenu}
-                    onClick={() => setEditandoPermId(editandoPermId === f._id ? null : f._id)}
-                  >
-                    ···
-                  </button>
-                  {editandoPermId === f._id && (
-                    <div style={{ ...styles.dropdownMenu, ...(idx >= equipe.length - 2 ? { bottom: '100%', top: 'auto', marginBottom: '4px', marginTop: 0 } : {}) }}>
-                      <button
-                        style={styles.dropdownItem}
-                        onClick={() => {
-                          setPermEdicao(f.permissoes || { ...PERMISSOES_VAZIAS })
-                          setEditandoPermId('perm_' + f._id)
-                        }}
-                      >
-                        Permissões
-                      </button>
-                      {f._id !== usuario?.id && (
-                        <button
-                          style={{ ...styles.dropdownItem, color: '#f87171' }}
-                          onClick={() => { setConfirmandoId(f._id); setEditandoPermId(null) }}
-                        >
-                          Remover
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-              {/* Painel de permissões expandido abaixo da linha */}
-              {editandoPermId === 'perm_' + f._id && (
-                <div style={{ padding: '16px 20px', borderTop: '1px solid var(--borda)', background: 'rgba(0,0,0,0.15)' }}>
-                  <p style={{ fontSize: '0.72rem', fontWeight: '700', color: 'var(--texto-apagado)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '12px' }}>
-                    Permissões de {f.nome.split(' ')[0]}
-                  </p>
-                  <PainelPermissoes permissoes={permEdicao} onChange={setPermEdicao} />
-                  <div style={{ display: 'flex', gap: '10px', marginTop: '14px' }}>
-                    <button style={styles.btnPrimario} onClick={() => salvarPermissoes(f._id)}>
-                      Salvar
-                    </button>
-                    <button style={styles.btnNeutro} onClick={() => setEditandoPermId(null)}>
-                      Cancelar
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          ))
-        )}
-      </div>
-    </div>
-  )
 }
 
 const ETIQUETAS_OPCOES = [
@@ -1380,24 +1019,6 @@ const stylesTarefas = {
 
 // ============ HISTÓRICO DE CONQUISTAS ============
 
-
-function PaginaEmDesenvolvimento({ titulo, descricao }) {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', gap: '16px', textAlign: 'center' }}>
-      <div style={{ width: '64px', height: '64px', borderRadius: '16px', background: 'var(--card)', border: '1px solid var(--borda)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px' }}>
-        🚧
-      </div>
-      <div>
-        <h2 style={{ fontSize: '1.2rem', fontWeight: '700', color: 'var(--texto)', margin: '0 0 8px', fontFamily: 'Inter, sans-serif', letterSpacing: '-0.02em' }}>{titulo}</h2>
-        <p style={{ fontSize: '0.875rem', color: 'var(--texto-apagado)', maxWidth: '360px', lineHeight: '1.6', margin: 0, fontFamily: 'Inter, sans-serif' }}>{descricao}</p>
-      </div>
-      <span style={{ fontSize: '0.72rem', fontWeight: '600', color: 'var(--verde)', background: 'rgba(0,177,65,0.1)', border: '1px solid rgba(0,177,65,0.2)', borderRadius: '99px', padding: '4px 12px' }}>
-        Em breve
-      </span>
-    </div>
-  )
-}
-
 function PaginaHistorico() {
   const [logs, setLogs] = useState([])
   const [carregando, setCarregando] = useState(true)
@@ -1595,6 +1216,14 @@ export default function DashboardAdmin() {
 
   useEffect(() => { if (usuario?._id || usuario?.id) carregarDados() }, [usuario?._id, usuario?.id])
 
+  // A equipe agora é editada dentro do modal de Configurações (fora da árvore desta página) —
+  // esse evento avisa quando algo muda lá pra recarregar a lista de funcionários aqui.
+  useEffect(() => {
+    const recarregar = () => carregarDados()
+    window.addEventListener('zempofy:equipe-atualizada', recarregar)
+    return () => window.removeEventListener('zempofy:equipe-atualizada', recarregar)
+  }, [])
+
   // Sidebar dinâmico — cada item só aparece se tiver permissão
   const menuItens = [
     { id: 'inicio', label: 'Início', icone: <Icone.Home size={16} /> },
@@ -1639,9 +1268,7 @@ export default function DashboardAdmin() {
 
   const renderPagina = () => {
     if (pagina === 'crm') return <CRM onIniciarOnboarding={(lead)=>{ setNomeNovoOnboarding(lead.nomeEmpresa || lead.nome); setPagina('implantacao') }} />
-    if (pagina === 'alertas-onboarding') return <ConfigAlertas />
     if (pagina === 'inicio') return <PaginaInicio usuario={usuario} setPagina={setPagina} isTitular={true} temPermissao={temPermissao} />
-    if (pagina === 'equipe') return <PaginaEquipe usuario={usuario} equipe={funcionarios} recarregar={carregarDados} />
     if (pagina === 'tarefas') return <PaginaTarefas tarefas={tarefas} funcionarios={funcionarios} recarregar={carregarDados} />
     if (pagina === 'historico') return <PaginaHistorico />
     if (pagina === 'agenda') return <Agenda cargo="admin" usuarios={funcionarios} usuarioAtualId={usuario?.id} />
@@ -1653,13 +1280,6 @@ export default function DashboardAdmin() {
     if (pagina === 'mural') return <Mural />
     if (pagina === 'implantacao') return <Implantacao setPagina={setPagina} setClienteDetalheId={setClienteDetalheId} nomeNovoOnboarding={nomeNovoOnboarding} onNomeNovoOnboardingUsado={()=>setNomeNovoOnboarding('')}
       clienteParaOnboarding={clienteParaOnboarding} onClienteParaOnboardingUsado={()=>setClienteParaOnboarding(null)} onImplantacaoCriada={carregarDados} />
-    if (pagina === 'modelos') return <ModelosOnboarding />
-    if (pagina === 'checklist') return <BancoAtividades />
-    if (pagina === 'setores') return <Setores funcionarios={funcionarios} onSalvo={async () => {
-      const r = await api.get('/usuarios')
-      setFuncionarios(r.data)
-    }} />
-    if (pagina === 'plano') return <PaginaEmDesenvolvimento titulo="Meu plano" descricao="O gerenciamento de planos e assinaturas estará disponível em breve. Por enquanto, entre em contato para mais informações." />
   }
 
   return (

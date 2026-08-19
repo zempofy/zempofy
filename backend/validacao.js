@@ -24,10 +24,10 @@ const clienteCreateSchema = z.object({
 // mas nenhum campo é obrigatório porque o payload pode mandar só o que mudou.
 const clienteUpdateSchema = clienteCreateSchema.partial();
 
+// Colaborador é convidado por link — sem campo de senha no cadastro (define depois, pelo convite)
 const usuarioSchema = z.object({
   nome: z.string().trim().min(1, 'Nome é obrigatório.'),
   email: z.string().trim().min(1, 'E-mail é obrigatório.').email('E-mail inválido.'),
-  senha: z.string().min(6, 'Senha deve ter ao menos 6 caracteres.'),
 }).passthrough();
 
 // Middleware: valida req.body contra um schema Zod, retorna 400 com a primeira mensagem de erro

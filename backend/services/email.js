@@ -137,28 +137,29 @@ const enviarVerificacaoEmail = async ({ destinatario, nome, token }) => {
   }
 };
 
-// 5. Boas-vindas ao novo colaborador
-const enviarBoasVindas = async ({ destinatario, nome, nomeEmpresa, nomeConvidadoPor, senha }) => {
+// 5. Convite ao novo colaborador — sem senha em texto puro, link pra pessoa definir a própria senha
+const enviarConvite = async ({ destinatario, nome, nomeEmpresa, nomeConvidadoPor, token }) => {
+  const link = `https://app.zempofy.com.br/redefinir-senha?token=${token}`;
   const corpo = `
     <p>Olá, <strong>${nome}</strong>! Seja muito bem-vindo(a) ao <strong>${nomeEmpresa}</strong> no Zempofy.</p>
-    <p>${nomeConvidadoPor} adicionou você ao sistema. Aqui estão seus dados de acesso:</p>
+    <p>${nomeConvidadoPor} adicionou você ao sistema. Pra começar, defina sua senha de acesso clicando no botão abaixo.</p>
     <div class="card">
-      <p>E-mail: <span>${destinatario}</span></p>
-      <p style="margin-top:8px">Senha provisória: <span>${senha}</span></p>
+      <p>E-mail de acesso</p>
+      <span>${destinatario}</span>
     </div>
-    <p>Recomendamos que você altere sua senha após o primeiro acesso. Acesse o sistema pelo link abaixo:</p>
-    <a class="btn" href="https://app.zempofy.com.br">Acessar o Zempofy</a>
+    <p>Este link é válido por <strong>1 hora</strong>.</p>
+    <a class="btn" href="${link}">Definir minha senha</a>
     <p style="margin-top:16px;font-size:0.8rem;color:#71717a">Se tiver dúvidas, entre em contato com seu titular ou acesse suporte@zempofy.com.br</p>
   `;
   try {
     await resend.emails.send({
       from: FROM,
       to: destinatario,
-      subject: `Bem-vindo(a) ao Zempofy — ${nomeEmpresa}`,
+      subject: `Você foi convidado(a) para o Zempofy — ${nomeEmpresa}`,
       html: template(`Bem-vindo(a) ao Zempofy!`, corpo),
     });
   } catch (err) {
-    console.error('Erro ao enviar e-mail boas-vindas:', err);
+    console.error('Erro ao enviar e-mail de convite:', err);
   }
 };
 
@@ -185,14 +186,20 @@ const enviarAlertaOnboardingParado = async ({ destinatario, nomeCliente, diasPar
   }
 };
 
-const enviarRedefinicaoSenha = async ({ destinatario, nome, token }) => {
+// solicitadoPor: quando o titular reseta a senha de outra pessoa (em vez da própria pessoa
+// pedindo via "esqueci minha senha"), deixa isso explícito no texto do e-mail.
+const enviarRedefinicaoSenha = async ({ destinatario, nome, token, solicitadoPor }) => {
   const link = `https://app.zempofy.com.br/redefinir-senha?token=${token}`;
   const corpo = `
     <p>Olá, <strong>${nome}</strong>!</p>
-    <p>Recebemos uma solicitação para redefinir a senha da sua conta no Zempofy.</p>
+    <p>${solicitadoPor
+      ? `${solicitadoPor} solicitou a redefinição da senha da sua conta no Zempofy.`
+      : 'Recebemos uma solicitação para redefinir a senha da sua conta no Zempofy.'}</p>
     <p>Clique no botão abaixo para criar uma nova senha. Este link é válido por <strong>1 hora</strong>.</p>
     <a class="btn" href="${link}">Redefinir minha senha</a>
-    <p style="margin-top:16px;font-size:0.8rem;color:#71717a">Se você não solicitou a redefinição, ignore este e-mail. Sua senha permanece a mesma.</p>
+    <p style="margin-top:16px;font-size:0.8rem;color:#71717a">${solicitadoPor
+      ? 'Se você não esperava isso, entre em contato com seu titular.'
+      : 'Se você não solicitou a redefinição, ignore este e-mail. Sua senha permanece a mesma.'}</p>
   `;
   try {
     await resend.emails.send({
@@ -271,4 +278,4 @@ const enviarLembreteTarefa = async ({ destinatario, nome, titulo, prazo, criadoP
   } catch (err) { console.error('Erro lembrete tarefa:', err); }
 };
 
-module.exports = { enviarOnboardingCriado, enviarEtapaDesbloqueada, enviarTarefaAtribuida, enviarVerificacaoEmail, enviarBoasVindas, enviarAlertaOnboardingParado, enviarRedefinicaoSenha, enviarResumo, enviarLembreteTarefa };
+module.exports = { enviarOnboardingCriado, enviarEtapaDesbloqueada, enviarTarefaAtribuida, enviarVerificacaoEmail, enviarConvite, enviarAlertaOnboardingParado, enviarRedefinicaoSenha, enviarResumo, enviarLembreteTarefa };

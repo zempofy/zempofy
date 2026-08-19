@@ -29,38 +29,38 @@ export default function ConfigAlertas() {
 
   if (carregando) return <p style={{ color:'var(--texto-apagado)', fontFamily:'Inter,sans-serif' }}>Carregando...</p>
 
-  const cardStyle = { background:'var(--card)', border:'1px solid var(--borda)', borderRadius:'14px', padding:'16px 18px' }
-  const avisoStyle = { background:'rgba(245,158,11,0.06)', border:'1px solid rgba(245,158,11,0.15)', borderRadius:'8px', padding:'10px 12px', marginBottom:0, display:'flex', gap:'8px', alignItems:'flex-start' }
+  const cardStyle = { background:'var(--card)', border:'1px solid var(--borda)', borderRadius:'12px', padding:'13px 14px' }
+  const avisoStyle = { background:'rgba(245,158,11,0.06)', border:'1px solid rgba(245,158,11,0.15)', borderRadius:'7px', padding:'8px 10px', marginBottom:0, display:'flex', gap:'7px', alignItems:'flex-start' }
 
   return (
     <div>
-      <h2 style={{ fontSize:'1.2rem', fontWeight:'700', color:'var(--texto)', margin:'0 0 6px', letterSpacing:'-0.02em', fontFamily:'Inter,sans-serif' }}>Alertas e notificações</h2>
-      <p style={{ fontSize:'0.82rem', color:'var(--texto-apagado)', margin:'0 0 18px', fontFamily:'Inter,sans-serif' }}>Configure os alertas automáticos enviados por e-mail.</p>
+      <h2 style={{ fontSize:'0.95rem', fontWeight:'700', color:'var(--texto)', margin:'0 0 5px', letterSpacing:'-0.02em', fontFamily:'Inter,sans-serif' }}>Alertas e notificações</h2>
+      <p style={{ fontSize:'0.78rem', color:'var(--texto-apagado)', margin:'0 0 14px', fontFamily:'Inter,sans-serif' }}>Configure os alertas automáticos enviados por e-mail.</p>
 
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(320px, 1fr))', gap:'16px', maxWidth:'920px', marginBottom:'20px' }}>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(300px, 1fr))', gap:'12px', marginBottom:'16px' }}>
         {/* Alerta onboarding parado */}
         <div style={cardStyle}>
-          <div style={{ display:'flex', alignItems:'center', gap:'10px', marginBottom:'10px' }}>
-            <Icone.AlertTriangle size={16} style={{ color:'#f59e0b' }}/>
-            <p style={{ fontSize:'0.9rem', fontWeight:'600', color:'var(--texto)', margin:0, fontFamily:'Inter,sans-serif' }}>Onboarding parado</p>
+          <div style={{ display:'flex', alignItems:'center', gap:'8px', marginBottom:'8px' }}>
+            <Icone.AlertTriangle size={14} style={{ color:'#f59e0b' }}/>
+            <p style={{ fontSize:'0.85rem', fontWeight:'600', color:'var(--texto)', margin:0, fontFamily:'Inter,sans-serif' }}>Onboarding parado</p>
           </div>
-          <p style={{ fontSize:'0.82rem', color:'var(--texto-apagado)', margin:'0 0 14px', fontFamily:'Inter,sans-serif', lineHeight:'1.5' }}>
+          <p style={{ fontSize:'0.78rem', color:'var(--texto-apagado)', margin:'0 0 11px', fontFamily:'Inter,sans-serif', lineHeight:'1.45' }}>
             Envia alerta quando um onboarding ficar sem movimentação por mais de X dias.
           </p>
-          <div style={{ display:'flex', alignItems:'center', gap:'12px', marginBottom:'14px' }}>
-            <label style={{ fontSize:'0.78rem', fontWeight:'600', color:'var(--texto-apagado)', textTransform:'uppercase', letterSpacing:'0.8px', fontFamily:'Inter,sans-serif', whiteSpace:'nowrap' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:'10px', marginBottom:'11px' }}>
+            <label style={{ fontSize:'0.74rem', fontWeight:'600', color:'var(--texto-apagado)', textTransform:'uppercase', letterSpacing:'0.8px', fontFamily:'Inter,sans-serif', whiteSpace:'nowrap' }}>
               Dias sem movimentação
             </label>
             <select value={dias} onChange={e=>setDias(Number(e.target.value))}
-              style={{ background:'var(--input)', border:'1px solid var(--borda)', borderRadius:'8px', padding:'7px 12px', color:'var(--texto)', fontSize:'0.85rem', fontFamily:'Inter,sans-serif', colorScheme:'dark' }}>
+              style={{ background:'var(--input)', border:'1px solid var(--borda)', borderRadius:'7px', padding:'5px 10px', color:'var(--texto)', fontSize:'0.8rem', fontFamily:'Inter,sans-serif', colorScheme:'dark' }}>
               {[3,5,7,10,14,21,30].map(d => (
                 <option key={d} value={d}>{d} dias{d===7?' (padrão)':''}</option>
               ))}
             </select>
           </div>
           <div style={avisoStyle}>
-            <Icone.AlertTriangle size={13} style={{ color:'#f59e0b', flexShrink:0, marginTop:'2px' }}/>
-            <p style={{ fontSize:'0.75rem', color:'#f59e0b', margin:0, fontFamily:'Inter,sans-serif', lineHeight:'1.5' }}>
+            <Icone.AlertTriangle size={12} style={{ color:'#f59e0b', flexShrink:0, marginTop:'2px' }}/>
+            <p style={{ fontSize:'0.72rem', color:'#f59e0b', margin:0, fontFamily:'Inter,sans-serif', lineHeight:'1.45' }}>
               Enviado diariamente às 8h para o e-mail do titular.
             </p>
           </div>
@@ -68,19 +68,19 @@ export default function ConfigAlertas() {
 
         {/* Resumo periódico */}
         <div style={cardStyle}>
-          <div style={{ display:'flex', alignItems:'center', gap:'10px', marginBottom:'10px' }}>
-            <Icone.FileText size={16} style={{ color:'#818cf8' }}/>
-            <p style={{ fontSize:'0.9rem', fontWeight:'600', color:'var(--texto)', margin:0, fontFamily:'Inter,sans-serif' }}>Resumo periódico</p>
+          <div style={{ display:'flex', alignItems:'center', gap:'8px', marginBottom:'8px' }}>
+            <Icone.FileText size={14} style={{ color:'#818cf8' }}/>
+            <p style={{ fontSize:'0.85rem', fontWeight:'600', color:'var(--texto)', margin:0, fontFamily:'Inter,sans-serif' }}>Resumo periódico</p>
           </div>
-          <p style={{ fontSize:'0.82rem', color:'var(--texto-apagado)', margin:'0 0 14px', fontFamily:'Inter,sans-serif', lineHeight:'1.5' }}>
+          <p style={{ fontSize:'0.78rem', color:'var(--texto-apagado)', margin:'0 0 11px', fontFamily:'Inter,sans-serif', lineHeight:'1.45' }}>
             E-mail com um resumo do sistema: onboardings, tarefas e clientes.
           </p>
-          <div style={{ display:'flex', alignItems:'center', gap:'12px', marginBottom:'14px' }}>
-            <label style={{ fontSize:'0.78rem', fontWeight:'600', color:'var(--texto-apagado)', textTransform:'uppercase', letterSpacing:'0.8px', fontFamily:'Inter,sans-serif', whiteSpace:'nowrap' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:'10px', marginBottom:'11px' }}>
+            <label style={{ fontSize:'0.74rem', fontWeight:'600', color:'var(--texto-apagado)', textTransform:'uppercase', letterSpacing:'0.8px', fontFamily:'Inter,sans-serif', whiteSpace:'nowrap' }}>
               Frequência
             </label>
             <select value={frequencia} onChange={e=>setFrequencia(e.target.value)}
-              style={{ background:'var(--input)', border:'1px solid var(--borda)', borderRadius:'8px', padding:'7px 12px', color:'var(--texto)', fontSize:'0.85rem', fontFamily:'Inter,sans-serif', colorScheme:'dark' }}>
+              style={{ background:'var(--input)', border:'1px solid var(--borda)', borderRadius:'7px', padding:'5px 10px', color:'var(--texto)', fontSize:'0.8rem', fontFamily:'Inter,sans-serif', colorScheme:'dark' }}>
               <option value="semanal">Semanal (toda segunda-feira)</option>
               <option value="quinzenal">Quinzenal (primeira segunda do mês)</option>
               <option value="mensal">Mensal (todo dia 1º)</option>
@@ -88,15 +88,15 @@ export default function ConfigAlertas() {
             </select>
           </div>
           <div style={avisoStyle}>
-            <Icone.AlertTriangle size={13} style={{ color:'#f59e0b', flexShrink:0, marginTop:'2px' }}/>
-            <p style={{ fontSize:'0.75rem', color:'#f59e0b', margin:0, fontFamily:'Inter,sans-serif', lineHeight:'1.5' }}>
+            <Icone.AlertTriangle size={12} style={{ color:'#f59e0b', flexShrink:0, marginTop:'2px' }}/>
+            <p style={{ fontSize:'0.72rem', color:'#f59e0b', margin:0, fontFamily:'Inter,sans-serif', lineHeight:'1.45' }}>
               Enviado às 8h do dia configurado para o e-mail do titular.
             </p>
           </div>
         </div>
       </div>
 
-      <button onClick={salvar} disabled={salvando} style={{ background:'var(--gradiente-verde)', color:'#fff', border:'none', borderRadius:'8px', padding:'10px 24px', fontFamily:'Inter,sans-serif', fontWeight:'600', fontSize:'0.875rem', cursor:'pointer' }}>
+      <button onClick={salvar} disabled={salvando} style={{ background:'var(--gradiente-verde)', color:'#fff', border:'none', borderRadius:'8px', padding:'8px 20px', fontFamily:'Inter,sans-serif', fontWeight:'600', fontSize:'0.82rem', cursor:'pointer' }}>
         {salvando ? 'Salvando...' : 'Salvar configurações'}
       </button>
     </div>
