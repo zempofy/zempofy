@@ -14,10 +14,13 @@ const statusDemanda = (setorNome, item, competencia) => {
   const campos = blocos.flatMap(b => b.campos).filter(c => c.tipo !== 'calculado')
   if (campos.length === 0) {
     // Setor por regime (Fiscal): 0 campos = regime ainda não definido = pendente de verdade.
-    // Setor por situação (DP/Contábil): se a situação já foi respondida mas esse mês
-    // específico não tem nenhum módulo ativo (ex: Contábil semestral fora de jun/dez), não é
-    // pendência — não existe campo nenhum pra preencher nesse mês.
-    return (config?.modulos && item.situacao) ? 'concluido' : 'pendente'
+    // Setor por situação (DP/Contábil): se a situação já foi respondida mas esse mês específico
+    // não tem nenhum módulo ativo (ex: Contábil trimestral fora de mar/jun/set/dez, ou sem banco
+    // cadastrado), mesmo sem campo pra preencher ainda existe algo a confirmar — só conta como
+    // concluído se o lançamento dessa competência já foi salvo de verdade (alguém clicou em
+    // "Salvar competência"), não automaticamente.
+    if (config?.modulos && item.situacao) return item.existe ? 'concluido' : 'pendente'
+    return 'pendente'
   }
   const completo = campos.every(c => {
     const v = item.dados?.[c.id]

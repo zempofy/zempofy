@@ -180,6 +180,15 @@ router.delete('/:id', autenticar, temPermissao('gerenciarSetores'), async (req, 
       { new: true }
     );
     if (!setor) return res.status(404).json({ erro: 'Setor não encontrado.' });
+
+    // Setor inativo não deve mais contar como participação atual de ninguém — só limpa
+    // o vínculo em Usuario.setores, sem tocar em registro histórico (Demanda, Implantação).
+    const Usuario = require('../models/Usuario');
+    await Usuario.updateMany(
+      { empresa: req.usuario.empresa._id, setores: setor._id },
+      { $pull: { setores: setor._id } }
+    );
+
     res.json({ mensagem: 'Setor removido.' });
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao remover setor.' });

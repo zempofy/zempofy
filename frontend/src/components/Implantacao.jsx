@@ -574,9 +574,17 @@ export default function Implantacao({ setPagina, setClienteDetalheId, nomeNovoOn
       ) : filtradas.length === 0 ? (
         <div style={s.vazioBox}>
           <p style={{ color: 'var(--texto-apagado)', marginBottom: '12px' }}>
-            {busca ? 'Nenhuma empresa encontrada.' : 'Nenhuma implantação em andamento.'}
+            {busca
+              ? 'Nenhuma empresa encontrada.'
+              : implantacoes.length === 0
+                ? 'Nenhuma implantação em andamento.'
+                : 'Nenhuma implantação em andamento no momento.'}
           </p>
-          {!busca && <button style={s.btnNovo} onClick={() => setModalAberto(true)}>Adicionar primeira empresa</button>}
+          {!busca && (
+            <button style={s.btnNovo} onClick={() => setModalAberto(true)}>
+              {implantacoes.length === 0 ? 'Adicionar primeira empresa' : '+ Nova implantação'}
+            </button>
+          )}
         </div>
       ) : (
         <div style={s.grid}>

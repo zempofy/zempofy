@@ -81,8 +81,8 @@ const SUBFILTROS_POR_SETOR = {
     campo: (cliente) => cliente.configSetores?.['departamento pessoal']?.situacao || null,
     opcoesFixas: [
       { value:'pro_labore', label:'Só pró-labore' },
-      { value:'clt', label:'Somente CLT' },
-      { value:'ambos', label:'CLT + Pró-labore' },
+      { value:'clt', label:'Somente Folha' },
+      { value:'ambos', label:'Folha + Pró-labore' },
       { value:null, label:'Não configurado' },
     ],
   },
@@ -159,8 +159,8 @@ const CONFIG_DEMANDA = {
       pergunta: 'Em qual situação essa empresa se encaixa?',
       opcoes: [
         { valor:'pro_labore', label:'Só pró-labore' },
-        { valor:'clt', label:'Somente CLT' },
-        { valor:'ambos', label:'CLT + Pró-labore' },
+        { valor:'clt', label:'Somente Folha' },
+        { valor:'ambos', label:'Folha + Pró-labore' },
       ]
     },
     modulos: {
@@ -225,7 +225,7 @@ const CONFIG_DEMANDA = {
 // formatos de config: porRegime (Fiscal, um bloco só) e modulos com
 // ativoQuando/camposSazonais (DP e futuros setores, um bloco por módulo ativo).
 const ICONE_BLOCO = { fiscal: 'BarChart', clt: 'UsersThree', proLabore: 'CreditCard', contabilFeito: 'CheckCircle' }
-const TITULO_MODULO = { clt: 'CLT', proLabore: 'Pró-labore', contabilFeito: 'Contábil' }
+const TITULO_MODULO = { clt: 'Folha', proLabore: 'Pró-labore', contabilFeito: 'Contábil' }
 
 const blocosFixosDoSetor = (config, { regime, situacao, competencia }) => {
   if (!config) return []
@@ -1163,22 +1163,34 @@ function CampoValor({ tipo, valor, onChange, disabled }) {
   return <input style={s.inp} value={valor||''} onChange={e=>onChange(e.target.value)} />
 }
 
+// Um banco aparece numa competência se foi adicionado antes ou durante ela e, se já foi
+// desativado, a desativação aconteceu depois dela (não antes/durante). Banco legado sem
+// adicionadoNaCompetencia é tratado como "sempre esteve lá" (sem limite inferior); inativo sem
+// desativadoNaCompetencia (desativado antes dessa feature existir) fica oculto em qualquer
+// competência, igual ao comportamento anterior (filtro fixo por ativo).
+const bancoVigenteEm = (banco, competencia) => {
+  if (banco.adicionadoNaCompetencia && competencia < banco.adicionadoNaCompetencia) return false
+  if (banco.ativo) return true
+  if (!banco.desativadoNaCompetencia) return false
+  return competencia < banco.desativadoNaCompetencia
+}
+
 // ── Bloco fixo "Extratos Bancários" (Contábil) — sempre visível, bancos persistem mês a mês ──
-function BlocoExtratosBancarios({ clienteId, setor, bancos=[], valoresExtratos, onChangeExtrato, podeEditar, onBancosAtualizados }) {
+function BlocoExtratosBancarios({ clienteId, setor, bancos=[], competencia, valoresExtratos, onChangeExtrato, podeEditar, onBancosAtualizados }) {
   const { mostrar } = useToast()
   const [adicionando, setAdicionando] = useState(false)
   const [bancoSelecionado, setBancoSelecionado] = useState('')
   const [nomeOutro, setNomeOutro] = useState('')
   const [salvando, setSalvando] = useState(false)
 
-  const bancosAtivos = bancos.filter(b => b.ativo)
+  const bancosAtivos = bancos.filter(b => bancoVigenteEm(b, competencia))
 
   const adicionar = async () => {
     const nome = bancoSelecionado === 'outro' ? nomeOutro.trim() : BANCOS_SUGERIDOS.find(b=>b.value===bancoSelecionado)?.label
     if (!nome) return
     setSalvando(true)
     try {
-      await api.post(`/clientes/${clienteId}/bancos/${setor._id}`, { nome })
+      await api.post(`/clientes/${clienteId}/bancos/${setor._id}`, { nome, competencia })
       mostrar('Banco adicionado!', 'sucesso')
       setBancoSelecionado(''); setNomeOutro(''); setAdicionando(false)
       onBancosAtualizados && onBancosAtualizados()
@@ -1188,7 +1200,7 @@ function BlocoExtratosBancarios({ clienteId, setor, bancos=[], valoresExtratos, 
 
   const desativar = async (bancoId) => {
     try {
-      await api.patch(`/clientes/${clienteId}/bancos/${setor._id}/${bancoId}`, { ativo: false })
+      await api.patch(`/clientes/${clienteId}/bancos/${setor._id}/${bancoId}`, { ativo: false, competencia })
       onBancosAtualizados && onBancosAtualizados()
     } catch (e) { mostrar(e.response?.data?.erro || 'Erro ao remover banco.', 'erro') }
   }
@@ -1414,6 +1426,7 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
         <BlocoExtratosBancarios
           clienteId={clienteId} setor={setor}
           bancos={configSetor?.bancos || []}
+          competencia={competencia}
           valoresExtratos={valores.extratos || {}}
           onChangeExtrato={(bancoId, v) => setValores(vs => ({ ...vs, extratos: { ...(vs.extratos||{}), [bancoId]: v } }))}
           podeEditar={podeEditar}
@@ -1512,10 +1525,13 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
 // ── Particularidades: lista de anotações do cliente pra um setor, sem vínculo com competência ──
 function AbaParticularidades({ clienteId, setor, clienteAtivo, particularidades=[], onSalvo }) {
   const { mostrar } = useToast()
+  const [aberto, setAberto] = useState(false)
   const [texto, setTexto] = useState('')
   const [salvando, setSalvando] = useState(false)
 
   const lista = [...particularidades].sort((a,b) => new Date(b.atualizadoEm) - new Date(a.atualizadoEm))
+
+  const cancelar = () => { setAberto(false); setTexto('') }
 
   const salvar = async () => {
     if (!texto.trim()) return
@@ -1524,6 +1540,7 @@ function AbaParticularidades({ clienteId, setor, clienteAtivo, particularidades=
       await api.post(`/clientes/${clienteId}/particularidades/${setor._id}`, { texto: texto.trim() })
       mostrar('Particularidade adicionada!', 'sucesso')
       setTexto('')
+      setAberto(false)
       onSalvo && onSalvo()
     } catch (e) { mostrar(e.response?.data?.erro || 'Erro ao salvar.', 'erro') }
     finally { setSalvando(false) }
@@ -1536,10 +1553,22 @@ function AbaParticularidades({ clienteId, setor, clienteAtivo, particularidades=
       </p>
       {clienteAtivo && (
         <div style={{ marginBottom:'22px' }}>
-          <textarea style={{ ...s.inp, minHeight:'70px', resize:'vertical' }} value={texto} onChange={e=>setTexto(e.target.value)}
-            onKeyDown={e=>{ if(e.key==='Enter'&&(e.metaKey||e.ctrlKey)) salvar() }}
-            placeholder='Ex: "Sem movimento, mas conferir se teve alguma nota fiscal emitida" ou "Tem vantagem X pelo sindicato"...' />
-          <button style={{ ...s.btnSalv, marginTop:'10px' }} onClick={salvar} disabled={salvando || !texto.trim()}>{salvando?'Salvando...':'+ Adicionar anotação'}</button>
+          {aberto ? (
+            <>
+              <textarea style={{ ...s.inp, minHeight:'70px', resize:'vertical' }} value={texto} onChange={e=>setTexto(e.target.value)}
+                onKeyDown={e=>{ if(e.key==='Enter'&&(e.metaKey||e.ctrlKey)) salvar() }}
+                placeholder='Ex: "Sem movimento, mas conferir se teve alguma nota fiscal emitida" ou "Tem vantagem X pelo sindicato"...'
+                autoFocus />
+              <div style={{ display:'flex', gap:'8px', marginTop:'10px' }}>
+                <button style={s.btnSalv} onClick={salvar} disabled={salvando || !texto.trim()}>{salvando?'Salvando...':'Salvar'}</button>
+                <button style={s.btnCanc} onClick={cancelar} disabled={salvando}>Cancelar</button>
+              </div>
+            </>
+          ) : (
+            <button onClick={()=>setAberto(true)} style={{ background:'none', border:'1px dashed var(--borda)', borderRadius:'10px', color:'var(--texto-apagado)', padding:'10px', cursor:'pointer', fontFamily:'Inter,sans-serif', fontSize:'0.82rem', width:'100%' }}>
+              + Adicionar particularidade
+            </button>
+          )}
         </div>
       )}
 

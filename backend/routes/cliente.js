@@ -98,6 +98,10 @@ router.get('/demandas/:setorId/:competencia', autenticar, async (req, res) => {
     const lancamentos = await LancamentoSetor.find({ empresa: req.usuario.empresa._id, setor: setorId, competencia })
       .select('cliente dados').lean();
     const dadosPorCliente = new Map(lancamentos.map(l => [l.cliente.toString(), l.dados || {}]));
+    // existe: true só quando o lançamento realmente foi salvo pra essa competência (documento
+    // encontrado no banco) — diferente de "não existe" (nunca clicou em Salvar), que resulta no
+    // mesmo dados:{} por fora mas precisa contar como pendente quando não há campo nenhum pra preencher.
+    const existePorCliente = new Set(lancamentos.map(l => l.cliente.toString()));
 
     res.json(clientes.map(c => ({
       clienteId: c._id,
@@ -106,6 +110,7 @@ router.get('/demandas/:setorId/:competencia', autenticar, async (req, res) => {
       regime: resolverPorVigencia(c.historicoRegime, competencia, c.regime),
       situacao: resolverPorVigencia(c.configSetores?.[setorNome]?.historicoSituacao, competencia, c.configSetores?.[setorNome]?.situacao),
       dados: dadosPorCliente.get(c._id.toString()) || {},
+      existe: existePorCliente.has(c._id.toString()),
     })));
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao buscar demandas.' });
@@ -494,8 +499,9 @@ router.post('/:id/bancos/:setorId', autenticar, async (req, res) => {
     if (!temAcessoAoSetor(req.usuario, req.params.setorId)) {
       return res.status(403).json({ erro: 'Você não tem acesso a este setor.' });
     }
-    const { nome } = req.body;
+    const { nome, competencia } = req.body;
     if (!nome?.trim()) return res.status(400).json({ erro: 'Nome do banco é obrigatório.' });
+    if (competencia && !/^\d{4}-\d{2}$/.test(competencia)) return res.status(400).json({ erro: 'Competência inválida.' });
 
     const setor = await Setor.findById(req.params.setorId).select('nome').lean();
     if (!setor) return res.status(404).json({ erro: 'Setor não encontrado.' });
@@ -515,7 +521,9 @@ router.post('/:id/bancos/:setorId', autenticar, async (req, res) => {
     let n = 1;
     while (configSetor.bancos.some(b => b.id === id)) { n++; id = `${slug}_${n}`; }
 
-    configSetor.bancos.push({ id, nome: nome.trim(), ativo: true });
+    // adicionadoNaCompetencia usa a competência que a pessoa está navegando (não a data real do
+    // calendário) — é a partir dela que o banco passa a aparecer nas telas de Demanda.
+    configSetor.bancos.push({ id, nome: nome.trim(), ativo: true, adicionadoNaCompetencia: competencia || competenciaAtual() });
 
     cliente.markModified('configSetores');
     await cliente.save();
@@ -532,7 +540,8 @@ router.patch('/:id/bancos/:setorId/:bancoId', autenticar, async (req, res) => {
     if (!temAcessoAoSetor(req.usuario, req.params.setorId)) {
       return res.status(403).json({ erro: 'Você não tem acesso a este setor.' });
     }
-    const { ativo } = req.body;
+    const { ativo, competencia } = req.body;
+    if (competencia && !/^\d{4}-\d{2}$/.test(competencia)) return res.status(400).json({ erro: 'Competência inválida.' });
 
     const setor = await Setor.findById(req.params.setorId).select('nome').lean();
     if (!setor) return res.status(404).json({ erro: 'Setor não encontrado.' });
@@ -546,6 +555,13 @@ router.patch('/:id/bancos/:setorId/:bancoId', autenticar, async (req, res) => {
     const banco = configSetor.bancos?.find(b => b.id === req.params.bancoId);
     if (!banco) return res.status(404).json({ erro: 'Banco não encontrado.' });
     banco.ativo = !!ativo;
+    // Mesma lógica da competência navegada (não data real) usada na criação — a desativação só
+    // vale a partir dela em diante, meses anteriores continuam mostrando o banco normalmente.
+    if (!banco.ativo) {
+      banco.desativadoNaCompetencia = competencia || competenciaAtual();
+    } else {
+      banco.desativadoNaCompetencia = undefined;
+    }
 
     cliente.markModified('configSetores');
     await cliente.save();
