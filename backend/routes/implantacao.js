@@ -10,6 +10,7 @@ const Usuario = require('../models/Usuario');
 const { enviarOnboardingCriado, enviarEtapaDesbloqueada } = require('../services/email');
 const { pularEtapasVaziasEmCadeia } = require('../services/implantacao');
 const Cliente = require('../models/Cliente');
+const { implantacaoCreateSchema, validar } = require('../validacao');
 
 const router = express.Router();
 
@@ -92,7 +93,7 @@ router.get('/:id', autenticar, async (req, res) => {
 });
 
 // POST /api/implantacoes - Cria nova implantação e gera tarefas reais para cada colaborador
-router.post('/', autenticar, temPermissao('criarImplantacoes'), async (req, res) => {
+router.post('/', autenticar, temPermissao('criarImplantacoes'), validar(implantacaoCreateSchema), async (req, res) => {
   const { nomeCliente, cnpj, modeloId, inicioServicos, clienteId } = req.body;
   if (!nomeCliente?.trim()) return res.status(400).json({ erro: 'Nome do cliente é obrigatório.' });
   if (!inicioServicos) return res.status(400).json({ erro: 'Data de início dos serviços é obrigatória.' });

@@ -5,6 +5,7 @@ const { autenticar } = require('../middleware/auth');
 const Tarefa = require('../models/Tarefa');
 const Implantacao = require('../models/Implantacao');
 const Usuario = require('../models/Usuario');
+const { tarefaCreateSchema, tarefaUpdateSchema, tarefaEtiquetasSchema, tarefaPrioridadeSchema, validar } = require('../validacao');
 
 const router = express.Router();
 
@@ -175,7 +176,7 @@ router.get('/historico/conquistas', autenticar, async (req, res) => {
 });
 
 // POST /api/tarefas
-router.post('/', autenticar, async (req, res) => {
+router.post('/', autenticar, validar(tarefaCreateSchema), async (req, res) => {
   const { descricao, data, hora, local, cor, responsavelId, etiquetas, prioridade, tarefaMaeId } = req.body;
   if (!descricao) return res.status(400).json({ erro: 'Descrição é obrigatória.' });
   try {
@@ -219,7 +220,7 @@ router.post('/', autenticar, async (req, res) => {
 });
 
 // PUT /api/tarefas/:id
-router.put('/:id', autenticar, async (req, res) => {
+router.put('/:id', autenticar, validar(tarefaUpdateSchema), async (req, res) => {
   try {
     const filtro = { _id: req.params.id, empresa: req.usuario.empresa._id };
     if (req.usuario.cargo === 'colaborador') filtro.responsavel = req.usuario._id;
@@ -234,7 +235,7 @@ router.put('/:id', autenticar, async (req, res) => {
 });
 
 // PATCH /api/tarefas/:id/etiquetas
-router.patch('/:id/etiquetas', autenticar, async (req, res) => {
+router.patch('/:id/etiquetas', autenticar, validar(tarefaEtiquetasSchema), async (req, res) => {
   try {
     const tarefa = await populateTarefa(
       Tarefa.findOneAndUpdate(
@@ -250,7 +251,7 @@ router.patch('/:id/etiquetas', autenticar, async (req, res) => {
 });
 
 // PATCH /api/tarefas/:id/prioridade
-router.patch('/:id/prioridade', autenticar, async (req, res) => {
+router.patch('/:id/prioridade', autenticar, validar(tarefaPrioridadeSchema), async (req, res) => {
   try {
     const tarefa = await populateTarefa(
       Tarefa.findOneAndUpdate(

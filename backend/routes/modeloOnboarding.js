@@ -2,6 +2,7 @@ const express = require('express');
 const registrarLog = require('../services/log');
 const { autenticar, temPermissao } = require('../middleware/auth');
 const ModeloOnboarding = require('../models/ModeloOnboarding');
+const { modeloOnboardingCreateSchema, modeloOnboardingUpdateSchema, validar } = require('../validacao');
 
 const router = express.Router();
 
@@ -36,9 +37,8 @@ router.get('/:id', autenticar, async (req, res) => {
 });
 
 // POST /api/modelos-onboarding
-router.post('/', autenticar, temPermissao('gerenciarModelos'), async (req, res) => {
+router.post('/', autenticar, temPermissao('gerenciarModelos'), validar(modeloOnboardingCreateSchema), async (req, res) => {
   const { nome, descricao, setores } = req.body;
-  if (!nome?.trim()) return res.status(400).json({ erro: 'Nome é obrigatório.' });
   try {
     const modelo = await ModeloOnboarding.create({
       nome: nome.trim(),
@@ -56,7 +56,7 @@ router.post('/', autenticar, temPermissao('gerenciarModelos'), async (req, res) 
 });
 
 // PUT /api/modelos-onboarding/:id
-router.put('/:id', autenticar, temPermissao('gerenciarModelos'), async (req, res) => {
+router.put('/:id', autenticar, temPermissao('gerenciarModelos'), validar(modeloOnboardingUpdateSchema), async (req, res) => {
   const { nome, descricao, setores } = req.body;
   try {
     const modelo = await populateModelo(

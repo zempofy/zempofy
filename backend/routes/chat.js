@@ -2,6 +2,7 @@ const express = require('express');
 const { autenticar } = require('../middleware/auth');
 const Mensagem = require('../models/Mensagem');
 const Usuario = require('../models/Usuario');
+const { chatMensagemSchema, validar } = require('../validacao');
 
 const router = express.Router();
 
@@ -102,10 +103,8 @@ router.get('/:usuarioId', autenticar, async (req, res) => {
 });
 
 // POST /api/chat/:usuarioId - Envia mensagem
-router.post('/:usuarioId', autenticar, async (req, res) => {
+router.post('/:usuarioId', autenticar, validar(chatMensagemSchema), async (req, res) => {
   const { texto } = req.body;
-  if (!texto?.trim()) return res.status(400).json({ erro: 'Mensagem vazia.' });
-
   try {
     const outroId = req.params.usuarioId;
 

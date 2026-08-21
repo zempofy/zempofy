@@ -1,6 +1,7 @@
 const express = require('express');
 const { autenticar, temPermissao } = require('../middleware/auth');
 const Aviso = require('../models/Aviso');
+const { muralAvisoSchema, muralAvisoUpdateSchema, muralReagirSchema, validar } = require('../validacao');
 
 const router = express.Router();
 
@@ -18,11 +19,8 @@ router.get('/', autenticar, async (req, res) => {
 });
 
 // POST /api/mural - Criar aviso (só gestores)
-router.post('/', autenticar, temPermissao('publicarMural'), async (req, res) => {
+router.post('/', autenticar, temPermissao('publicarMural'), validar(muralAvisoSchema), async (req, res) => {
   const { titulo, texto, imagem, fixado } = req.body;
-  if (!titulo?.trim() || !texto?.trim()) {
-    return res.status(400).json({ erro: 'Título e texto são obrigatórios.' });
-  }
   try {
     const aviso = await Aviso.create({
       titulo, texto, imagem, fixado,
@@ -37,7 +35,7 @@ router.post('/', autenticar, temPermissao('publicarMural'), async (req, res) => 
 });
 
 // PUT /api/mural/:id - Editar aviso (só gestores)
-router.put('/:id', autenticar, temPermissao('publicarMural'), async (req, res) => {
+router.put('/:id', autenticar, temPermissao('publicarMural'), validar(muralAvisoUpdateSchema), async (req, res) => {
   try {
     const { empresa, autor, _id, reacoes, criadoEm, ...dados } = req.body;
     const aviso = await Aviso.findOneAndUpdate(
@@ -62,10 +60,8 @@ router.delete('/:id', autenticar, temPermissao('publicarMural'), async (req, res
 });
 
 // POST /api/mural/:id/reagir - Reagir a um aviso
-router.post('/:id/reagir', autenticar, async (req, res) => {
+router.post('/:id/reagir', autenticar, validar(muralReagirSchema), async (req, res) => {
   const { emoji } = req.body;
-  if (!emoji) return res.status(400).json({ erro: 'Emoji obrigatório.' });
-
   try {
     const aviso = await Aviso.findOne({ _id: req.params.id, empresa: req.usuario.empresa._id });
     if (!aviso) return res.status(404).json({ erro: 'Aviso não encontrado.' });

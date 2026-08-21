@@ -6,6 +6,7 @@ const { autenticar } = require('../middleware/auth');
 const { enviarVerificacaoEmail } = require('../services/email');
 const { verificarTurnstile } = require('../services/turnstile');
 const crypto = require('crypto');
+const { authCadastroSchema, authLoginSchema, authEsqueciSenhaSchema, authRedefinirSenhaSchema, validar } = require('../validacao');
 
 // Lazy require para evitar dependência circular com middleware/auth
 const getUsuario = () => require('../models/Usuario');
@@ -27,7 +28,7 @@ function gerarToken(usuario, lembrar = false) {
 }
 
 // POST /api/auth/cadastro - Cadastrar nova empresa + admin
-router.post('/cadastro', async (req, res) => {
+router.post('/cadastro', validar(authCadastroSchema), async (req, res) => {
   const { nomeEmpresa, cnpj, nomeAdmin, email, senha, tokenTurnstile } = req.body;
 
   if (!nomeEmpresa || !cnpj || !nomeAdmin || !email || !senha) {
@@ -92,7 +93,7 @@ router.post('/cadastro', async (req, res) => {
 });
 
 // POST /api/auth/login - Login
-router.post('/login', async (req, res) => {
+router.post('/login', validar(authLoginSchema), async (req, res) => {
   const { email, senha, lembrar } = req.body;
 
   if (!email || !senha) {
@@ -155,7 +156,7 @@ router.get('/me', autenticar, async (req, res) => {
 });
 
 // POST /api/auth/esqueci-senha
-router.post('/esqueci-senha', async (req, res) => {
+router.post('/esqueci-senha', validar(authEsqueciSenhaSchema), async (req, res) => {
   try {
     const { email, tokenTurnstile } = req.body;
     if (!email) return res.status(400).json({ erro: 'E-mail obrigatório.' });
@@ -186,7 +187,7 @@ router.post('/esqueci-senha', async (req, res) => {
 });
 
 // POST /api/auth/redefinir-senha
-router.post('/redefinir-senha', async (req, res) => {
+router.post('/redefinir-senha', validar(authRedefinirSenhaSchema), async (req, res) => {
   try {
     const { token, novaSenha } = req.body;
     if (!token || !novaSenha) return res.status(400).json({ erro: 'Dados inválidos.' });

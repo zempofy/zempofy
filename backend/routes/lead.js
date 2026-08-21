@@ -1,6 +1,7 @@
 const express = require('express');
 const { autenticar } = require('../middleware/auth');
 const Lead = require('../models/Lead');
+const { leadCreateSchema, leadUpdateSchema, validar } = require('../validacao');
 
 const router = express.Router();
 
@@ -23,9 +24,8 @@ router.get('/', autenticar, async (req, res) => {
 });
 
 // POST /api/leads — criar lead (qualquer colaborador autenticado)
-router.post('/', autenticar, async (req, res) => {
+router.post('/', autenticar, validar(leadCreateSchema), async (req, res) => {
   const { nome, nomeEmpresa, telefone, email, valor, origem, tipoServico, obs, etapa } = req.body;
-  if (!nome?.trim()) return res.status(400).json({ erro: 'Nome do contato é obrigatório.' });
   try {
     const lead = await Lead.create({
       nome: nome.trim(),
@@ -48,7 +48,7 @@ router.post('/', autenticar, async (req, res) => {
 });
 
 // PUT /api/leads/:id — editar campos e/ou mover de etapa (quem criou ou o titular)
-router.put('/:id', autenticar, async (req, res) => {
+router.put('/:id', autenticar, validar(leadUpdateSchema), async (req, res) => {
   try {
     const lead = await Lead.findOne({ _id: req.params.id, empresa: req.usuario.empresa._id });
     if (!lead) return res.status(404).json({ erro: 'Lead não encontrado.' });

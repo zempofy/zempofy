@@ -1,6 +1,7 @@
 const express = require('express');
 const { autenticar } = require('../middleware/auth');
 const Anotacao = require('../models/Anotacao');
+const { anotacaoCreateSchema, anotacaoUpdateSchema, validar } = require('../validacao');
 
 const router = express.Router();
 
@@ -18,9 +19,8 @@ router.get('/', autenticar, async (req, res) => {
 });
 
 // POST /api/anotacoes - Criar anotação
-router.post('/', autenticar, async (req, res) => {
+router.post('/', autenticar, validar(anotacaoCreateSchema), async (req, res) => {
   const { titulo, texto, cor, fixada } = req.body;
-  if (!titulo?.trim()) return res.status(400).json({ erro: 'Título obrigatório.' });
   try {
     const anotacao = await Anotacao.create({
       titulo, texto, cor, fixada,
@@ -34,7 +34,7 @@ router.post('/', autenticar, async (req, res) => {
 });
 
 // PUT /api/anotacoes/:id - Editar anotação
-router.put('/:id', autenticar, async (req, res) => {
+router.put('/:id', autenticar, validar(anotacaoUpdateSchema), async (req, res) => {
   try {
     const { empresa, usuario, _id, criadaEm, ...dados } = req.body;
     const anotacao = await Anotacao.findOneAndUpdate(

@@ -1,6 +1,7 @@
 const express = require('express');
 const { autenticar, temPermissao } = require('../middleware/auth');
 const Setor = require('../models/Setor');
+const { setorCreateSchema, setorUpdateSchema, setorMembroSchema, setorMembroRemoverSchema, validar } = require('../validacao');
 
 const router = express.Router();
 
@@ -54,9 +55,8 @@ router.post('/inicializar', autenticar, async (req, res) => {
 });
 
 // POST /api/setores - Criar novo setor
-router.post('/', autenticar, temPermissao('gerenciarSetores'), async (req, res) => {
+router.post('/', autenticar, temPermissao('gerenciarSetores'), validar(setorCreateSchema), async (req, res) => {
   const { nome, cor, membros, responsavel } = req.body;
-  if (!nome?.trim()) return res.status(400).json({ erro: 'Nome é obrigatório.' });
   try {
     // O responsável precisa ter acesso à Demanda desse setor pra poder responder a pergunta
     // inicial (situação/regime) — garante que ele também entra como membro.
@@ -83,7 +83,7 @@ router.post('/', autenticar, temPermissao('gerenciarSetores'), async (req, res) 
 });
 
 // PUT /api/setores/:id - Editar setor
-router.put('/:id', autenticar, temPermissao('gerenciarSetores'), async (req, res) => {
+router.put('/:id', autenticar, temPermissao('gerenciarSetores'), validar(setorUpdateSchema), async (req, res) => {
   const { nome, cor, membros, responsavel } = req.body;
   try {
     const Usuario = require('../models/Usuario');
@@ -119,9 +119,8 @@ router.put('/:id', autenticar, temPermissao('gerenciarSetores'), async (req, res
 // DELETE /api/setores/:id - Desativar setor (soft delete)
 
 // PATCH /api/setores/:id/membros — adiciona ou remove membro
-router.patch('/:id/membros', autenticar, async (req, res) => {
+router.patch('/:id/membros', autenticar, validar(setorMembroSchema), async (req, res) => {
   const { usuarioId, acao } = req.body; // acao: 'adicionar' | 'remover'
-  if (!usuarioId) return res.status(400).json({ erro: 'usuarioId é obrigatório.' });
   try {
     if (!(await podeGerenciarMembros(req, req.params.id))) {
       return res.status(403).json({ erro: 'Você não tem permissão pra gerenciar os membros deste setor.' });
@@ -149,9 +148,8 @@ router.patch('/:id/membros', autenticar, async (req, res) => {
 });
 
 // PATCH /api/setores/:id/membros/remover (compatibilidade)
-router.patch('/:id/membros/remover', autenticar, async (req, res) => {
+router.patch('/:id/membros/remover', autenticar, validar(setorMembroRemoverSchema), async (req, res) => {
   const { usuarioId } = req.body;
-  if (!usuarioId) return res.status(400).json({ erro: 'usuarioId é obrigatório.' });
   try {
     if (!(await podeGerenciarMembros(req, req.params.id))) {
       return res.status(403).json({ erro: 'Você não tem permissão pra gerenciar os membros deste setor.' });

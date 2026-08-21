@@ -1,16 +1,14 @@
 const express = require('express');
 const { autenticar } = require('../middleware/auth');
 const { Resend } = require('resend');
+const { feedbackSchema, validar } = require('../validacao');
 
 const router = express.Router();
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 // POST /api/feedback
-router.post('/', autenticar, async (req, res) => {
+router.post('/', autenticar, validar(feedbackSchema), async (req, res) => {
   const { assunto, mensagem, nome, email, empresa } = req.body;
-  if (!assunto?.trim()) return res.status(400).json({ erro: 'Assunto é obrigatório.' });
-  if (!mensagem?.trim()) return res.status(400).json({ erro: 'Descrição é obrigatória.' });
-
   try {
     await resend.emails.send({
       from: 'Zempofy <noreply@zempofy.com.br>',

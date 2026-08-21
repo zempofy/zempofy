@@ -1,6 +1,7 @@
 const express = require('express');
 const { autenticar, apenasAdmin } = require('../middleware/auth');
 const Empresa = require('../models/Empresa');
+const { empresaUpdateSchema, empresaConfiguracoesSchema, validar } = require('../validacao');
 
 const router = express.Router();
 
@@ -15,7 +16,7 @@ router.get('/', autenticar, async (req, res) => {
 });
 
 // PUT /api/empresa - Atualizar dados da empresa (só admin)
-router.put('/', autenticar, apenasAdmin, async (req, res) => {
+router.put('/', autenticar, apenasAdmin, validar(empresaUpdateSchema), async (req, res) => {
   const { nome, colaboradoresPodeAtribuirTitular } = req.body;
   const atualizacao = {}
   if (nome !== undefined) atualizacao.nome = nome
@@ -33,7 +34,7 @@ router.put('/', autenticar, apenasAdmin, async (req, res) => {
 });
 
 // PUT /api/empresa/configuracoes
-router.put('/configuracoes', autenticar, apenasAdmin, async (req, res) => {
+router.put('/configuracoes', autenticar, apenasAdmin, validar(empresaConfiguracoesSchema), async (req, res) => {
   try {
     const { alertaOnboardingDias, resumoFrequencia } = req.body;
     const Empresa = require('../models/Empresa');

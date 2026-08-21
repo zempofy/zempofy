@@ -1,6 +1,7 @@
 const express = require('express');
 const { autenticar } = require('../middleware/auth');
 const Evento = require('../models/Evento');
+const { eventoCreateSchema, eventoUpdateSchema, validar } = require('../validacao');
 
 const router = express.Router();
 
@@ -27,13 +28,8 @@ router.get('/', autenticar, async (req, res) => {
 });
 
 // POST /api/eventos — criar evento
-router.post('/', autenticar, async (req, res) => {
+router.post('/', autenticar, validar(eventoCreateSchema), async (req, res) => {
   const { titulo, descricao, data, horaInicio, horaFim, cor } = req.body;
-
-  if (!titulo || !data) {
-    return res.status(400).json({ erro: 'Título e data são obrigatórios.' });
-  }
-
   try {
     const evento = await Evento.create({
       titulo,
@@ -54,7 +50,7 @@ router.post('/', autenticar, async (req, res) => {
 });
 
 // PUT /api/eventos/:id — editar evento
-router.put('/:id', autenticar, async (req, res) => {
+router.put('/:id', autenticar, validar(eventoUpdateSchema), async (req, res) => {
   try {
     const filtro = { _id: req.params.id, empresa: req.usuario.empresa._id };
     if (req.usuario.cargo === 'colaborador') filtro.usuario = req.usuario._id;

@@ -2,6 +2,7 @@ const express = require('express');
 const registrarLog = require('../services/log');
 const { autenticar, temPermissao } = require('../middleware/auth');
 const AtividadeChecklist = require('../models/AtividadeChecklist');
+const { checklistCreateSchema, checklistUpdateSchema, validar } = require('../validacao');
 
 const router = express.Router();
 
@@ -39,10 +40,8 @@ router.get('/setor/:setorId', autenticar, async (req, res) => {
 });
 
 // POST /api/checklist
-router.post('/', autenticar, temPermissao('gerenciarBancoAtividades'), async (req, res) => {
+router.post('/', autenticar, temPermissao('gerenciarBancoAtividades'), validar(checklistCreateSchema), async (req, res) => {
   const { descricao, observacoes, setor, responsavelId } = req.body;
-  if (!descricao?.trim()) return res.status(400).json({ erro: 'Descrição é obrigatória.' });
-  if (!setor) return res.status(400).json({ erro: 'Setor é obrigatório.' });
   try {
     const atividade = await AtividadeChecklist.create({
       descricao: descricao.trim(),
@@ -61,7 +60,7 @@ router.post('/', autenticar, temPermissao('gerenciarBancoAtividades'), async (re
 });
 
 // PUT /api/checklist/:id
-router.put('/:id', autenticar, temPermissao('gerenciarBancoAtividades'), async (req, res) => {
+router.put('/:id', autenticar, temPermissao('gerenciarBancoAtividades'), validar(checklistUpdateSchema), async (req, res) => {
   const { descricao, observacoes, responsavelId } = req.body;
   try {
     const atividade = await populate(

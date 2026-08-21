@@ -544,7 +544,7 @@ export default function Implantacao({ setPagina, setClienteDetalheId, nomeNovoOn
           <button style={{ background: 'none', border: '1px solid var(--borda)', borderRadius: '10px', padding: '10px 16px', fontFamily: 'Inter, sans-serif', fontWeight: '500', fontSize: '0.82rem', cursor: 'pointer', color: 'var(--texto-apagado)', whiteSpace: 'nowrap' }} onClick={iniciarTour}>
             💡 Tutorial
           </button>
-          <button ref={refBtnNovo} style={s.btnNovo} onClick={() => setModalAberto(true)}>+ Nova empresa</button>
+          <button ref={refBtnNovo} style={s.btnNovo} onClick={() => setModalAberto(true)}>+ Iniciar onboarding</button>
         </div>
       </div>
 
@@ -581,9 +581,7 @@ export default function Implantacao({ setPagina, setClienteDetalheId, nomeNovoOn
                 : 'Nenhuma implantação em andamento no momento.'}
           </p>
           {!busca && (
-            <button style={s.btnNovo} onClick={() => setModalAberto(true)}>
-              {implantacoes.length === 0 ? 'Adicionar primeira empresa' : '+ Nova implantação'}
-            </button>
+            <button style={s.btnNovo} onClick={() => setModalAberto(true)}>+ Iniciar onboarding</button>
           )}
         </div>
       ) : (
