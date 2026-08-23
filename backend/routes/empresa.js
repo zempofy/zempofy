@@ -17,9 +17,11 @@ router.get('/', autenticar, async (req, res) => {
 
 // PUT /api/empresa - Atualizar dados da empresa (só admin)
 router.put('/', autenticar, apenasAdmin, validar(empresaUpdateSchema), async (req, res) => {
-  const { nome, colaboradoresPodeAtribuirTitular } = req.body;
+  const { nome, cnpj, fusoHorario, colaboradoresPodeAtribuirTitular } = req.body;
   const atualizacao = {}
   if (nome !== undefined) atualizacao.nome = nome
+  if (cnpj !== undefined) atualizacao.cnpj = cnpj
+  if (fusoHorario !== undefined) atualizacao.fusoHorario = fusoHorario
   if (colaboradoresPodeAtribuirTitular !== undefined) atualizacao.colaboradoresPodeAtribuirTitular = colaboradoresPodeAtribuirTitular
   try {
     const empresa = await Empresa.findByIdAndUpdate(

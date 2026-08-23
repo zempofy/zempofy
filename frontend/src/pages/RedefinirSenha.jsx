@@ -21,6 +21,7 @@ export default function RedefinirSenha() {
   const [params] = useSearchParams()
   const navigate = useNavigate()
   const token = params.get('token')
+  const ehConvite = params.get('novo') === '1'
 
   const [form, setForm] = useState({ novaSenha: '', confirmar: '' })
   const [erro, setErro] = useState('')
@@ -63,14 +64,14 @@ export default function RedefinirSenha() {
         {sucesso ? (
           <div style={{ textAlign: 'center' }}>
             <p style={{ fontSize: '2rem', marginBottom: '12px' }}>✅</p>
-            <p style={s.titulo}>Senha redefinida!</p>
-            <p style={s.sub}>Sua senha foi atualizada com sucesso. Agora você pode fazer login com a nova senha.</p>
+            <p style={s.titulo}>{ehConvite ? 'Senha criada!' : 'Senha redefinida!'}</p>
+            <p style={s.sub}>{ehConvite ? 'Sua senha foi criada com sucesso.' : 'Sua senha foi atualizada com sucesso.'} Agora você pode fazer login com a nova senha.</p>
             <button style={s.btn} onClick={() => navigate('/login')}>Ir para o login</button>
           </div>
         ) : (
           <>
-            <p style={s.titulo}>Redefinir senha</p>
-            <p style={s.sub}>Digite sua nova senha abaixo.</p>
+            <p style={s.titulo}>{ehConvite ? 'Criar senha' : 'Redefinir senha'}</p>
+            <p style={s.sub}>{ehConvite ? 'Defina sua senha de acesso abaixo.' : 'Digite sua nova senha abaixo.'}</p>
             {erro && <p style={s.erro}>{erro}</p>}
             <label style={s.label}>Nova senha</label>
             <InputSenhaVer style={s.inp} placeholder="••••••••" autoFocus
@@ -83,7 +84,7 @@ export default function RedefinirSenha() {
               onKeyDown={e => e.key === 'Enter' && salvar()}
             />
             <button style={s.btn} onClick={salvar} disabled={carregando}>
-              {carregando ? 'Salvando...' : 'Salvar nova senha'}
+              {carregando ? 'Salvando...' : (ehConvite ? 'Salvar senha' : 'Salvar nova senha')}
             </button>
             <button onClick={() => navigate('/login')} style={{ width:'100%', background:'none', border:'none', color:'rgba(255,255,255,0.4)', fontSize:'0.8rem', cursor:'pointer', marginTop:'12px', fontFamily:'Inter,sans-serif' }}>
               ← Voltar para o login

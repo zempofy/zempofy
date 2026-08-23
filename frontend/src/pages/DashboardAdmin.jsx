@@ -1064,6 +1064,8 @@ function PaginaHistorico() {
       modelo_criado:               { icone: <Icone.Plus size={14} />,       cor: '#60a5fa', bg: 'rgba(96,165,250,0.12)' },
       modelo_editado:              { icone: <Icone.Edit size={14} />,       cor: '#60a5fa', bg: 'rgba(96,165,250,0.12)' },
       modelo_excluido:             { icone: <Icone.Trash size={14} />,      cor: '#f87171', bg: 'rgba(248,113,113,0.12)' },
+      modelo_reativado:            { icone: <Icone.Check size={14} />,      cor: '#00b141', bg: 'rgba(0,177,65,0.12)' },
+      modelo_excluido_permanente:  { icone: <Icone.Trash size={14} />,      cor: '#f87171', bg: 'rgba(248,113,113,0.12)' },
       atividade_criada:            { icone: <Icone.Plus size={14} />,       cor: '#60a5fa', bg: 'rgba(96,165,250,0.12)' },
       atividade_editada:           { icone: <Icone.Edit size={14} />,       cor: '#60a5fa', bg: 'rgba(96,165,250,0.12)' },
       atividade_excluida:          { icone: <Icone.Trash size={14} />,      cor: '#f87171', bg: 'rgba(248,113,113,0.12)' },

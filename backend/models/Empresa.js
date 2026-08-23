@@ -11,6 +11,7 @@ const empresaSchema = new mongoose.Schema({
   colaboradoresPodeAtribuirTitular: { type: Boolean, default: true },
   alertaOnboardingDias: { type: Number, default: 7 },
   resumoFrequencia: { type: String, enum: ['semanal', 'quinzenal', 'mensal', 'nunca'], default: 'semanal' },
+  fusoHorario: { type: String, default: 'America/Sao_Paulo' },
 });
 
 module.exports = mongoose.model('Empresa', empresaSchema);

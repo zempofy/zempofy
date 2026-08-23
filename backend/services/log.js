@@ -7,6 +7,8 @@ const CATEGORIAS = {
   modelo_criado:               'modelo',
   modelo_editado:              'modelo',
   modelo_excluido:             'modelo',
+  modelo_reativado:            'modelo',
+  modelo_excluido_permanente:  'modelo',
   atividade_criada:            'atividade',
   atividade_editada:           'atividade',
   atividade_excluida:          'atividade',

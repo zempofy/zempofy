@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { usePreferencias } from '../contexts/PreferenciasContext'
 import { useAuth } from '../contexts/AuthContext'
 import Modal from './Modal'
@@ -14,12 +14,51 @@ import PaginaEquipe from './Equipe'
 
 const CORES_SETOR = ['#2DAA59', '#378ADD', '#EF9F27', '#7F77DD', '#D85A30', '#1D9E75', '#D4537E', '#888780']
 
-const IconeAparencia = ({ size = 15 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="13.5" cy="6.5" r=".5" fill="currentColor" /><circle cx="17.5" cy="10.5" r=".5" fill="currentColor" /><circle cx="8.5" cy="7.5" r=".5" fill="currentColor" /><circle cx="6.5" cy="12.5" r=".5" fill="currentColor" />
-    <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z" />
-  </svg>
-)
+const FUSOS_BRASIL = [
+  { valor: 'America/Noronha', label: 'Fernando de Noronha (UTC-2)' },
+  { valor: 'America/Sao_Paulo', label: 'Brasília (UTC-3)' },
+  { valor: 'America/Manaus', label: 'Manaus, Cuiabá (UTC-4)' },
+  { valor: 'America/Rio_Branco', label: 'Rio Branco (UTC-5)' },
+]
+
+// ── Botão de tema: quadrado compacto, sol↔lua animado. Estado vem do valor real do tema
+// (nunca de :focus — senão a animação desfaz sozinha ao perder o foco, sem refletir o tema real).
+function BotaoTema({ tema, setTema }) {
+  const escuro = tema === 'escuro'
+  return (
+    <button
+      type="button"
+      onClick={() => setTema(escuro ? 'claro' : 'escuro')}
+      aria-label={escuro ? 'Mudar para tema claro' : 'Mudar para tema escuro'}
+      title={escuro ? 'Tema escuro' : 'Tema claro'}
+      style={s.botaoTema}
+    >
+      <svg width="24" height="24" viewBox="0 0 24 24" style={{ overflow: 'visible' }}>
+        <g style={{
+          transformOrigin: '12px 12px',
+          transition: 'opacity 0.4s ease, transform 0.4s ease',
+          opacity: escuro ? 0 : 1,
+          transform: escuro ? 'scale(0.3)' : 'scale(1)',
+        }}>
+          <line x1="12" y1="0.5" x2="12" y2="3.5" stroke="var(--texto)" strokeWidth="2" strokeLinecap="round" />
+          <line x1="22.5" y1="6" x2="19.8" y2="8" stroke="var(--texto)" strokeWidth="2" strokeLinecap="round" />
+          <line x1="1.5" y1="6" x2="4.2" y2="8" stroke="var(--texto)" strokeWidth="2" strokeLinecap="round" />
+        </g>
+        <circle cx="12" cy="12" r="6.5" fill="var(--texto)" />
+        <circle
+          cx="16.5" cy="7.5" r="6.5"
+          fill="var(--card)"
+          style={{
+            transformOrigin: '16.5px 7.5px',
+            transition: 'opacity 0.4s ease, transform 0.4s ease',
+            opacity: escuro ? 1 : 0,
+            transform: escuro ? 'translate(0, 0)' : 'translate(3px, -3px)',
+          }}
+        />
+      </svg>
+    </button>
+  )
+}
 
 // ── Categoria Setores: card de um setor na grade ──
 function CardSetor({ setor, onClick }) {
@@ -425,6 +464,222 @@ function CategoriaAcessoSenha({ usuario, onNomeAtualizado }) {
   )
 }
 
+// ── Categoria Geral: foto, nome, dados do escritório, fuso, aparência e o toggle de atribuição ──
+function CategoriaGeral({ usuario, isTitular, tema, setTema, fonte, setFonte, onPerfilAtualizado }) {
+  const { mostrar } = useToast()
+  const fileInputRef = useRef(null)
+  const [enviandoFoto, setEnviandoFoto] = useState(false)
+
+  const [nomeUsuario, setNomeUsuario] = useState(usuario?.nome || '')
+  const [salvandoNome, setSalvandoNome] = useState(false)
+
+  const [empresa, setEmpresa] = useState(null)
+  const [nomeEscritorio, setNomeEscritorio] = useState('')
+  const [cnpj, setCnpj] = useState('')
+  const [fusoHorario, setFusoHorario] = useState('America/Sao_Paulo')
+  const [salvandoEscritorio, setSalvandoEscritorio] = useState(false)
+
+  const [podeAtribuir, setPodeAtribuir] = useState(true)
+  const [salvandoToggle, setSalvandoToggle] = useState(false)
+
+  useEffect(() => {
+    api.get('/empresa').then(r => {
+      setEmpresa(r.data)
+      setNomeEscritorio(r.data.nome || '')
+      setCnpj(r.data.cnpj || '')
+      setFusoHorario(r.data.fusoHorario || 'America/Sao_Paulo')
+      setPodeAtribuir(r.data.colaboradoresPodeAtribuirTitular ?? true)
+    }).catch(() => {})
+  }, [])
+
+  useEffect(() => { setNomeUsuario(usuario?.nome || '') }, [usuario?.nome])
+
+  const escolherFoto = () => fileInputRef.current?.click()
+
+  const onArquivoFoto = async (e) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    if (!file.type.startsWith('image/')) return mostrar('Escolha um arquivo de imagem.', 'erro')
+    if (file.size > 1.5 * 1024 * 1024) return mostrar('Imagem muito grande. Máximo 1,5 MB.', 'erro')
+    setEnviandoFoto(true)
+    try {
+      const foto = await new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(reader.result)
+        reader.onerror = reject
+        reader.readAsDataURL(file)
+      })
+      await api.put('/usuarios/minha-foto', { foto })
+      mostrar('Foto atualizada!', 'sucesso')
+      onPerfilAtualizado()
+    } catch { mostrar('Erro ao enviar foto.', 'erro') }
+    finally { setEnviandoFoto(false) }
+  }
+
+  const salvarNomeUsuario = async () => {
+    if (!nomeUsuario.trim()) return mostrar('Digite seu nome.', 'aviso')
+    setSalvandoNome(true)
+    try {
+      await api.put('/usuarios/meu-perfil', { nome: nomeUsuario.trim() })
+      mostrar('Nome atualizado!', 'sucesso')
+      onPerfilAtualizado()
+    } catch (err) { mostrar(err.response?.data?.erro || 'Erro ao salvar nome.', 'erro') }
+    finally { setSalvandoNome(false) }
+  }
+
+  const salvarEscritorio = async () => {
+    if (!nomeEscritorio.trim()) return mostrar('Nome do escritório é obrigatório.', 'aviso')
+    setSalvandoEscritorio(true)
+    try {
+      const res = await api.put('/empresa', { nome: nomeEscritorio.trim(), cnpj: cnpj.trim() })
+      setEmpresa(res.data)
+      mostrar('Dados do escritório atualizados!', 'sucesso')
+    } catch (err) { mostrar(err.response?.data?.erro || 'Erro ao salvar.', 'erro') }
+    finally { setSalvandoEscritorio(false) }
+  }
+
+  const salvarFuso = async (valor) => {
+    const anterior = fusoHorario
+    setFusoHorario(valor)
+    try {
+      await api.put('/empresa', { fusoHorario: valor })
+      mostrar('Fuso horário atualizado!', 'sucesso')
+    } catch { mostrar('Erro ao salvar fuso horário.', 'erro'); setFusoHorario(anterior) }
+  }
+
+  const salvarPodeAtribuir = async (valor) => {
+    setPodeAtribuir(valor)
+    setSalvandoToggle(true)
+    try {
+      await api.put('/empresa', { colaboradoresPodeAtribuirTitular: valor })
+      mostrar(valor ? 'Colaboradores podem te atribuir tarefas.' : 'Colaboradores não podem mais te atribuir tarefas.', 'sucesso')
+    } catch { mostrar('Erro ao salvar configuração.', 'erro') }
+    finally { setSalvandoToggle(false) }
+  }
+
+  const nomeUsuarioMudou = !!nomeUsuario.trim() && nomeUsuario.trim() !== usuario?.nome
+  const escritorioMudou = !!empresa && (nomeEscritorio.trim() !== (empresa.nome || '') || cnpj.trim() !== (empresa.cnpj || ''))
+  const camposDesabilitados = !isTitular ? { opacity: 0.6, cursor: 'not-allowed' } : {}
+
+  return (
+    <div>
+      <h2 style={s.categoriaTitulo}>Geral</h2>
+
+      {/* Foto */}
+      <div style={s.secao}>
+        <p style={s.secaoTitulo}>Foto</p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <Avatar nome={usuario?.nome} foto={usuario?.avatar} size={52} fontSize={20} />
+          <div>
+            <button style={s.btnAddMembro} onClick={escolherFoto} disabled={enviandoFoto}>
+              {enviandoFoto ? 'Enviando...' : 'Trocar foto'}
+            </button>
+            <p style={s.hint}>JPG ou PNG, até 1,5 MB.</p>
+          </div>
+          <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={onArquivoFoto} />
+        </div>
+      </div>
+
+      {/* Nome do usuário */}
+      <div style={s.campo}>
+        <label style={s.label}>Seu nome</label>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <input style={{ ...s.input, flex: 1 }} value={nomeUsuario} onChange={e => setNomeUsuario(e.target.value)} placeholder="Seu nome completo" />
+          {nomeUsuarioMudou && (
+            <button style={s.btnMini} onClick={salvarNomeUsuario} disabled={salvandoNome}>{salvandoNome ? 'Salvando...' : 'Salvar'}</button>
+          )}
+        </div>
+      </div>
+
+      {/* Nome do escritório + CNPJ */}
+      <div style={s.secao}>
+        <p style={s.secaoTitulo}>Escritório</p>
+        <div style={s.campo}>
+          <label style={s.label}>Nome do escritório</label>
+          <input style={{ ...s.input, ...camposDesabilitados }} value={nomeEscritorio} onChange={e => setNomeEscritorio(e.target.value)} disabled={!isTitular} />
+        </div>
+        <div style={s.campo}>
+          <label style={s.label}>CNPJ</label>
+          <input style={{ ...s.input, ...camposDesabilitados }} value={cnpj} onChange={e => setCnpj(e.target.value)} disabled={!isTitular} placeholder="00.000.000/0000-00" />
+        </div>
+        {!isTitular && <p style={s.hint}>Só o titular pode alterar os dados do escritório.</p>}
+        {isTitular && escritorioMudou && (
+          <button style={s.btnMini} onClick={salvarEscritorio} disabled={salvandoEscritorio}>{salvandoEscritorio ? 'Salvando...' : 'Salvar'}</button>
+        )}
+      </div>
+
+      {/* Fuso horário */}
+      <div style={s.campo}>
+        <label style={s.label}>Fuso horário</label>
+        <select style={{ ...s.input, ...camposDesabilitados }} value={fusoHorario} disabled={!isTitular} onChange={e => salvarFuso(e.target.value)}>
+          {FUSOS_BRASIL.map(f => <option key={f.valor} value={f.valor}>{f.label}</option>)}
+        </select>
+        <p style={s.hint}>Usado para calcular o horário de envio dos e-mails automáticos (ex: resumo periódico).</p>
+      </div>
+
+      {/* Tema */}
+      <div style={s.secao}>
+        <p style={s.secaoTitulo}>Tema</p>
+        <BotaoTema tema={tema} setTema={setTema} />
+      </div>
+
+      {/* Tamanho da fonte */}
+      <div style={s.secao}>
+        <p style={s.secaoTitulo}>Tamanho da fonte</p>
+        <div style={s.sliderWrapper}>
+          <span style={s.sliderLabel}>A</span>
+          <div style={s.sliderTrack}>
+            <div style={s.sliderLinha} />
+            {[0, 1, 2].map(val => (
+              <button
+                key={val}
+                style={{
+                  ...s.sliderPonto,
+                  left: `${val * 50}%`,
+                  background: fonte >= val ? 'var(--verde)' : 'var(--borda)',
+                  transform: fonte === val ? 'translate(-50%, -50%) scale(1.4)' : 'translate(-50%, -50%) scale(1)',
+                  border: fonte === val ? '2px solid #22C55E' : '2px solid var(--borda)',
+                }}
+                onClick={() => setFonte(val)}
+              />
+            ))}
+            <div style={{ ...s.sliderLinhaAtiva, width: `${fonte * 50}%` }} />
+          </div>
+          <span style={{ ...s.sliderLabel, fontSize: '1.3rem' }}>A</span>
+        </div>
+        <div style={s.sliderLabels}>
+          <span style={{ ...s.sliderOpcaoLabel, color: fonte === 0 ? 'var(--verde)' : 'var(--texto-apagado)' }}>Pequena</span>
+          <span style={{ ...s.sliderOpcaoLabel, color: fonte === 1 ? 'var(--verde)' : 'var(--texto-apagado)' }}>Padrão</span>
+          <span style={{ ...s.sliderOpcaoLabel, color: fonte === 2 ? 'var(--verde)' : 'var(--texto-apagado)' }}>Grande</span>
+        </div>
+        <div style={s.fontePreview}>
+          <p style={{ fontSize: fonte === 0 ? '0.875rem' : fonte === 1 ? '1rem' : '1.125rem', color: 'var(--texto)', margin: 0, transition: 'font-size 0.2s' }}>
+            Zempofy — Sistema de gestão de tarefas
+          </p>
+        </div>
+      </div>
+
+      {/* Toggle: colaboradores podem atribuir tarefa ao titular */}
+      {isTitular && (
+        <div style={s.toggleRow}>
+          <div>
+            <p style={s.toggleLabel}>Colaboradores podem me atribuir tarefas</p>
+            <p style={s.toggleDesc}>Quando ativo, seu nome aparece na lista de responsáveis ao criar uma tarefa</p>
+          </div>
+          <button
+            style={{ ...s.toggle, ...(podeAtribuir ? s.toggleAtivo : {}) }}
+            onClick={() => salvarPodeAtribuir(!podeAtribuir)}
+            disabled={salvandoToggle}
+          >
+            <div style={{ ...s.toggleBola, ...(podeAtribuir ? s.toggleBolaAtiva : {}) }} />
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Categoria Suporte ──
 function CategoriaSuporte() {
   const { usuario } = useAuth()
@@ -482,30 +737,24 @@ function CategoriaMeuPlano() {
 export default function ModalConfiguracoes({ fechar, categoriaInicial }) {
   const { tema, setTema, fonte, setFonte } = usePreferencias()
   const { usuario, temPermissao, recarregarUsuario } = useAuth()
-  const { mostrar } = useToast()
   const isTitular = usuario?.cargo === 'admin'
   const souGestorSetores = isTitular || temPermissao('gerenciarSetores')
   const acessaSetores = souGestorSetores || !!usuario?.souResponsavelDeSetor
-  const [podeAtribuir, setPodeAtribuir] = useState(true)
-  const [salvandoConfig, setSalvandoConfig] = useState(false)
 
   const podeModelos = isTitular || temPermissao('gerenciarModelos')
   const podeBanco = isTitular || temPermissao('gerenciarBancoAtividades')
   const podeColaboradores = isTitular || temPermissao('gerenciarEquipe') || temPermissao('gerenciarMembros')
 
   const gruposCategorias = [
-    { grupo: null, itens: [
-      ...(isTitular ? [{ id: 'geral', label: 'Geral', icone: <Icone.Settings size={15} /> }] : []),
-      { id: 'aparencia', label: 'Aparência', icone: <IconeAparencia size={15} /> },
+    { grupo: 'Escritório', itens: [
+      { id: 'geral', label: 'Geral', icone: <Icone.Settings size={15} /> },
+      ...(acessaSetores ? [{ id: 'setores', label: 'Setores', icone: <Icone.UsersThree size={15} /> }] : []),
+      ...(podeColaboradores ? [{ id: 'colaboradores', label: 'Colaboradores', icone: <Icone.Users size={15} /> }] : []),
     ]},
     { grupo: 'Onboarding', itens: [
       ...(podeModelos ? [{ id: 'modelos', label: 'Modelos', icone: <Icone.ClipboardList size={15} /> }] : []),
       ...(podeBanco ? [{ id: 'banco', label: 'Banco de atividades', icone: <Icone.Edit size={15} /> }] : []),
       ...(isTitular ? [{ id: 'alertas', label: 'Alertas', icone: <Icone.AlertTriangle size={15} /> }] : []),
-    ]},
-    { grupo: 'Equipe', itens: [
-      ...(acessaSetores ? [{ id: 'setores', label: 'Setores', icone: <Icone.UsersThree size={15} /> }] : []),
-      ...(podeColaboradores ? [{ id: 'colaboradores', label: 'Colaboradores', icone: <Icone.Users size={15} /> }] : []),
     ]},
     { grupo: 'Conta', itens: [
       { id: 'acesso-senha', label: 'Acesso e senha', icone: <Icone.Lock size={15} /> },
@@ -518,24 +767,6 @@ export default function ModalConfiguracoes({ fechar, categoriaInicial }) {
   const [categoria, setCategoria] = useState(
     categorias.find(c => c.id === categoriaInicial)?.id || categorias[0]?.id
   )
-
-  useEffect(() => {
-    if (!isTitular) return
-    api.get('/empresa').then(r => {
-      setPodeAtribuir(r.data.colaboradoresPodeAtribuirTitular ?? true)
-    }).catch(() => {})
-  }, [])
-
-  const salvarPodeAtribuir = async (valor) => {
-    setPodeAtribuir(valor)
-    setSalvandoConfig(true)
-    try {
-      await api.put('/empresa', { colaboradoresPodeAtribuirTitular: valor })
-      mostrar(valor ? 'Colaboradores podem te atribuir tarefas.' : 'Colaboradores não podem mais te atribuir tarefas.', 'sucesso')
-    } catch {
-      mostrar('Erro ao salvar configuração.', 'erro')
-    } finally { setSalvandoConfig(false) }
-  }
 
   return (
     <Modal onFechar={fechar} maxWidth="920px">
@@ -566,96 +797,13 @@ export default function ModalConfiguracoes({ fechar, categoriaInicial }) {
 
         {/* Conteúdo da categoria */}
         <div style={s.conteudoCategoria}>
-          {categoria === 'geral' && isTitular && (
-            <div>
-              <h2 style={s.categoriaTitulo}>Geral</h2>
-              <div style={s.toggleRow}>
-                <div>
-                  <p style={s.toggleLabel}>Colaboradores podem me atribuir tarefas</p>
-                  <p style={s.toggleDesc}>Quando ativo, seu nome aparece na lista de responsáveis ao criar uma tarefa</p>
-                </div>
-                <button
-                  style={{ ...s.toggle, ...(podeAtribuir ? s.toggleAtivo : {}) }}
-                  onClick={() => salvarPodeAtribuir(!podeAtribuir)}
-                  disabled={salvandoConfig}
-                >
-                  <div style={{ ...s.toggleBola, ...(podeAtribuir ? s.toggleBolaAtiva : {}) }} />
-                </button>
-              </div>
-            </div>
-          )}
+          {categoria === 'modelos' && podeModelos && <ModelosOnboarding />}
 
-          {categoria === 'aparencia' && (
-            <div>
-              <h2 style={s.categoriaTitulo}>Aparência</h2>
-              <div style={s.secao}>
-                <p style={s.secaoTitulo}>Tema</p>
-                <div style={s.temaOpcoes}>
-                  <button style={{ ...s.temaBotao, ...(tema === 'escuro' ? s.temaBotaoAtivo : {}) }} onClick={() => setTema('escuro')}>
-                    <div style={s.temaPreview}>
-                      <div style={{ ...s.temaPreviewSidebar, background: 'var(--sidebar)' }} />
-                      <div style={{ ...s.temaPreviewConteudo, background: 'var(--fundo)' }}>
-                        <div style={{ width: '60%', height: '6px', background: 'var(--borda)', borderRadius: '3px', marginBottom: '4px' }} />
-                        <div style={{ width: '40%', height: '6px', background: 'var(--input)', borderRadius: '3px' }} />
-                      </div>
-                    </div>
-                    <span style={s.temaLabel}>Escuro</span>
-                    {tema === 'escuro' && <span style={s.temaCheck}>✓</span>}
-                  </button>
-
-                  <button style={{ ...s.temaBotao, ...(tema === 'claro' ? s.temaBotaoAtivo : {}) }} onClick={() => setTema('claro')}>
-                    <div style={s.temaPreview}>
-                      <div style={{ ...s.temaPreviewSidebar, background: '#ffffff' }} />
-                      <div style={{ ...s.temaPreviewConteudo, background: '#F0FAF4' }}>
-                        <div style={{ width: '60%', height: '6px', background: '#D1EAD9', borderRadius: '3px', marginBottom: '4px' }} />
-                        <div style={{ width: '40%', height: '6px', background: '#EAF5EE', borderRadius: '3px' }} />
-                      </div>
-                    </div>
-                    <span style={{ ...s.temaLabel, color: tema === 'claro' ? '#0F3D22' : undefined }}>Claro</span>
-                    {tema === 'claro' && <span style={{ ...s.temaCheck, color: '#16A34A' }}>✓</span>}
-                  </button>
-                </div>
-              </div>
-
-              <div style={s.secao}>
-                <p style={s.secaoTitulo}>Tamanho da fonte</p>
-                <div style={s.sliderWrapper}>
-                  <span style={s.sliderLabel}>A</span>
-                  <div style={s.sliderTrack}>
-                    <div style={s.sliderLinha} />
-                    {[0, 1, 2].map(val => (
-                      <button
-                        key={val}
-                        style={{
-                          ...s.sliderPonto,
-                          left: `${val * 50}%`,
-                          background: fonte >= val ? 'var(--verde)' : 'var(--borda)',
-                          transform: fonte === val ? 'translate(-50%, -50%) scale(1.4)' : 'translate(-50%, -50%) scale(1)',
-                          border: fonte === val ? '2px solid #22C55E' : '2px solid var(--borda)',
-                        }}
-                        onClick={() => setFonte(val)}
-                      />
-                    ))}
-                    <div style={{ ...s.sliderLinhaAtiva, width: `${fonte * 50}%` }} />
-                  </div>
-                  <span style={{ ...s.sliderLabel, fontSize: '1.3rem' }}>A</span>
-                </div>
-                <div style={s.sliderLabels}>
-                  <span style={{ ...s.sliderOpcaoLabel, color: fonte === 0 ? 'var(--verde)' : 'var(--texto-apagado)' }}>Pequena</span>
-                  <span style={{ ...s.sliderOpcaoLabel, color: fonte === 1 ? 'var(--verde)' : 'var(--texto-apagado)' }}>Padrão</span>
-                  <span style={{ ...s.sliderOpcaoLabel, color: fonte === 2 ? 'var(--verde)' : 'var(--texto-apagado)' }}>Grande</span>
-                </div>
-                <div style={s.fontePreview}>
-                  <p style={{ fontSize: fonte === 0 ? '0.875rem' : fonte === 1 ? '1rem' : '1.125rem', color: 'var(--texto)', margin: 0, transition: 'font-size 0.2s' }}>
-                    Zempofy — Sistema de gestão de tarefas
-                  </p>
-                </div>
-              </div>
-            </div>
+          {categoria === 'geral' && (
+            <CategoriaGeral usuario={usuario} isTitular={isTitular} tema={tema} setTema={setTema} fonte={fonte} setFonte={setFonte} onPerfilAtualizado={recarregarUsuario} />
           )}
 
           {categoria === 'setores' && acessaSetores && <CategoriaSetores souGestor={souGestorSetores} />}
-          {categoria === 'modelos' && podeModelos && <ModelosOnboarding />}
           {categoria === 'banco' && podeBanco && <BancoAtividades />}
           {categoria === 'alertas' && isTitular && <ConfigAlertas />}
           {categoria === 'colaboradores' && podeColaboradores && (
@@ -687,14 +835,7 @@ const s = {
 
   secao: { display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' },
   secaoTitulo: { fontSize: '0.66rem', fontWeight: '700', color: 'var(--verde)', textTransform: 'uppercase', letterSpacing: '1.2px', margin: 0 },
-  temaOpcoes: { display: 'flex', gap: '10px' },
-  temaBotao: { flex: 1, background: 'var(--input)', border: '2px solid var(--borda)', borderRadius: '10px', padding: '10px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', transition: 'all 0.2s', position: 'relative' },
-  temaBotaoAtivo: { borderColor: 'var(--verde)', background: 'rgba(34,197,94,0.08)' },
-  temaPreview: { width: '100%', height: '48px', borderRadius: '6px', overflow: 'hidden', display: 'flex', border: '1px solid var(--borda)' },
-  temaPreviewSidebar: { width: '25%' },
-  temaPreviewConteudo: { flex: 1, padding: '7px', display: 'flex', flexDirection: 'column', justifyContent: 'center' },
-  temaLabel: { fontSize: '0.76rem', fontWeight: '600', color: 'var(--texto)', fontFamily: 'Inter, sans-serif' },
-  temaCheck: { position: 'absolute', top: '7px', right: '7px', color: 'var(--verde)', fontSize: '11px', fontWeight: '700' },
+  botaoTema: { width: '50px', height: '50px', background: 'var(--card)', border: '1px solid var(--borda)', borderRadius: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   sliderWrapper: { display: 'flex', alignItems: 'center', gap: '10px' },
   sliderLabel: { fontSize: '0.82rem', fontWeight: '700', color: 'var(--texto-apagado)', fontFamily: 'Inter, sans-serif', flexShrink: 0 },
   sliderTrack: { flex: 1, position: 'relative', height: '18px', display: 'flex', alignItems: 'center' },

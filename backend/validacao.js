@@ -127,8 +127,12 @@ const checklistUpdateSchema = z.object({
 }).passthrough();
 
 // ── Empresa ──
+const FUSOS_BRASIL = ['America/Noronha', 'America/Sao_Paulo', 'America/Manaus', 'America/Rio_Branco'];
+
 const empresaUpdateSchema = z.object({
   nome: z.string().trim().min(1).optional(),
+  cnpj: cnpjOpcional,
+  fusoHorario: z.enum(FUSOS_BRASIL).optional(),
   colaboradoresPodeAtribuirTitular: z.boolean().optional(),
 }).passthrough();
 

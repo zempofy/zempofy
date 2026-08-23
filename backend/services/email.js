@@ -139,7 +139,7 @@ const enviarVerificacaoEmail = async ({ destinatario, nome, token }) => {
 
 // 5. Convite ao novo colaborador — sem senha em texto puro, link pra pessoa definir a própria senha
 const enviarConvite = async ({ destinatario, nome, nomeEmpresa, nomeConvidadoPor, token }) => {
-  const link = `https://app.zempofy.com.br/redefinir-senha?token=${token}`;
+  const link = `https://app.zempofy.com.br/redefinir-senha?token=${token}&novo=1`;
   const corpo = `
     <p>Olá, <strong>${nome}</strong>! Seja muito bem-vindo(a) ao <strong>${nomeEmpresa}</strong> no Zempofy.</p>
     <p>${nomeConvidadoPor} adicionou você ao sistema. Pra começar, defina sua senha de acesso clicando no botão abaixo.</p>

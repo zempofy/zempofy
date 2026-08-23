@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useLayoutEffect, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import api from '../services/api'
 import ModalConfiguracoes from './ModalConfiguracoes'
@@ -199,6 +199,13 @@ export default function Layout({ children, menuItens, paginaAtual, setPagina }) 
   const [sidebarAberta, setSidebarAberta] = useState(true)
   const [painelAberto, setPainelAberto] = useState(false)
   const avatarMenuRef = useRef(null)
+
+  // Expõe a largura atual do sidebar como CSS var — o Modal (que fica fora da árvore normal, num
+  // portal) lê daqui em vez de fazer document.querySelector('aside'), que já causou bug de
+  // centralização (offsetWidth lido de forma dessincronizada do estado real de aberto/fechado).
+  useLayoutEffect(() => {
+    document.documentElement.style.setProperty('--sidebar-largura', sidebarAberta ? SIDEBAR_LARGURA : SIDEBAR_FECHADA)
+  }, [sidebarAberta])
 
   useEffect(() => {
     const fecharEsc = (e) => { if (e.key === 'Escape') setPainelAberto(false) }

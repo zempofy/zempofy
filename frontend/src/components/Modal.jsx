@@ -1,16 +1,13 @@
 import { createPortal } from 'react-dom'
 
 export default function Modal({ children, onFechar, maxWidth = '440px' }) {
-  const sidebar = document.querySelector('aside')
-  const sidebarW = sidebar ? sidebar.offsetWidth : 0
-
   const conteudo = (
     <>
       <div onClick={onFechar} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 9000 }} />
       <div style={{
         position: 'fixed',
         top: 0, bottom: 0,
-        left: sidebarW,
+        left: 'var(--sidebar-largura, 0px)',
         right: 0,
         display: 'flex',
         alignItems: 'center',
