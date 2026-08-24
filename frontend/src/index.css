@@ -14,6 +14,8 @@
   --verde-glow-forte: rgba(0, 177, 65, 0.22);
 
   --fundo: #09090b;
+  --fundo-sidebar: #0d0d0f;
+  --sobreposicao-rgb: 255,255,255;
   --sidebar: #111113;
   --card: #18181b;
   --card-hover: #1f1f23;
@@ -63,6 +65,8 @@
   --verde-glow-forte: rgba(0, 177, 65, 0.15);
 
   --fundo: #f4f4f5;
+  --fundo-sidebar: #fbfbfc;
+  --sobreposicao-rgb: 9,9,11;
   --sidebar: #ffffff;
   --card: #ffffff;
   --card-hover: #f9f9fa;

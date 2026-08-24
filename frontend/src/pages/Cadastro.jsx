@@ -47,7 +47,7 @@ export default function Cadastro() {
   const atualizar = (campo, valor) => setForm(f => ({ ...f, [campo]: valor }))
 
   return (
-    <div style={styles.pagina}>
+    <div style={styles.pagina} data-tema="escuro">
       <div style={styles.fundoDecor}>
         <div style={styles.circulo1} />
         <div style={styles.circulo2} />
@@ -167,7 +167,7 @@ export default function Cadastro() {
               onChange={e => setAceitouTermos(e.target.checked)}
               style={{ marginTop: '2px', accentColor: '#00b141', width: '16px', height: '16px', flexShrink: 0, cursor: 'pointer' }}
             />
-            <span style={{ fontSize: '0.85rem', color: '#a1a1aa', lineHeight: '1.5' }}>
+            <span style={{ fontSize: '0.85rem', color: 'var(--texto-secundario)', lineHeight: '1.5' }}>
               Li e aceito os{' '}
               <button type="button" style={styles.linkTermos} onClick={() => setModalTermos(true)}>
                 Termos de Uso
@@ -225,7 +225,7 @@ export default function Cadastro() {
               <p style={styles.termosSecTitulo}>7. Contato</p>
               <p style={styles.termosTexto}>Em caso de dúvidas sobre estes termos, entre em contato através do e-mail disponível na plataforma.</p>
             </div>
-            <div style={{ padding: '16px 24px', borderTop: '1px solid #27272a' }}>
+            <div style={{ padding: '16px 24px', borderTop: '1px solid var(--borda)' }}>
               <button
                 style={{ ...styles.botao, marginTop: 0 }}
                 onClick={() => { setAceitouTermos(true); setModalTermos(false) }}
@@ -246,7 +246,7 @@ const styles = {
     display: 'flex',
     alignItems: 'flex-start',
     justifyContent: 'center',
-    background: '#09090b',
+    background: 'var(--fundo)',
     position: 'relative',
     overflowY: 'auto',
     overflowX: 'hidden',
@@ -269,8 +269,8 @@ const styles = {
     backgroundSize: '40px 40px',
   },
   caixa: {
-    background: 'rgba(17,17,19,0.97)',
-    border: '1px solid #27272a',
+    background: 'var(--card)',
+    border: '1px solid var(--borda)',
     borderRadius: '20px',
     padding: '40px 36px',
     width: '100%',
@@ -290,9 +290,9 @@ const styles = {
     fontFamily: 'Inter, sans-serif', fontWeight: '800', fontSize: '18px', color: '#fff',
     boxShadow: '0 2px 8px rgba(0,177,65,0.35)',
   },
-  logoNome: { fontFamily: 'Inter, sans-serif', fontWeight: '700', fontSize: '20px', color: '#fafafa', letterSpacing: '-0.5px' },
-  titulo: { fontSize: '1.6rem', color: '#fafafa', marginBottom: '6px', letterSpacing: '-0.03em', fontWeight: '700' },
-  subtitulo: { color: '#71717a', fontSize: '0.9rem', marginBottom: '24px' },
+  logoNome: { fontFamily: 'Inter, sans-serif', fontWeight: '700', fontSize: '20px', color: 'var(--texto)', letterSpacing: '-0.5px' },
+  titulo: { fontSize: '1.6rem', color: 'var(--texto)', marginBottom: '6px', letterSpacing: '-0.03em', fontWeight: '700' },
+  subtitulo: { color: 'var(--texto-apagado)', fontSize: '0.9rem', marginBottom: '24px' },
   erro: {
     background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.25)',
     borderRadius: '10px', padding: '12px 16px', color: '#f87171',
@@ -303,14 +303,14 @@ const styles = {
   secaoTitulo: {
     fontSize: '0.68rem', fontWeight: '700', color: '#00b141',
     textTransform: 'uppercase', letterSpacing: '1.5px',
-    borderBottom: '1px solid #27272a', paddingBottom: '8px',
+    borderBottom: '1px solid var(--borda)', paddingBottom: '8px',
   },
   campo: { display: 'flex', flexDirection: 'column', gap: '6px' },
   linha2: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' },
-  label: { fontSize: '0.72rem', fontWeight: '600', color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.8px' },
+  label: { fontSize: '0.72rem', fontWeight: '600', color: 'var(--texto-apagado)', textTransform: 'uppercase', letterSpacing: '0.8px' },
   input: {
-    background: '#1c1c1f', border: '1px solid #27272a', borderRadius: '10px',
-    padding: '12px 16px', color: '#fafafa', fontSize: '0.95rem',
+    background: 'var(--input)', border: '1px solid var(--borda)', borderRadius: '10px',
+    padding: '12px 16px', color: 'var(--texto)', fontSize: '0.95rem',
     transition: 'border-color 0.2s, box-shadow 0.2s', width: '100%',
     fontFamily: 'Inter, sans-serif',
   },
@@ -323,17 +323,17 @@ const styles = {
     boxShadow: '0 2px 12px rgba(0,177,65,0.35)',
   },
   inputWrapper: { position: 'relative', display: 'flex', alignItems: 'center' },
-  btnOlho: { position: 'absolute', right: '12px', background: 'none', border: 'none', color: '#71717a', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' },
+  btnOlho: { position: 'absolute', right: '12px', background: 'none', border: 'none', color: 'var(--texto-apagado)', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' },
   termosLabel: { display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer', marginTop: '4px' },
   linkTermos: { background: 'none', border: 'none', color: '#00b141', cursor: 'pointer', fontWeight: '600', fontSize: '0.85rem', padding: 0, fontFamily: 'Inter, sans-serif', textDecoration: 'underline' },
   termosOverlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', backdropFilter: 'blur(4px)' },
-  termosModal: { background: '#18181b', border: '1px solid #27272a', borderRadius: '16px', width: '100%', maxWidth: '560px', maxHeight: '85vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 64px rgba(0,0,0,0.6)' },
-  termosTopo: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px', borderBottom: '1px solid #27272a' },
-  termosTitulo: { fontWeight: '700', fontSize: '1rem', color: '#fafafa', fontFamily: 'Inter, sans-serif' },
-  termosFechar: { background: 'none', border: '1px solid #27272a', borderRadius: '6px', color: '#71717a', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', cursor: 'pointer' },
+  termosModal: { background: 'var(--card)', border: '1px solid var(--borda)', borderRadius: '16px', width: '100%', maxWidth: '560px', maxHeight: '85vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 64px rgba(0,0,0,0.6)' },
+  termosTopo: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px', borderBottom: '1px solid var(--borda)' },
+  termosTitulo: { fontWeight: '700', fontSize: '1rem', color: 'var(--texto)', fontFamily: 'Inter, sans-serif' },
+  termosFechar: { background: 'none', border: '1px solid var(--borda)', borderRadius: '6px', color: 'var(--texto-apagado)', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', cursor: 'pointer' },
   termosCorpo: { padding: '24px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px', flex: 1 },
   termosSecTitulo: { fontSize: '0.85rem', fontWeight: '700', color: '#00b141', marginBottom: '-8px' },
-  termosTexto: { fontSize: '0.85rem', color: '#a1a1aa', lineHeight: '1.7' },
-  rodape: { textAlign: 'center', marginTop: '20px', color: '#71717a', fontSize: '0.875rem' },
+  termosTexto: { fontSize: '0.85rem', color: 'var(--texto-secundario)', lineHeight: '1.7' },
+  rodape: { textAlign: 'center', marginTop: '20px', color: 'var(--texto-apagado)', fontSize: '0.875rem' },
   link: { color: '#00b141', fontWeight: '600' },
 }

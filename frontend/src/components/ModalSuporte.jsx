@@ -1,12 +1,15 @@
 import { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import { usePreferencias } from '../contexts/PreferenciasContext'
 import Modal from './Modal'
 import api from '../services/api'
 import { useToast } from './Toast'
 
 export default function ModalSuporte({ fechar }) {
   const { usuario } = useAuth()
+  const { tema } = usePreferencias()
   const { mostrar } = useToast()
+  const colorScheme = tema === 'claro' ? 'light' : 'dark'
   const [assunto, setAssunto] = useState('')
   const [descricao, setDescricao] = useState('')
   const [enviando, setEnviando] = useState(false)
@@ -42,7 +45,7 @@ export default function ModalSuporte({ fechar }) {
         <div>
           <label style={styles.campoLabel}>Assunto</label>
           <input
-            style={styles.input}
+            style={{ ...styles.input, colorScheme }}
             value={assunto}
             onChange={e => setAssunto(e.target.value)}
             placeholder="Resuma em poucas palavras"
@@ -52,7 +55,7 @@ export default function ModalSuporte({ fechar }) {
         <div>
           <label style={styles.campoLabel}>Descrição</label>
           <textarea
-            style={{ ...styles.input, minHeight: '90px', resize: 'vertical' }}
+            style={{ ...styles.input, minHeight: '90px', resize: 'vertical', colorScheme }}
             value={descricao}
             onChange={e => setDescricao(e.target.value)}
             placeholder="Descreva o problema ou a sugestão..."
@@ -77,6 +80,6 @@ const styles = {
   corpo: { padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px' },
   texto: { fontSize: '0.8rem', color: 'var(--texto-apagado)', margin: 0, lineHeight: '1.4', fontFamily: 'Inter, sans-serif' },
   campoLabel: { fontSize: '0.7rem', fontWeight: '600', color: 'var(--texto-apagado)', textTransform: 'uppercase', letterSpacing: '0.8px', display: 'block', margin: '0 0 6px', fontFamily: 'Inter, sans-serif' },
-  input: { width: '100%', background: 'var(--input)', border: '1px solid var(--borda)', borderRadius: '8px', padding: '9px 12px', color: 'var(--texto)', fontSize: '0.85rem', fontFamily: 'Inter, sans-serif', boxSizing: 'border-box', colorScheme: 'dark' },
+  input: { width: '100%', background: 'var(--input)', border: '1px solid var(--borda)', borderRadius: '8px', padding: '9px 12px', color: 'var(--texto)', fontSize: '0.85rem', fontFamily: 'Inter, sans-serif', boxSizing: 'border-box' },
   btnEnviar: { alignSelf: 'flex-start', background: 'var(--gradiente-verde)', color: '#fff', border: 'none', borderRadius: '8px', padding: '9px 20px', fontFamily: 'Inter, sans-serif', fontWeight: '600', fontSize: '0.85rem', cursor: 'pointer' },
 }

@@ -35,13 +35,13 @@ function CheckItem({ ativo, label, desc, onClick, sub = false }) {
       display: 'flex', alignItems: 'center', gap: '12px',
       padding: sub ? '8px 12px 8px 28px' : '10px 12px',
       borderRadius: '8px', cursor: 'pointer',
-      background: ativo ? 'rgba(0,177,65,0.08)' : sub ? 'rgba(255,255,255,0.02)' : 'transparent',
+      background: ativo ? 'rgba(0,177,65,0.08)' : sub ? 'rgba(var(--sobreposicao-rgb),0.02)' : 'transparent',
       border: ativo ? '1px solid rgba(0,177,65,0.2)' : '1px solid var(--borda)',
       transition: 'all 0.15s',
     }}>
       <div style={{
         width: '16px', height: '16px', borderRadius: '4px', flexShrink: 0,
-        border: ativo ? '2px solid var(--verde)' : '2px solid #3f3f46',
+        border: ativo ? '2px solid var(--verde)' : '2px solid var(--scrollbar-thumb)',
         background: ativo ? 'var(--verde)' : 'transparent',
         display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s',
       }}>
@@ -82,7 +82,7 @@ export function PainelPermissoes({ permissoes, onChange }) {
           >
             <div style={{
               width: '16px', height: '16px', borderRadius: '4px', flexShrink: 0,
-              border: permissoes[p.key] ? '2px solid var(--verde)' : '2px solid #3f3f46',
+              border: permissoes[p.key] ? '2px solid var(--verde)' : '2px solid var(--scrollbar-thumb)',
               background: permissoes[p.key] ? 'var(--verde)' : 'transparent',
               display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s',
             }}>
@@ -442,7 +442,7 @@ export default function PaginaEquipe({ usuario, recarregar }) {
             onClick={() => toggleAtribuir(!podeAtribuir)}
             style={{
               width: '38px', height: '21px', borderRadius: '99px', cursor: 'pointer',
-              background: podeAtribuir ? 'var(--verde)' : 'rgba(255,255,255,0.1)',
+              background: podeAtribuir ? 'var(--verde)' : 'rgba(var(--sobreposicao-rgb),0.1)',
               position: 'relative', transition: 'background 0.2s', flexShrink: 0,
             }}
           >

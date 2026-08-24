@@ -770,6 +770,7 @@ export default function ModalConfiguracoes({ fechar, categoriaInicial }) {
 
   return (
     <Modal onFechar={fechar} maxWidth="920px">
+      <div style={{ colorScheme: tema === 'claro' ? 'light' : 'dark' }}>
       <div style={s.topo}>
         <span style={s.titulo}>Configurações</span>
         <button style={s.btnX} onClick={fechar}>✕</button>
@@ -813,6 +814,7 @@ export default function ModalConfiguracoes({ fechar, categoriaInicial }) {
           {categoria === 'plano' && isTitular && <CategoriaMeuPlano />}
           {categoria === 'suporte' && <CategoriaSuporte />}
         </div>
+      </div>
       </div>
     </Modal>
   )
@@ -875,7 +877,7 @@ const s = {
   detalheTitulo: { fontSize: '1rem', fontWeight: '700', color: 'var(--texto)', margin: 0, fontFamily: 'Inter, sans-serif' },
   campo: { display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '13px' },
   label: { fontSize: '0.68rem', fontWeight: '600', color: 'var(--texto-apagado)', textTransform: 'uppercase', letterSpacing: '1px', fontFamily: 'Inter, sans-serif' },
-  input: { background: 'var(--input)', border: '1px solid var(--borda)', borderRadius: '9px', padding: '8px 12px', color: 'var(--texto)', fontSize: '0.85rem', fontFamily: 'Inter, sans-serif', width: '100%', boxSizing: 'border-box', colorScheme: 'dark' },
+  input: { background: 'var(--input)', border: '1px solid var(--borda)', borderRadius: '9px', padding: '8px 12px', color: 'var(--texto)', fontSize: '0.85rem', fontFamily: 'Inter, sans-serif', width: '100%', boxSizing: 'border-box' },
   hint: { fontSize: '0.7rem', color: 'var(--texto-apagado)', margin: 0, lineHeight: '1.4', fontFamily: 'Inter, sans-serif' },
   membroLinha: { display: 'flex', alignItems: 'center', gap: '9px', padding: '5px 9px', borderRadius: '7px', background: 'var(--input)', border: '1px solid var(--borda)' },
   btnRemoverMembro: { background: 'none', border: 'none', color: 'var(--texto-apagado)', cursor: 'pointer', display: 'flex', padding: '4px' },

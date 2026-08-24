@@ -27,19 +27,19 @@ function Balao({ alvo, titulo, texto, passo, total, onProximo, onFechar, posicao
   if (posicao === 'bottom') {
     top = coords.bottom + GAP
     left = coords.left + coords.width / 2 - 160
-    arrowStyle = { top: -8, left: '50%', transform: 'translateX(-50%)', borderBottom: '8px solid #1c1c1f', borderLeft: '8px solid transparent', borderRight: '8px solid transparent' }
+    arrowStyle = { top: -8, left: '50%', transform: 'translateX(-50%)', borderBottom: '8px solid var(--input)', borderLeft: '8px solid transparent', borderRight: '8px solid transparent' }
   } else if (posicao === 'top') {
     top = coords.top - GAP - 170
     left = coords.left + coords.width / 2 - 160
-    arrowStyle = { bottom: -8, left: '50%', transform: 'translateX(-50%)', borderTop: '8px solid #1c1c1f', borderLeft: '8px solid transparent', borderRight: '8px solid transparent' }
+    arrowStyle = { bottom: -8, left: '50%', transform: 'translateX(-50%)', borderTop: '8px solid var(--input)', borderLeft: '8px solid transparent', borderRight: '8px solid transparent' }
   } else if (posicao === 'right') {
     top = coords.top + coords.height / 2 - 70
     left = coords.right + GAP
-    arrowStyle = { top: '40%', left: -8, borderRight: '8px solid #1c1c1f', borderTop: '8px solid transparent', borderBottom: '8px solid transparent' }
+    arrowStyle = { top: '40%', left: -8, borderRight: '8px solid var(--input)', borderTop: '8px solid transparent', borderBottom: '8px solid transparent' }
   } else {
     top = coords.top + coords.height / 2 - 70
     left = coords.left - 334 - GAP
-    arrowStyle = { top: '40%', right: -8, borderLeft: '8px solid #1c1c1f', borderTop: '8px solid transparent', borderBottom: '8px solid transparent' }
+    arrowStyle = { top: '40%', right: -8, borderLeft: '8px solid var(--input)', borderTop: '8px solid transparent', borderBottom: '8px solid transparent' }
   }
 
   left = Math.max(12, Math.min(left, window.innerWidth - 340))
@@ -85,7 +85,7 @@ function Balao({ alvo, titulo, texto, passo, total, onProximo, onFechar, posicao
       {/* Balão */}
       <div style={{
         position: 'fixed', top, left, width: '320px',
-        background: '#1c1c1f',
+        background: 'var(--input)',
         border: '1px solid rgba(0,177,65,0.35)',
         borderRadius: '14px', padding: '18px 20px',
         boxShadow: '0 12px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(0,177,65,0.1)',

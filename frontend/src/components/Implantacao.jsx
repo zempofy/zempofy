@@ -16,10 +16,10 @@ function Balao({ alvo, titulo, texto, passo, total, onProximo, onFechar, posicao
   }, [alvo])
   if (!coords) return null
   const GAP = 14; let top, left, arrowStyle
-  if (posicao === 'bottom') { top = coords.bottom + GAP; left = coords.left + coords.width / 2 - 160; arrowStyle = { top: -8, left: '50%', transform: 'translateX(-50%)', borderBottom: '8px solid #1c1c1f', borderLeft: '8px solid transparent', borderRight: '8px solid transparent' } }
-  else if (posicao === 'top') { top = coords.top - GAP - 170; left = coords.left + coords.width / 2 - 160; arrowStyle = { bottom: -8, left: '50%', transform: 'translateX(-50%)', borderTop: '8px solid #1c1c1f', borderLeft: '8px solid transparent', borderRight: '8px solid transparent' } }
-  else if (posicao === 'right') { top = coords.top + coords.height / 2 - 70; left = coords.right + GAP; arrowStyle = { top: '40%', left: -8, borderRight: '8px solid #1c1c1f', borderTop: '8px solid transparent', borderBottom: '8px solid transparent' } }
-  else { top = coords.top + coords.height / 2 - 70; left = coords.left - 334 - GAP; arrowStyle = { top: '40%', right: -8, borderLeft: '8px solid #1c1c1f', borderTop: '8px solid transparent', borderBottom: '8px solid transparent' } }
+  if (posicao === 'bottom') { top = coords.bottom + GAP; left = coords.left + coords.width / 2 - 160; arrowStyle = { top: -8, left: '50%', transform: 'translateX(-50%)', borderBottom: '8px solid var(--input)', borderLeft: '8px solid transparent', borderRight: '8px solid transparent' } }
+  else if (posicao === 'top') { top = coords.top - GAP - 170; left = coords.left + coords.width / 2 - 160; arrowStyle = { bottom: -8, left: '50%', transform: 'translateX(-50%)', borderTop: '8px solid var(--input)', borderLeft: '8px solid transparent', borderRight: '8px solid transparent' } }
+  else if (posicao === 'right') { top = coords.top + coords.height / 2 - 70; left = coords.right + GAP; arrowStyle = { top: '40%', left: -8, borderRight: '8px solid var(--input)', borderTop: '8px solid transparent', borderBottom: '8px solid transparent' } }
+  else { top = coords.top + coords.height / 2 - 70; left = coords.left - 334 - GAP; arrowStyle = { top: '40%', right: -8, borderLeft: '8px solid var(--input)', borderTop: '8px solid transparent', borderBottom: '8px solid transparent' } }
   left = Math.max(12, Math.min(left, window.innerWidth - 340)); top = Math.max(12, Math.min(top, window.innerHeight - 200))
   return createPortal(<>
     <style>{`@keyframes zp{0%,100%{box-shadow:0 0 0 3px rgba(0,177,65,.3),0 0 20px rgba(0,177,65,.15)}50%{box-shadow:0 0 0 5px rgba(0,177,65,.5),0 0 30px rgba(0,177,65,.3)}}`}</style>
@@ -31,7 +31,7 @@ function Balao({ alvo, titulo, texto, passo, total, onProximo, onFechar, posicao
       </svg>
       <div style={{position:'absolute',left:coords.left-8,top:coords.top-8,width:coords.width+16,height:coords.height+16,borderRadius:'10px',animation:'zp 2s ease-in-out infinite'}}/>
     </div>
-    <div style={{position:'fixed',top,left,width:'320px',background:'#1c1c1f',border:'1px solid rgba(0,177,65,0.35)',borderRadius:'14px',padding:'18px 20px',boxShadow:'0 12px 40px rgba(0,0,0,0.6)',zIndex:9999,fontFamily:'Inter,sans-serif'}}>
+    <div style={{position:'fixed',top,left,width:'320px',background:'var(--input)',border:'1px solid rgba(0,177,65,0.35)',borderRadius:'14px',padding:'18px 20px',boxShadow:'0 12px 40px rgba(0,0,0,0.6)',zIndex:9999,fontFamily:'Inter,sans-serif'}}>
       <div style={{position:'absolute',width:0,height:0,...arrowStyle}}/>
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'10px'}}>
         <div style={{display:'flex',alignItems:'center',gap:'8px'}}><span style={{fontSize:'14px'}}>💡</span><span style={{fontSize:'0.7rem',fontWeight:'700',color:'var(--verde)',textTransform:'uppercase',letterSpacing:'1px'}}>Passo {passo+1} de {total}</span></div>
@@ -689,27 +689,27 @@ const s = {
   titulo: { fontSize: '1.4rem', fontWeight: '700', color: 'var(--texto)', margin: 0, fontFamily: 'Inter, sans-serif' },
   subtitulo: { fontSize: '0.82rem', color: 'var(--texto-apagado)', marginTop: '4px', fontFamily: 'Inter, sans-serif' },
   btnNovo: {
-    background: 'linear-gradient(135deg, #22C55E, #1A6B3C)',
+    background: 'linear-gradient(135deg, var(--verde), var(--verde-escuro))',
     color: '#fff', border: 'none', borderRadius: '10px',
     padding: '10px 20px', fontFamily: 'Inter, sans-serif',
     fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer'
   },
   input: {
-    background: 'var(--input)', border: '1px solid #2A3830', borderRadius: '10px',
+    background: 'var(--input)', border: '1px solid var(--borda)', borderRadius: '10px',
     padding: '10px 14px', color: 'var(--texto)', fontSize: '0.9rem',
     fontFamily: 'Inter, sans-serif', width: '100%', boxSizing: 'border-box'
   },
   grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '12px' },
   card: {
-    background: 'var(--input)', border: '1px solid #2A3830', borderRadius: '14px',
+    background: 'var(--input)', border: '1px solid var(--borda)', borderRadius: '14px',
     padding: '16px 18px', cursor: 'pointer', transition: 'border-color 0.15s'
   },
   cardAdd: {
     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-    minHeight: '130px', border: '1.5px dashed #2A3830'
+    minHeight: '130px', border: '1.5px dashed var(--borda)'
   },
   addIcone: {
-    width: '32px', height: '32px', borderRadius: '50%', border: '1.5px dashed #2A3830',
+    width: '32px', height: '32px', borderRadius: '50%', border: '1.5px dashed var(--borda)',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
     color: 'var(--texto-apagado)', fontSize: '20px', marginBottom: '8px'
   },
@@ -722,10 +722,10 @@ const s = {
   },
   cardNome: { fontSize: '0.875rem', fontWeight: '600', color: 'var(--texto)', margin: 0, fontFamily: 'Inter, sans-serif' },
   cardCnpj: { fontSize: '0.75rem', color: 'var(--texto-apagado)', margin: '2px 0 0', fontFamily: 'Inter, sans-serif' },
-  divisor: { border: 'none', borderTop: '1px solid #2A3830', margin: '10px 0' },
+  divisor: { border: 'none', borderTop: '1px solid var(--borda)', margin: '10px 0' },
   labelMini: { fontSize: '0.7rem', color: 'var(--texto-apagado)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 5px', fontFamily: 'Inter, sans-serif' },
   etapaBadge: { display: 'inline-block', fontSize: '0.78rem', fontWeight: '500', padding: '3px 10px', borderRadius: '99px', fontFamily: 'Inter, sans-serif' },
-  baraBg: { height: '5px', background: '#2A3830', borderRadius: '99px', overflow: 'hidden' },
+  baraBg: { height: '5px', background: 'var(--borda)', borderRadius: '99px', overflow: 'hidden' },
   baraFill: { height: '100%', background: '#2DAA59', borderRadius: '99px', transition: 'width 0.3s' },
   // Detalhe — mapa mental
   btnVoltar: {
@@ -734,15 +734,15 @@ const s = {
     marginBottom: '20px', padding: 0
   },
   mapaCard: {
-    background: 'var(--sidebar)', border: '1px solid #2A3830',
+    background: 'var(--sidebar)', border: '1px solid var(--borda)',
     borderRadius: '16px', overflow: 'hidden'
   },
   mapaCardTopo: {
     display: 'flex', alignItems: 'center', gap: '12px',
-    padding: '14px 20px', borderBottom: '1px solid #2A3830'
+    padding: '14px 20px', borderBottom: '1px solid var(--borda)'
   },
   mapaProgLabel: { fontSize: '0.78rem', color: 'var(--texto-apagado)', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' },
-  mapaBaraBg: { flex: 1, height: '4px', background: '#2A3830', borderRadius: '99px', overflow: 'hidden' },
+  mapaBaraBg: { flex: 1, height: '4px', background: 'var(--borda)', borderRadius: '99px', overflow: 'hidden' },
   mapaBaraFill: { height: '100%', background: '#2DAA59', borderRadius: '99px', transition: 'width 0.4s' },
   mapaProgPct: { fontSize: '0.78rem', color: 'var(--verde)', fontFamily: 'Inter, sans-serif', fontWeight: '600', whiteSpace: 'nowrap' },
   mapaScroll: {
@@ -777,15 +777,15 @@ const s = {
     fontFamily: 'Inter, sans-serif'
   },
   painel: {
-    borderTop: '1px solid #2A3830',
+    borderTop: '1px solid var(--borda)',
     padding: '20px 24px',
   },
   painelHeader: { display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' },
   painelTitulo: { fontSize: '0.95rem', fontWeight: '600', color: 'var(--texto)', fontFamily: 'Inter, sans-serif' },
-  badgeBloqueado: { fontSize: '0.72rem', color: 'var(--texto-apagado)', background: 'var(--input)', padding: '3px 10px', borderRadius: '99px', border: '1px solid #2A3830', marginLeft: 'auto', fontFamily: 'Inter, sans-serif' },
+  badgeBloqueado: { fontSize: '0.72rem', color: 'var(--texto-apagado)', background: 'var(--input)', padding: '3px 10px', borderRadius: '99px', border: '1px solid var(--borda)', marginLeft: 'auto', fontFamily: 'Inter, sans-serif' },
   tarefaItem: {
     display: 'flex', alignItems: 'center', gap: '10px',
-    background: 'var(--input)', border: '1px solid #2A3830',
+    background: 'var(--input)', border: '1px solid var(--borda)',
     borderRadius: '10px', padding: '11px 14px',
   },
   tarefaCheck: {
@@ -800,15 +800,15 @@ const s = {
   vazioBox: { textAlign: 'center', marginTop: '60px' },
   // Modal
   overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' },
-  modal: { background: 'var(--sidebar)', border: '1px solid #2A3830', borderRadius: '20px', width: '100%', maxWidth: '440px', boxShadow: '0 24px 64px rgba(0,0,0,0.6)' },
-  modalTopo: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px', borderBottom: '1px solid #2A3830' },
+  modal: { background: 'var(--sidebar)', border: '1px solid var(--borda)', borderRadius: '20px', width: '100%', maxWidth: '440px', boxShadow: '0 24px 64px rgba(0,0,0,0.6)' },
+  modalTopo: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px', borderBottom: '1px solid var(--borda)' },
   modalTitulo: { fontWeight: '700', fontSize: '1rem', color: 'var(--texto)', fontFamily: 'Inter, sans-serif' },
-  btnX: { background: 'none', border: '1px solid #2A3830', borderRadius: '6px', color: 'var(--texto-apagado)', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', cursor: 'pointer' },
+  btnX: { background: 'none', border: '1px solid var(--borda)', borderRadius: '6px', color: 'var(--texto-apagado)', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', cursor: 'pointer' },
   modalCorpo: { padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' },
-  modalRodape: { display: 'flex', gap: '12px', justifyContent: 'flex-end', padding: '16px 24px', borderTop: '1px solid #2A3830' },
+  modalRodape: { display: 'flex', gap: '12px', justifyContent: 'flex-end', padding: '16px 24px', borderTop: '1px solid var(--borda)' },
   campo: { display: 'flex', flexDirection: 'column', gap: '8px' },
   label: { fontSize: '0.7rem', fontWeight: '600', color: 'var(--texto-apagado)', textTransform: 'uppercase', letterSpacing: '1px', fontFamily: 'Inter, sans-serif' },
-  btnCancelar: { background: 'none', border: '1px solid #2A3830', borderRadius: '10px', color: 'var(--texto-apagado)', padding: '10px 20px', fontFamily: 'Inter, sans-serif', fontWeight: '500', fontSize: '0.875rem', cursor: 'pointer' },
-  btnSalvar: { background: 'linear-gradient(135deg, #22C55E, #1A6B3C)', color: '#fff', border: 'none', borderRadius: '10px', padding: '10px 20px', fontFamily: 'Inter, sans-serif', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer' },
+  btnCancelar: { background: 'none', border: '1px solid var(--borda)', borderRadius: '10px', color: 'var(--texto-apagado)', padding: '10px 20px', fontFamily: 'Inter, sans-serif', fontWeight: '500', fontSize: '0.875rem', cursor: 'pointer' },
+  btnSalvar: { background: 'linear-gradient(135deg, var(--verde), var(--verde-escuro))', color: '#fff', border: 'none', borderRadius: '10px', padding: '10px 20px', fontFamily: 'Inter, sans-serif', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer' },
   erro: { color: '#FCA5A5', fontSize: '0.8rem', background: 'rgba(239,68,68,0.1)', padding: '8px 12px', borderRadius: '8px' },
 }

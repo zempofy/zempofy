@@ -436,7 +436,11 @@ function CardTarefa({ t, onConcluir, onDesmarcar, onEditar, onExcluir, onEtiquet
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                 {t.etiquetas.map(label => {
                   const op = etiquetasOpcoes.find(o => o.label === label)
-                  return <span key={label} style={{ ...styles.etiqueta, background: (op?.cor || '#6B8F78') + '22', color: op?.cor || '#6B8F78', borderColor: (op?.cor || '#6B8F78') + '44' }}>{label}</span>
+                  const cor = op?.cor
+                  return <span key={label} style={{ ...styles.etiqueta,
+                    background: cor ? cor + '22' : 'rgba(var(--sobreposicao-rgb),0.13)',
+                    color: cor || 'var(--texto-apagado)',
+                    borderColor: cor ? cor + '44' : 'rgba(var(--sobreposicao-rgb),0.27)' }}>{label}</span>
                 })}
               </div>
             )}

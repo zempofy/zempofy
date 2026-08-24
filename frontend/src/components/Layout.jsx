@@ -130,7 +130,7 @@ function NavItens({ menuItens, paginaAtual, setPagina, sidebarAberta, onItemClic
                   </span>
                   {sidebarAberta && <span style={{
                     ...styles.navLabel,
-                    color: subAtivo ? 'rgba(255,255,255,0.9)' : 'inherit',
+                    color: subAtivo ? 'rgba(var(--sobreposicao-rgb),0.9)' : 'inherit',
                   }}>{item.label}</span>}
                 </div>
                 {sidebarAberta && (
@@ -277,22 +277,23 @@ export default function Layout({ children, menuItens, paginaAtual, setPagina }) 
     <div style={styles.app}>
       <style>{`
         .nav-btn:hover {
-          background: rgba(255,255,255,0.05) !important;
+          background: rgba(var(--sobreposicao-rgb),0.05) !important;
           color: var(--texto) !important;
         }
         .nav-btn-ativo {
           border-left: 3px solid var(--verde) !important;
         }
         .topbar-btn:hover {
-          background: rgba(255,255,255,0.08) !important;
+          background: rgba(var(--sobreposicao-rgb),0.08) !important;
         }
         .painel-item:hover {
-          background: rgba(255,255,255,0.05) !important;
+          background: rgba(var(--sobreposicao-rgb),0.05) !important;
         }
       `}</style>
 
       {/* ===== TOPBAR ===== */}
-      <header style={styles.topbar}>
+      {/* data-tema="escuro" trava essa área no tema escuro sempre, independente da escolha do usuário */}
+      <header style={styles.topbar} data-tema="escuro">
         {/* Logo + toggle */}
         <div style={styles.topbarEsquerda}>
           <button
@@ -304,16 +305,17 @@ export default function Layout({ children, menuItens, paginaAtual, setPagina }) 
             <IconeRecolher aberta={sidebarAberta} />
           </button>
           <button style={styles.logoBtn} onClick={() => setPagina('inicio')} title="Ir para início">
+            {/* Topbar é travada no tema escuro (ver data-tema no <header>), então a logo é sempre a versão clara */}
             <img src="/logo.svg" alt="Zempofy" style={{ height: '36px', width: 'auto' }} />
           </button>
         </div>
 
         {/* Busca global */}
         <div style={{ position:'relative', flex:'0 0 240px' }}>
-          <div style={{ display:'flex', alignItems:'center', gap:'8px', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'8px', padding:'6px 12px' }}>
-            <Icone.Search size={13} style={{ color:'rgba(255,255,255,0.4)', flexShrink:0 }}/>
+          <div style={{ display:'flex', alignItems:'center', gap:'8px', background:'rgba(var(--sobreposicao-rgb),0.06)', border:'1px solid rgba(var(--sobreposicao-rgb),0.1)', borderRadius:'8px', padding:'6px 12px' }}>
+            <Icone.Search size={13} style={{ color:'rgba(var(--sobreposicao-rgb),0.4)', flexShrink:0 }}/>
             <input
-              style={{ background:'none', border:'none', outline:'none', color:'rgba(255,255,255,0.8)', fontSize:'0.82rem', fontFamily:'Inter,sans-serif', width:'100%' }}
+              style={{ background:'none', border:'none', outline:'none', color:'rgba(var(--sobreposicao-rgb),0.8)', fontSize:'0.82rem', fontFamily:'Inter,sans-serif', width:'100%' }}
               placeholder="Buscar clientes, onboardings..."
               value={buscaGlobal}
               onChange={e=>{ setBuscaGlobal(e.target.value); buscarGlobal(e.target.value) }}
@@ -322,19 +324,19 @@ export default function Layout({ children, menuItens, paginaAtual, setPagina }) 
             />
           </div>
           {resultadosBusca.length > 0 && (
-            <div style={{ position:'absolute', top:'calc(100% + 6px)', left:0, right:0, background:'#18181b', border:'1px solid #27272a', borderRadius:'10px', boxShadow:'0 12px 32px rgba(0,0,0,0.5)', zIndex:200, overflow:'hidden' }}>
+            <div style={{ position:'absolute', top:'calc(100% + 6px)', left:0, right:0, background:'var(--card)', border:'1px solid var(--borda)', borderRadius:'10px', boxShadow:'0 12px 32px rgba(0,0,0,0.5)', zIndex:200, overflow:'hidden' }}>
               {resultadosBusca.map((r,i) => (
                 <button key={i} onMouseDown={()=>{ setPagina(r.pagina); setResultadosBusca([]); setBuscaGlobal('') }}
-                  style={{ display:'flex', alignItems:'center', gap:'10px', width:'100%', padding:'9px 14px', background:'none', border:'none', borderBottom:'1px solid #27272a', cursor:'pointer', textAlign:'left' }}
-                  onMouseEnter={e=>e.currentTarget.style.background='#27272a'}
+                  style={{ display:'flex', alignItems:'center', gap:'10px', width:'100%', padding:'9px 14px', background:'none', border:'none', borderBottom:'1px solid var(--borda)', cursor:'pointer', textAlign:'left' }}
+                  onMouseEnter={e=>e.currentTarget.style.background='var(--borda)'}
                   onMouseLeave={e=>e.currentTarget.style.background='none'}
                 >
-                  <span style={{ color:'rgba(255,255,255,0.4)', flexShrink:0 }}>
+                  <span style={{ color:'rgba(var(--sobreposicao-rgb),0.4)', flexShrink:0 }}>
                     {r.tipo==='cliente' ? <Icone.Users size={13}/> : <Icone.ClipboardList size={13}/>}
                   </span>
                   <div>
-                    <p style={{ fontSize:'0.82rem', fontWeight:'600', color:'#fff', margin:0, fontFamily:'Inter,sans-serif' }}>{r.label}</p>
-                    <p style={{ fontSize:'0.68rem', color:'rgba(255,255,255,0.4)', margin:0, fontFamily:'Inter,sans-serif' }}>{r.sub}</p>
+                    <p style={{ fontSize:'0.82rem', fontWeight:'600', color:'var(--texto)', margin:0, fontFamily:'Inter,sans-serif' }}>{r.label}</p>
+                    <p style={{ fontSize:'0.68rem', color:'rgba(var(--sobreposicao-rgb),0.4)', margin:0, fontFamily:'Inter,sans-serif' }}>{r.sub}</p>
                   </div>
                 </button>
               ))}
@@ -382,7 +384,7 @@ export default function Layout({ children, menuItens, paginaAtual, setPagina }) 
                 <span style={styles.avatarNome}>{usuario?.nome}</span>
                 <span style={styles.avatarCargo}>{usuario?.cargo === 'admin' ? 'Titular' : 'Colaborador'}</span>
               </div>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="2" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(var(--sobreposicao-rgb),0.5)" strokeWidth="2" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg>
             </button>
 
             {/* Dropdown simples — só nome e sair. Fecha via listener de clique fora (avatarMenuRef),
@@ -391,24 +393,24 @@ export default function Layout({ children, menuItens, paginaAtual, setPagina }) 
             {painelAberto && (
                 <div style={{
                   position: 'absolute', top: 'calc(100% + 8px)', right: 0,
-                  background: '#18181b', border: '1px solid #27272a', borderRadius: '12px',
+                  background: 'var(--card)', border: '1px solid var(--borda)', borderRadius: '12px',
                   minWidth: '200px', boxShadow: '0 12px 32px rgba(0,0,0,0.5)', zIndex: 200,
                   overflow: 'hidden',
                 }}>
-                  <div style={{ padding: '14px 16px', borderBottom: '1px solid #27272a' }}>
+                  <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--borda)' }}>
                     {usuario?.empresa?.nome && (
-                      <p style={{ fontSize: '0.65rem', fontWeight: '700', color: 'rgba(255,255,255,0.35)', margin: '0 0 6px', fontFamily: 'Inter, sans-serif', textTransform: 'uppercase', letterSpacing: '0.8px' }}>{usuario.empresa.nome}</p>
+                      <p style={{ fontSize: '0.65rem', fontWeight: '700', color: 'rgba(var(--sobreposicao-rgb),0.35)', margin: '0 0 6px', fontFamily: 'Inter, sans-serif', textTransform: 'uppercase', letterSpacing: '0.8px' }}>{usuario.empresa.nome}</p>
                     )}
-                    <p style={{ fontSize: '0.9rem', fontWeight: '600', color: '#fff', margin: 0, fontFamily: 'Inter, sans-serif' }}>{usuario?.nome}</p>
-                    <p style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)', margin: '2px 0 0', fontFamily: 'Inter, sans-serif' }}>{usuario?.cargo === 'admin' ? 'Titular' : 'Colaborador'}</p>
-                    <p style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.2)', margin: '6px 0 0', fontFamily: 'Inter, sans-serif', letterSpacing: '0.3px' }}>ID #{usuario?.id?.slice(-8).toUpperCase() || '--------'}</p>
+                    <p style={{ fontSize: '0.9rem', fontWeight: '600', color: 'var(--texto)', margin: 0, fontFamily: 'Inter, sans-serif' }}>{usuario?.nome}</p>
+                    <p style={{ fontSize: '0.72rem', color: 'rgba(var(--sobreposicao-rgb),0.4)', margin: '2px 0 0', fontFamily: 'Inter, sans-serif' }}>{usuario?.cargo === 'admin' ? 'Titular' : 'Colaborador'}</p>
+                    <p style={{ fontSize: '0.65rem', color: 'rgba(var(--sobreposicao-rgb),0.2)', margin: '6px 0 0', fontFamily: 'Inter, sans-serif', letterSpacing: '0.3px' }}>ID #{usuario?.id?.slice(-8).toUpperCase() || '--------'}</p>
                   </div>
                   {usuario?.setores?.length > 0 && (
-                    <div style={{ padding: '12px 16px', borderBottom: '1px solid #27272a' }}>
-                      <p style={{ fontSize: '0.62rem', fontWeight: '700', color: 'rgba(255,255,255,0.35)', margin: '0 0 8px', fontFamily: 'Inter, sans-serif', textTransform: 'uppercase', letterSpacing: '0.8px' }}>Meus setores</p>
+                    <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--borda)' }}>
+                      <p style={{ fontSize: '0.62rem', fontWeight: '700', color: 'rgba(var(--sobreposicao-rgb),0.35)', margin: '0 0 8px', fontFamily: 'Inter, sans-serif', textTransform: 'uppercase', letterSpacing: '0.8px' }}>Meus setores</p>
                       <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
                         {usuario.setores.map(setor => (
-                          <span key={setor._id || setor} style={{ fontSize: '0.6rem', fontWeight: '600', padding: '1px 7px', borderRadius: '4px', background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.7)', border: '1px solid #27272a', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <span key={setor._id || setor} style={{ fontSize: '0.6rem', fontWeight: '600', padding: '1px 7px', borderRadius: '4px', background: 'rgba(var(--sobreposicao-rgb),0.06)', color: 'rgba(var(--sobreposicao-rgb),0.7)', border: '1px solid var(--borda)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                             <div style={{ width: '5px', height: '5px', borderRadius: '50%', background: setor.cor || 'var(--verde)', flexShrink: 0 }} />
                             {setor.nome || setor}
                           </span>
@@ -452,7 +454,7 @@ export default function Layout({ children, menuItens, paginaAtual, setPagina }) 
         </nav>
 
         {/* Rodapé da sidebar */}
-        <div style={{ padding: '8px 6px', borderTop: '1px solid rgba(255,255,255,0.05)', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '2px' }}>
+        <div style={{ padding: '8px 6px', borderTop: '1px solid rgba(var(--sobreposicao-rgb),0.05)', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '2px' }}>
           <button
             className="nav-btn"
             style={{
@@ -504,7 +506,7 @@ const styles = {
     background: 'rgba(9,9,11,0.92)',
     backdropFilter: 'blur(12px)',
     WebkitBackdropFilter: 'blur(12px)',
-    borderBottom: '1px solid rgba(255,255,255,0.06)',
+    borderBottom: '1px solid rgba(var(--sobreposicao-rgb),0.06)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -530,13 +532,13 @@ const styles = {
   },
   btnTopbar: {
     background: 'none', border: 'none', borderRadius: '8px',
-    color: 'rgba(255,255,255,0.6)', width: '34px', height: '34px',
+    color: 'rgba(var(--sobreposicao-rgb),0.6)', width: '34px', height: '34px',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
     cursor: 'pointer', transition: 'all 0.15s',
   },
   btnTopbarAtivo: {
-    background: 'rgba(255,255,255,0.08)',
-    color: 'rgba(255,255,255,0.95)',
+    background: 'rgba(var(--sobreposicao-rgb),0.08)',
+    color: 'rgba(var(--sobreposicao-rgb),0.95)',
   },
   chatBadge: {
     position: 'absolute', top: '4px', right: '4px',
@@ -556,13 +558,13 @@ const styles = {
   },
   topbarSep: {
     width: '1px', height: '18px',
-    background: 'rgba(255,255,255,0.1)',
+    background: 'rgba(var(--sobreposicao-rgb),0.1)',
     margin: '0 6px',
   },
   avatarBtn: {
     display: 'flex', alignItems: 'center', gap: '8px',
-    background: 'rgba(255,255,255,0.06)',
-    border: '1px solid rgba(255,255,255,0.1)',
+    background: 'rgba(var(--sobreposicao-rgb),0.06)',
+    border: '1px solid rgba(var(--sobreposicao-rgb),0.1)',
     cursor: 'pointer',
     padding: '5px 10px 5px 6px',
     borderRadius: '10px',
@@ -571,18 +573,18 @@ const styles = {
   avatarInfo: { display: 'flex', flexDirection: 'column', textAlign: 'left' },
   avatarNome: {
     fontSize: '0.78rem', fontWeight: '600',
-    color: 'rgba(255,255,255,0.9)', whiteSpace: 'nowrap',
+    color: 'rgba(var(--sobreposicao-rgb),0.9)', whiteSpace: 'nowrap',
     letterSpacing: '-0.01em', lineHeight: '1.2',
   },
   avatarCargo: {
-    fontSize: '0.62rem', color: 'rgba(255,255,255,0.45)',
+    fontSize: '0.62rem', color: 'rgba(var(--sobreposicao-rgb),0.45)',
     lineHeight: '1.2',
   },
 
   // ── Sidebar ──
   sidebar: {
-    background: '#0d0d0f',
-    borderRight: '1px solid rgba(255,255,255,0.06)',
+    background: 'var(--fundo-sidebar)',
+    borderRight: '1px solid rgba(var(--sobreposicao-rgb),0.06)',
     display: 'flex',
     flexDirection: 'column',
     transition: 'width 0.22s cubic-bezier(0.4,0,0.2,1)',
@@ -595,14 +597,14 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     padding: '10px 10px',
-    borderBottom: '1px solid rgba(255,255,255,0.05)',
+    borderBottom: '1px solid rgba(var(--sobreposicao-rgb),0.05)',
     flexShrink: 0,
   },
   btnToggle: {
     background: 'none',
-    border: '1px solid rgba(255,255,255,0.08)',
+    border: '1px solid rgba(var(--sobreposicao-rgb),0.08)',
     borderRadius: '6px',
-    color: 'rgba(255,255,255,0.3)',
+    color: 'rgba(var(--sobreposicao-rgb),0.3)',
     width: '26px', height: '26px',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
     cursor: 'pointer', flexShrink: 0,
@@ -620,7 +622,7 @@ const styles = {
   navSeparador: {
     fontSize: '0.65rem',
     fontWeight: '700',
-    color: 'rgba(255,255,255,0.25)',
+    color: 'rgba(var(--sobreposicao-rgb),0.25)',
     textTransform: 'uppercase',
     letterSpacing: '1.5px',
     padding: '20px 10px 6px',
@@ -629,7 +631,7 @@ const styles = {
   },
   navSeparadorFechado: {
     height: '1px',
-    background: 'rgba(255,255,255,0.05)',
+    background: 'rgba(var(--sobreposicao-rgb),0.05)',
     margin: '10px 10px',
   },
 
@@ -641,7 +643,7 @@ const styles = {
     background: 'none',
     border: 'none',
     borderLeft: '3px solid transparent',
-    color: 'rgba(255,255,255,0.55)',
+    color: 'rgba(var(--sobreposicao-rgb),0.55)',
     cursor: 'pointer',
     fontSize: '0.875rem',
     fontFamily: 'Inter, sans-serif',
@@ -654,14 +656,14 @@ const styles = {
   navBtnAtivo: {
     borderLeft: '3px solid var(--verde)',
     background: 'rgba(0,177,65,0.08)',
-    color: '#fff',
+    color: 'var(--texto)',
     fontWeight: '600',
     borderRadius: '0 8px 8px 0',
   },
   navBtnGrupoAtivo: {
     borderLeft: '3px solid rgba(0,177,65,0.4)',
     background: 'rgba(0,177,65,0.04)',
-    color: 'rgba(255,255,255,0.9)',
+    color: 'rgba(var(--sobreposicao-rgb),0.9)',
     fontWeight: '600',
     borderRadius: '0 8px 8px 0',
   },

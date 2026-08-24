@@ -120,7 +120,7 @@ function BlocoEvento({ item, tipo, onClick }) {
   const duracaoMin = fim && fim > inicio ? fim - inicio : 60
   const top = minutosParaPx(inicio)
   const height = Math.max(minutosParaPx(duracaoMin), 22)
-  const cor = tipo === 'tarefa' ? '#6B8F78' : item.cor
+  const cor = tipo === 'tarefa' ? 'var(--texto-apagado)' : item.cor
 
   return (
     <div onClick={e => { e.stopPropagation(); onClick(item, tipo) }}
@@ -260,9 +260,9 @@ function VisaoMes({ ano, mes, eventos, tarefas, hoje, onDiaClick }) {
                 ...tarNoDia.slice(0,Math.max(0,2-evsNoDia.length)).map(t=>({...t,_t:'tarefa'}))
               ].map((item,j) => (
                 <div key={j} style={{...s.eventoTag,
-                  background: item._t==='tarefa' ? '#2A3830' : item.cor+'33',
-                  color: item._t==='tarefa' ? '#6B8F78' : item.cor,
-                  borderLeft: `3px solid ${item._t==='tarefa' ? '#6B8F78' : item.cor}`}}>
+                  background: item._t==='tarefa' ? 'var(--borda)' : item.cor+'33',
+                  color: item._t==='tarefa' ? 'var(--texto-apagado)' : item.cor,
+                  borderLeft: `3px solid ${item._t==='tarefa' ? 'var(--texto-apagado)' : item.cor}`}}>
                   {item.titulo || item.descricao}
                 </div>
               ))}
@@ -290,20 +290,20 @@ function PopoverEvento({ item, tipo, onEditar, onExcluir, onFechar }) {
       <div style={s.popoverEvento} className="fade-in">
         <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'12px'}}>
           <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
-            <div style={{width:'12px', height:'12px', borderRadius:'3px', background: tipo==='tarefa' ? '#6B8F78' : item.cor, flexShrink:0}} />
-            <p style={{margin:0, fontFamily:'Inter, sans-serif', fontWeight:'700', fontSize:'1rem', color:'#E8F5EE'}}>{item.titulo || item.descricao}</p>
+            <div style={{width:'12px', height:'12px', borderRadius:'3px', background: tipo==='tarefa' ? 'var(--texto-apagado)' : item.cor, flexShrink:0}} />
+            <p style={{margin:0, fontFamily:'Inter, sans-serif', fontWeight:'700', fontSize:'1rem', color:'var(--texto)'}}>{item.titulo || item.descricao}</p>
           </div>
           <button style={s.btnX} onClick={onFechar}>✕</button>
         </div>
-        {item.descricao && item.titulo && <p style={{margin:'0 0 8px', fontSize:'0.85rem', color:'#6B8F78'}}>{item.descricao}</p>}
-        <p style={{margin:'0 0 8px', fontSize:'0.8rem', color:'#6B8F78'}}>
+        {item.descricao && item.titulo && <p style={{margin:'0 0 8px', fontSize:'0.85rem', color:'var(--texto-apagado)'}}>{item.descricao}</p>}
+        <p style={{margin:'0 0 8px', fontSize:'0.8rem', color:'var(--texto-apagado)'}}>
           📅 {item.data?.split('-').reverse().join('/')}
           {(item.horaInicio||item.hora) && ` · ${item.horaInicio||item.hora}${item.horaFim ? ` → ${item.horaFim}` : ''}`}
         </p>
         {tipo === 'tarefa' && (
           <span style={{fontSize:'0.75rem', padding:'3px 8px', borderRadius:'6px',
             background: item.status==='concluida' ? 'rgba(34,197,94,0.15)' : 'rgba(245,158,11,0.15)',
-            color: item.status==='concluida' ? '#22C55E' : '#F59E0B', fontWeight:'600'}}>
+            color: item.status==='concluida' ? 'var(--verde)' : '#F59E0B', fontWeight:'600'}}>
             {item.status === 'concluida' ? 'Concluída' : 'Pendente'}
           </span>
         )}
@@ -436,66 +436,66 @@ export default function Agenda({ cargo, usuarios = [] }) {
 
 const s = {
   cabecalho: { display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'20px', flexWrap:'wrap', gap:'12px', overflow:'hidden' },
-  titulo: { fontSize:'1.8rem', color:'#E8F5EE', fontFamily:'Inter, sans-serif', fontWeight:'700' },
-  btnHoje: { background:'none', border:'1px solid #2A3830', borderRadius:'8px', padding:'6px 14px', color:'#E8F5EE', fontSize:'0.85rem', cursor:'pointer', fontFamily:'Inter, sans-serif' },
+  titulo: { fontSize:'1.8rem', color:'var(--texto)', fontFamily:'Inter, sans-serif', fontWeight:'700' },
+  btnHoje: { background:'none', border:'1px solid var(--borda)', borderRadius:'8px', padding:'6px 14px', color:'var(--texto)', fontSize:'0.85rem', cursor:'pointer', fontFamily:'Inter, sans-serif' },
   navBotoes: { display:'flex', alignItems:'center', gap:'8px' },
-  btnNav: { background:'none', border:'1px solid #2A3830', borderRadius:'8px', width:'32px', height:'32px', color:'#E8F5EE', fontSize:'1.2rem', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' },
-  navTitulo: { fontFamily:'Inter, sans-serif', fontWeight:'600', fontSize:'1rem', color:'#E8F5EE', minWidth:'120px', textAlign:'center' },
-  visaoBotoes: { display:'flex', background:'#1E2820', borderRadius:'8px', padding:'3px', gap:'2px' },
-  btnVisao: { background:'none', border:'none', borderRadius:'6px', padding:'5px 14px', color:'#6B8F78', fontSize:'0.85rem', cursor:'pointer', fontFamily:'Inter, sans-serif' },
-  btnVisaoAtivo: { background:'#2A3830', color:'#E8F5EE' },
-  btnNovo: { background:'linear-gradient(135deg, #22C55E, #1A6B3C)', color:'#fff', border:'none', borderRadius:'8px', padding:'8px 16px', fontFamily:'Inter, sans-serif', fontWeight:'600', fontSize:'0.85rem', cursor:'pointer' },
-  select: { background:'#1E2820', border:'1px solid #2A3830', borderRadius:'8px', padding:'6px 12px', color:'#E8F5EE', fontSize:'0.85rem', fontFamily:'Inter, sans-serif', cursor:'pointer' },
-  calendarioWrapper: { background:'#111714', border:'1px solid #2A3830', borderRadius:'16px', overflow:'hidden', width:'100%' },
+  btnNav: { background:'none', border:'1px solid var(--borda)', borderRadius:'8px', width:'32px', height:'32px', color:'var(--texto)', fontSize:'1.2rem', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' },
+  navTitulo: { fontFamily:'Inter, sans-serif', fontWeight:'600', fontSize:'1rem', color:'var(--texto)', minWidth:'120px', textAlign:'center' },
+  visaoBotoes: { display:'flex', background:'var(--input)', borderRadius:'8px', padding:'3px', gap:'2px' },
+  btnVisao: { background:'none', border:'none', borderRadius:'6px', padding:'5px 14px', color:'var(--texto-apagado)', fontSize:'0.85rem', cursor:'pointer', fontFamily:'Inter, sans-serif' },
+  btnVisaoAtivo: { background:'var(--borda)', color:'var(--texto)' },
+  btnNovo: { background:'linear-gradient(135deg, var(--verde), var(--verde-escuro))', color:'#fff', border:'none', borderRadius:'8px', padding:'8px 16px', fontFamily:'Inter, sans-serif', fontWeight:'600', fontSize:'0.85rem', cursor:'pointer' },
+  select: { background:'var(--input)', border:'1px solid var(--borda)', borderRadius:'8px', padding:'6px 12px', color:'var(--texto)', fontSize:'0.85rem', fontFamily:'Inter, sans-serif', cursor:'pointer' },
+  calendarioWrapper: { background:'var(--card)', border:'1px solid var(--borda)', borderRadius:'16px', overflow:'hidden', width:'100%' },
 
   // Grade
   gradeContainer: { display:'flex', flexDirection:'column' },
-  gradeCabecalho: { display:'flex', borderBottom:'1px solid #2A3830', background:'#111714', flexShrink:0, overflow:'hidden' },
+  gradeCabecalho: { display:'flex', borderBottom:'1px solid var(--borda)', background:'var(--card)', flexShrink:0, overflow:'hidden' },
   celulaHoraVazia: { width:'52px', flexShrink:0 },
-  colCabecalho: { flex:1, padding:'10px 4px', textAlign:'center', display:'flex', flexDirection:'column', alignItems:'center', gap:'4px', borderLeft:'1px solid #1E2820' },
+  colCabecalho: { flex:1, padding:'10px 4px', textAlign:'center', display:'flex', flexDirection:'column', alignItems:'center', gap:'4px', borderLeft:'1px solid var(--input)' },
   colCabecalhoHoje: { background:'rgba(34,197,94,0.05)' },
-  diaLabel: { fontSize:'0.7rem', fontWeight:'600', color:'#6B8F78', textTransform:'uppercase', letterSpacing:'0.5px' },
-  diaNumero: { fontSize:'1.1rem', fontWeight:'700', color:'#E8F5EE', width:'34px', height:'34px', display:'flex', alignItems:'center', justifyContent:'center', borderRadius:'50%' },
-  diaNumeroHoje: { background:'#22C55E', color:'#fff' },
+  diaLabel: { fontSize:'0.7rem', fontWeight:'600', color:'var(--texto-apagado)', textTransform:'uppercase', letterSpacing:'0.5px' },
+  diaNumero: { fontSize:'1.1rem', fontWeight:'700', color:'var(--texto)', width:'34px', height:'34px', display:'flex', alignItems:'center', justifyContent:'center', borderRadius:'50%' },
+  diaNumeroHoje: { background:'var(--verde)', color:'#fff' },
   gradeScroll: { display:'flex', overflowY:'auto', flex:1 },
-  colunaHoras: { width:'52px', flexShrink:0, borderRight:'1px solid #2A3830' },
-  celulaHora: { height:`${ALTURA_HORA}px`, display:'flex', alignItems:'flex-start', justifyContent:'flex-end', paddingRight:'6px', paddingTop:'2px', borderBottom:'1px solid #1E2820', boxSizing:'border-box' },
-  horaLabel: { fontSize:'0.65rem', color:'#6B8F78', whiteSpace:'nowrap' },
-  colunaDia: { flex:1, position:'relative', borderLeft:'1px solid #1E2820' },
+  colunaHoras: { width:'52px', flexShrink:0, borderRight:'1px solid var(--borda)' },
+  celulaHora: { height:`${ALTURA_HORA}px`, display:'flex', alignItems:'flex-start', justifyContent:'flex-end', paddingRight:'6px', paddingTop:'2px', borderBottom:'1px solid var(--input)', boxSizing:'border-box' },
+  horaLabel: { fontSize:'0.65rem', color:'var(--texto-apagado)', whiteSpace:'nowrap' },
+  colunaDia: { flex:1, position:'relative', borderLeft:'1px solid var(--input)' },
   colunaDiaHoje: { background:'rgba(34,197,94,0.02)' },
-  linhaHora: { height:`${ALTURA_HORA}px`, borderBottom:'1px solid #1E2820', boxSizing:'border-box', cursor:'pointer' },
-  linhaAgora: { position:'absolute', left:0, right:0, height:'2px', background:'#22C55E', zIndex:3, display:'flex', alignItems:'center', pointerEvents:'none' },
-  bolhinhaAgora: { width:'10px', height:'10px', borderRadius:'50%', background:'#22C55E', marginLeft:'-5px', flexShrink:0 },
+  linhaHora: { height:`${ALTURA_HORA}px`, borderBottom:'1px solid var(--input)', boxSizing:'border-box', cursor:'pointer' },
+  linhaAgora: { position:'absolute', left:0, right:0, height:'2px', background:'var(--verde)', zIndex:3, display:'flex', alignItems:'center', pointerEvents:'none' },
+  bolhinhaAgora: { width:'10px', height:'10px', borderRadius:'50%', background:'var(--verde)', marginLeft:'-5px', flexShrink:0 },
 
   // Mês
   grade: { display:'grid', gridTemplateColumns:'repeat(7, minmax(0, 1fr))', width:'100%', overflow:'hidden' },
-  cabecalhoDia: { padding:'10px 0', textAlign:'center', fontSize:'0.75rem', fontWeight:'600', color:'#6B8F78', textTransform:'uppercase', letterSpacing:'0.5px', borderBottom:'1px solid #2A3830' },
-  celula: { minHeight:'100px', padding:'8px', borderRight:'1px solid #1E2820', borderBottom:'1px solid #1E2820', cursor:'pointer', transition:'background 0.15s' },
-  celulaVazia: { minHeight:'100px', borderRight:'1px solid #1E2820', borderBottom:'1px solid #1E2820', background:'#0d1510' },
+  cabecalhoDia: { padding:'10px 0', textAlign:'center', fontSize:'0.75rem', fontWeight:'600', color:'var(--texto-apagado)', textTransform:'uppercase', letterSpacing:'0.5px', borderBottom:'1px solid var(--borda)' },
+  celula: { minHeight:'100px', padding:'8px', borderRight:'1px solid var(--input)', borderBottom:'1px solid var(--input)', cursor:'pointer', transition:'background 0.15s' },
+  celulaVazia: { minHeight:'100px', borderRight:'1px solid var(--input)', borderBottom:'1px solid var(--input)', background:'var(--card)' },
   celulaHoje: { background:'rgba(34,197,94,0.05)' },
-  numeroDia: { fontSize:'0.85rem', fontWeight:'500', color:'#6B8F78', display:'block', marginBottom:'4px' },
-  numeroDiaHoje: { background:'#22C55E', color:'#fff', borderRadius:'50%', width:'24px', height:'24px', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'0.8rem', fontWeight:'700' },
+  numeroDia: { fontSize:'0.85rem', fontWeight:'500', color:'var(--texto-apagado)', display:'block', marginBottom:'4px' },
+  numeroDiaHoje: { background:'var(--verde)', color:'#fff', borderRadius:'50%', width:'24px', height:'24px', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'0.8rem', fontWeight:'700' },
   eventosNaDia: { display:'flex', flexDirection:'column', gap:'2px' },
   eventoTag: { fontSize:'0.7rem', padding:'2px 6px', borderRadius:'4px', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', fontWeight:'500' },
-  mais: { fontSize:'0.7rem', color:'#6B8F78', paddingLeft:'4px' },
+  mais: { fontSize:'0.7rem', color:'var(--texto-apagado)', paddingLeft:'4px' },
 
   // Modal
   fundo: { position:'fixed', inset:0, background:'rgba(0,0,0,0.6)', zIndex:1000 },
-  janelaEvento: { position:'fixed', top:'50%', left:'50%', transform:'translate(-50%, -50%)', width:'100%', maxWidth:'440px', background:'#111714', border:'1px solid #2A3830', borderRadius:'20px', zIndex:1001, boxShadow:'0 24px 64px rgba(0,0,0,0.6)', overflow:'hidden' },
-  modalTopo: { display:'flex', alignItems:'center', justifyContent:'space-between', padding:'20px 24px', borderBottom:'1px solid #2A3830' },
-  modalTitulo: { fontFamily:'Inter, sans-serif', fontWeight:'700', fontSize:'1rem', color:'#E8F5EE' },
-  btnX: { background:'none', border:'1px solid #2A3830', borderRadius:'6px', color:'#6B8F78', width:'28px', height:'28px', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'12px', cursor:'pointer' },
+  janelaEvento: { position:'fixed', top:'50%', left:'50%', transform:'translate(-50%, -50%)', width:'100%', maxWidth:'440px', background:'var(--card)', border:'1px solid var(--borda)', borderRadius:'20px', zIndex:1001, boxShadow:'0 24px 64px rgba(0,0,0,0.6)', overflow:'hidden' },
+  modalTopo: { display:'flex', alignItems:'center', justifyContent:'space-between', padding:'20px 24px', borderBottom:'1px solid var(--borda)' },
+  modalTitulo: { fontFamily:'Inter, sans-serif', fontWeight:'700', fontSize:'1rem', color:'var(--texto)' },
+  btnX: { background:'none', border:'1px solid var(--borda)', borderRadius:'6px', color:'var(--texto-apagado)', width:'28px', height:'28px', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'12px', cursor:'pointer' },
   modalCorpo: { padding:'24px', display:'flex', flexDirection:'column', gap:'16px' },
   campo: { display:'flex', flexDirection:'column', gap:'6px' },
-  label: { fontSize:'0.7rem', fontWeight:'600', color:'#6B8F78', textTransform:'uppercase', letterSpacing:'0.8px' },
-  input: { background:'#1E2820', border:'1px solid #2A3830', borderRadius:'10px', padding:'10px 14px', color:'#E8F5EE', fontSize:'0.9rem', width:'100%', fontFamily:'Inter, sans-serif' },
+  label: { fontSize:'0.7rem', fontWeight:'600', color:'var(--texto-apagado)', textTransform:'uppercase', letterSpacing:'0.8px' },
+  input: { background:'var(--input)', border:'1px solid var(--borda)', borderRadius:'10px', padding:'10px 14px', color:'var(--texto)', fontSize:'0.9rem', width:'100%', fontFamily:'Inter, sans-serif' },
   coresWrapper: { display:'flex', gap:'10px', alignItems:'center' },
   bolinhaCor: { width:'26px', height:'26px', borderRadius:'50%', border:'none', cursor:'pointer', transition:'all 0.2s', flexShrink:0 },
-  btnCancelar: { flex:1, padding:'10px', borderRadius:'10px', background:'none', border:'1px solid #2A3830', color:'#6B8F78', fontSize:'0.9rem', cursor:'pointer', fontFamily:'Inter, sans-serif' },
-  btnSalvar: { flex:1, padding:'10px', borderRadius:'10px', background:'linear-gradient(135deg, #22C55E, #1A6B3C)', border:'none', color:'#fff', fontSize:'0.9rem', cursor:'pointer', fontFamily:'Inter, sans-serif', fontWeight:'600' },
+  btnCancelar: { flex:1, padding:'10px', borderRadius:'10px', background:'none', border:'1px solid var(--borda)', color:'var(--texto-apagado)', fontSize:'0.9rem', cursor:'pointer', fontFamily:'Inter, sans-serif' },
+  btnSalvar: { flex:1, padding:'10px', borderRadius:'10px', background:'linear-gradient(135deg, var(--verde), var(--verde-escuro))', border:'none', color:'#fff', fontSize:'0.9rem', cursor:'pointer', fontFamily:'Inter, sans-serif', fontWeight:'600' },
   erro: { color:'#FCA5A5', fontSize:'0.8rem', background:'rgba(239,68,68,0.1)', padding:'8px 12px', borderRadius:'8px', margin:0 },
 
   // Popover detalhe
-  popoverEvento: { position:'fixed', top:'50%', left:'50%', transform:'translate(-50%, -50%)', width:'100%', maxWidth:'340px', background:'#111714', border:'1px solid #2A3830', borderRadius:'16px', zIndex:1001, boxShadow:'0 24px 64px rgba(0,0,0,0.6)', padding:'20px' },
-  btnAcao: { flex:1, padding:'8px', borderRadius:'8px', background:'none', border:'1px solid #2A3830', color:'#E8F5EE', fontSize:'0.85rem', cursor:'pointer', fontFamily:'Inter, sans-serif' },
+  popoverEvento: { position:'fixed', top:'50%', left:'50%', transform:'translate(-50%, -50%)', width:'100%', maxWidth:'340px', background:'var(--card)', border:'1px solid var(--borda)', borderRadius:'16px', zIndex:1001, boxShadow:'0 24px 64px rgba(0,0,0,0.6)', padding:'20px' },
+  btnAcao: { flex:1, padding:'8px', borderRadius:'8px', background:'none', border:'1px solid var(--borda)', color:'var(--texto)', fontSize:'0.85rem', cursor:'pointer', fontFamily:'Inter, sans-serif' },
 }

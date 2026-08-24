@@ -21,21 +21,21 @@ export default function VerificarEmail() {
   }, [])
 
   return (
-    <div style={{
-      minHeight: '100vh', background: '#09090b',
+    <div data-tema="escuro" style={{
+      minHeight: '100vh', background: 'var(--fundo)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       fontFamily: 'Inter, sans-serif', padding: '20px'
     }}>
       <div style={{
-        background: '#18181b', border: '1px solid #27272a',
+        background: 'var(--card)', border: '1px solid var(--borda)',
         borderRadius: '20px', padding: '48px 40px',
         maxWidth: '420px', width: '100%', textAlign: 'center',
         boxShadow: '0 8px 32px rgba(0,0,0,0.5)'
       }}>
         {status === 'carregando' && (
           <>
-            <div style={{ width: '48px', height: '48px', border: '3px solid #27272a', borderTopColor: '#00b141', borderRadius: '50%', animation: 'spin 0.7s linear infinite', margin: '0 auto 24px' }} />
-            <p style={{ color: '#a1a1aa', fontSize: '0.95rem' }}>Verificando seu e-mail...</p>
+            <div style={{ width: '48px', height: '48px', border: '3px solid var(--borda)', borderTopColor: '#00b141', borderRadius: '50%', animation: 'spin 0.7s linear infinite', margin: '0 auto 24px' }} />
+            <p style={{ color: 'var(--texto-secundario)', fontSize: '0.95rem' }}>Verificando seu e-mail...</p>
           </>
         )}
 
@@ -44,10 +44,10 @@ export default function VerificarEmail() {
             <div style={{ width: '60px', height: '60px', background: 'rgba(0,177,65,0.12)', border: '1px solid rgba(0,177,65,0.3)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px', fontSize: '1.8rem' }}>
               ✓
             </div>
-            <h1 style={{ color: '#fafafa', fontSize: '1.3rem', fontWeight: '700', marginBottom: '12px', letterSpacing: '-0.02em' }}>
+            <h1 style={{ color: 'var(--texto)', fontSize: '1.3rem', fontWeight: '700', marginBottom: '12px', letterSpacing: '-0.02em' }}>
               E-mail verificado!
             </h1>
-            <p style={{ color: '#a1a1aa', fontSize: '0.9rem', lineHeight: '1.6', marginBottom: '28px' }}>
+            <p style={{ color: 'var(--texto-secundario)', fontSize: '0.9rem', lineHeight: '1.6', marginBottom: '28px' }}>
               Sua conta está confirmada. Agora você tem acesso completo ao sistema.
             </p>
             <button
@@ -64,15 +64,15 @@ export default function VerificarEmail() {
             <div style={{ width: '60px', height: '60px', background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.3)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px', fontSize: '1.8rem' }}>
               ✕
             </div>
-            <h1 style={{ color: '#fafafa', fontSize: '1.3rem', fontWeight: '700', marginBottom: '12px' }}>
+            <h1 style={{ color: 'var(--texto)', fontSize: '1.3rem', fontWeight: '700', marginBottom: '12px' }}>
               Link inválido ou expirado
             </h1>
-            <p style={{ color: '#a1a1aa', fontSize: '0.9rem', lineHeight: '1.6', marginBottom: '28px' }}>
+            <p style={{ color: 'var(--texto-secundario)', fontSize: '0.9rem', lineHeight: '1.6', marginBottom: '28px' }}>
               Este link de verificação não é válido ou já expirou. Faça login e solicite um novo e-mail de verificação.
             </p>
             <button
               onClick={() => navigate('/login')}
-              style={{ background: 'none', border: '1px solid #27272a', borderRadius: '10px', padding: '12px 28px', color: '#a1a1aa', fontFamily: 'Inter, sans-serif', fontWeight: '500', fontSize: '0.95rem', cursor: 'pointer' }}
+              style={{ background: 'none', border: '1px solid var(--borda)', borderRadius: '10px', padding: '12px 28px', color: 'var(--texto-secundario)', fontFamily: 'Inter, sans-serif', fontWeight: '500', fontSize: '0.95rem', cursor: 'pointer' }}
             >
               Ir para o login
             </button>
