@@ -572,7 +572,10 @@ router.patch('/:id/bancos/:setorId/:bancoId', autenticar, async (req, res) => {
   }
 });
 
+// Reaproveitadas por routes/documento.js — mesmas regras de acesso a setor já usadas pra Demanda
 module.exports = router;
+module.exports.temAcessoAoSetor = temAcessoAoSetor;
+module.exports.podeMudarConfigSetor = podeMudarConfigSetor;
 
 // POST /api/clientes/importar — importar lista de clientes
 router.post('/importar', autenticar, temPermissao('gerenciarClientes'), async (req, res) => {

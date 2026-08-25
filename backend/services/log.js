@@ -23,6 +23,10 @@ const CATEGORIAS = {
   membro_convite_reenviado:    'equipe',
   membro_senha_resetada:       'equipe',
   tarefa_concluida:            'tarefa',
+  documento_enviado:           'documento',
+  documento_inativado:         'documento',
+  documento_reativado:         'documento',
+  documento_excluido_permanente: 'documento',
 };
 
 async function registrarLog({ empresa, usuario, tipo, descricao, meta = {} }) {

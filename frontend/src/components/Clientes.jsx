@@ -5,6 +5,9 @@ import { useToast } from './Toast'
 import Icone from './Icones'
 import ImportarClientes from './ImportarClientes'
 import ModalConfirmacao from './ModalConfirmacao'
+import Modal from './Modal'
+import AbaDocumentos from './AbaDocumentos'
+import ListaDocumentos from './ListaDocumentos'
 import { useAuth } from '../contexts/AuthContext'
 import * as XLSX from 'xlsx'
 
@@ -911,7 +914,7 @@ function TelaDetalhe({ clienteId, voltar, onAtualizado, abaInicial = 'info', set
   const st = statusInfo(dados.status)
   const abas = (setorAtivo && setorTemDemanda(setorAtivo))
     ? [{id:'particularidades',label:'Particularidades'},{id:'demanda',label:'Demanda'},{id:'historico',label:'Histórico'}]
-    : [{id:'info',label:'Informações'},{id:'setores',label:'Setores'},{id:'onboardings',label:'Onboardings'},{id:'obs',label:'Observações'}]
+    : [{id:'info',label:'Informações'},{id:'documentos',label:'Documentos'},{id:'setores',label:'Setores'},{id:'onboardings',label:'Onboardings'},{id:'obs',label:'Observações'}]
 
   return (
     <div>
@@ -1034,6 +1037,10 @@ function TelaDetalhe({ clienteId, voltar, onAtualizado, abaInicial = 'info', set
           {dados.observacoes?<p style={{ fontSize:'0.875rem', color:'var(--texto)', lineHeight:'1.6', margin:0, whiteSpace:'pre-wrap' }}>{dados.observacoes}</p>
           :<p style={{ color:'var(--texto-apagado)', fontSize:'0.875rem' }}>Nenhuma observação cadastrada.</p>}
         </div>
+      )}
+
+      {aba==='documentos'&&(
+        <AbaDocumentos clienteId={clienteId} setores={dados.setores}/>
       )}
 
       {aba==='particularidades'&&setorAtivo&&(
@@ -1284,6 +1291,12 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
   const [respondendo, setRespondendo] = useState(false)
   const [editandoSituacao, setEditandoSituacao] = useState(false)
   const [valorVigenciaPendente, setValorVigenciaPendente] = useState(null)
+  const [modalDocsAberto, setModalDocsAberto] = useState(false)
+  const [qtdDocs, setQtdDocs] = useState(null)
+  // Mais permissivo que a edição de campo de propósito: documento pode ser enviado mesmo numa
+  // competência já fechada pra edição (mês passado, só titular edita campo) — só precisa ter
+  // acesso ao setor, mesma regra de quem preenche a Demanda.
+  const temAcessoDocs = usuario?.cargo === 'admin' || usuario?.setores?.some(s => (s._id||s) === setor._id)
 
   const config = CONFIG_DEMANDA[normalizarNome(setor.nome)]
   const situacao = configSetor?.situacao
@@ -1302,6 +1315,13 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
       .catch(() => mostrar('Erro ao carregar dados.', 'erro'))
       .finally(() => setCarregando(false))
   }, [clienteId, setor._id, competencia])
+
+  const buscarQtdDocs = () => {
+    api.get(`/documentos/demanda/${clienteId}/${setor._id}/${competencia}`)
+      .then(r => setQtdDocs(r.data.length))
+      .catch(() => setQtdDocs(null))
+  }
+  useEffect(buscarQtdDocs, [clienteId, setor._id, competencia])
 
   const setValor = (id, v) => setValores(vs => ({ ...vs, [id]: v }))
   const podeEditar = !!lancamento?.podeEditar
@@ -1477,6 +1497,28 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
         </div>
       )}
 
+      <div style={{ background:'var(--card)', border:'1px solid var(--borda)', borderRadius:'14px', padding:'14px 18px', marginBottom:'20px', display:'flex', alignItems:'center', justifyContent:'space-between', gap:'12px', flexWrap:'wrap' }}>
+        <div>
+          <p style={{ fontSize:'0.82rem', fontWeight:'700', color:'var(--texto)', margin:0 }}>Documentos desta competência</p>
+          <p style={{ fontSize:'0.75rem', color:'var(--texto-apagado)', margin:'2px 0 0' }}>{qtdDocs===null?'—':`${qtdDocs} documento${qtdDocs!==1?'s':''} enviado${qtdDocs!==1?'s':''}`}</p>
+        </div>
+        <button onClick={()=>setModalDocsAberto(true)} style={{ ...s.btnAcao, display:'flex', alignItems:'center', gap:'6px' }}>
+          <Icone.Paperclip size={13}/>Carregar documentos
+        </button>
+      </div>
+
+      {modalDocsAberto && (
+        <Modal onFechar={()=>{ setModalDocsAberto(false); buscarQtdDocs() }} maxWidth="480px">
+          <div style={s.modalTopo}>
+            <span style={s.modalTit}>Documentos de {nomeMes(competencia)}</span>
+            <button style={s.btnX} onClick={()=>{ setModalDocsAberto(false); buscarQtdDocs() }}>✕</button>
+          </div>
+          <div style={{ padding:'20px 24px' }}>
+            <ListaDocumentos clienteId={clienteId} tipo="demanda" setor={setor} competencia={competencia} podeGerenciar={temAcessoDocs} compacto/>
+          </div>
+        </Modal>
+      )}
+
       <div style={{ marginBottom:'20px' }}>
         <Campo label="Observações">
           {podeEditar ? (
@@ -1548,27 +1590,25 @@ function AbaParticularidades({ clienteId, setor, clienteAtivo, particularidades=
 
   return (
     <div>
-      <p style={{ fontSize:'0.8rem', color:'var(--texto-apagado)', marginBottom:'12px' }}>
-        Anotações específicas deste cliente pro setor {setor.nome}
-      </p>
-      {clienteAtivo && (
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'14px', gap:'12px' }}>
+        <p style={{ fontSize:'0.8rem', color:'var(--texto-apagado)', margin:0 }}>
+          Anotações específicas deste cliente pro setor {setor.nome}
+        </p>
+        {clienteAtivo && !aberto && (
+          <button onClick={()=>setAberto(true)} style={s.btnNovo}>+ Adicionar particularidade</button>
+        )}
+      </div>
+
+      {clienteAtivo && aberto && (
         <div style={{ marginBottom:'22px' }}>
-          {aberto ? (
-            <>
-              <textarea style={{ ...s.inp, minHeight:'70px', resize:'vertical' }} value={texto} onChange={e=>setTexto(e.target.value)}
-                onKeyDown={e=>{ if(e.key==='Enter'&&(e.metaKey||e.ctrlKey)) salvar() }}
-                placeholder='Ex: "Sem movimento, mas conferir se teve alguma nota fiscal emitida" ou "Tem vantagem X pelo sindicato"...'
-                autoFocus />
-              <div style={{ display:'flex', gap:'8px', marginTop:'10px' }}>
-                <button style={s.btnSalv} onClick={salvar} disabled={salvando || !texto.trim()}>{salvando?'Salvando...':'Salvar'}</button>
-                <button style={s.btnCanc} onClick={cancelar} disabled={salvando}>Cancelar</button>
-              </div>
-            </>
-          ) : (
-            <button onClick={()=>setAberto(true)} style={{ background:'none', border:'1px dashed var(--borda)', borderRadius:'10px', color:'var(--texto-apagado)', padding:'10px', cursor:'pointer', fontFamily:'Inter,sans-serif', fontSize:'0.82rem', width:'100%' }}>
-              + Adicionar particularidade
-            </button>
-          )}
+          <textarea style={{ ...s.inp, minHeight:'70px', resize:'vertical' }} value={texto} onChange={e=>setTexto(e.target.value)}
+            onKeyDown={e=>{ if(e.key==='Enter'&&(e.metaKey||e.ctrlKey)) salvar() }}
+            placeholder='Ex: "Sem movimento, mas conferir se teve alguma nota fiscal emitida" ou "Tem vantagem X pelo sindicato"...'
+            autoFocus />
+          <div style={{ display:'flex', gap:'8px', marginTop:'10px' }}>
+            <button style={s.btnSalv} onClick={salvar} disabled={salvando || !texto.trim()}>{salvando?'Salvando...':'Salvar'}</button>
+            <button style={s.btnCanc} onClick={cancelar} disabled={salvando}>Cancelar</button>
+          </div>
         </div>
       )}
 
@@ -2012,6 +2052,7 @@ export default function Clientes({ detalheInicial = null, abaInicial = 'info', s
 }
 
 const s = {
+  btnNovo: { background: 'var(--gradiente-verde)', color: '#fff', border: 'none', borderRadius: '9px', padding: '7px 14px', fontFamily: 'Inter, sans-serif', fontWeight: '600', fontSize: '0.78rem', cursor: 'pointer' },
   overlay: { position:'fixed', inset:0, background:'rgba(0,0,0,0.6)', zIndex:9999, display:'flex', alignItems:'center', justifyContent:'center', padding:'20px' },
   modalPeq: { background:'var(--card)', border:'1px solid var(--borda)', borderRadius:'16px', width:'100%', maxWidth:'400px', boxShadow:'0 24px 64px rgba(0,0,0,0.6)' },
   modalTopo: { display:'flex', alignItems:'center', justifyContent:'space-between', padding:'20px 24px', borderBottom:'1px solid var(--borda)' },
@@ -2031,4 +2072,4 @@ const s = {
 
 // Reaproveitado pela tela Demandas — mesma lógica de campos configurados por setor/regime/situação,
 // pra não duplicar o critério de "pendente vs concluído"
-export { CONFIG_DEMANDA, blocosFixosDoSetor, normalizarNome, competenciaAtual, competenciaDefasada, competenciaPadraoDoSetor, nomeMes, MESES_NOME, INICIO_DEMANDA_ANO }
+export { CONFIG_DEMANDA, blocosFixosDoSetor, normalizarNome, competenciaAtual, competenciaDefasada, competenciaPadraoDoSetor, nomeMes, MESES_NOME, MESES_LABEL, INICIO_DEMANDA_ANO }
