@@ -87,7 +87,7 @@ function InicioTitular({ usuario, setPagina }) {
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:'8px' }}>
         <div>
           <h1 style={{ fontSize:'1.4rem', fontWeight:'700', color:'var(--texto)', margin:0, letterSpacing:'-0.02em', fontFamily:'Inter,sans-serif' }}>
-            {saudacao()}, {usuario?.nome?.split(' ')[0]} 👋
+            {saudacao()}, {usuario?.nome?.split(' ')[0]}
           </h1>
           <p style={{ fontSize:'0.78rem', color:'var(--texto-apagado)', margin:'4px 0 0', fontFamily:'Inter,sans-serif' }}>{dataHoje()}</p>
         </div>
@@ -242,7 +242,7 @@ function InicioColaborador({ usuario, setPagina, temPermissao }) {
       {/* Saudação */}
       <div>
         <h1 style={{ fontSize:'1.4rem', fontWeight:'700', color:'var(--texto)', margin:0, letterSpacing:'-0.02em', fontFamily:'Inter,sans-serif' }}>
-          {saudacao()}, {usuario?.nome?.split(' ')[0]} 👋
+          {saudacao()}, {usuario?.nome?.split(' ')[0]}
         </h1>
         <p style={{ fontSize:'0.78rem', color:'var(--texto-apagado)', margin:'4px 0 0', fontFamily:'Inter,sans-serif' }}>{dataHoje()}</p>
       </div>

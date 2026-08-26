@@ -7,6 +7,9 @@ const Usuario = require('../models/Usuario');
 const { usuarioSchema, validar } = require('../validacao');
 
 const TOKEN_EXPIRA_MS = 3600000; // 1 hora — mesmo prazo usado em esqueci-senha
+// Convite tem prazo maior: diferente do reset de senha (ação pontual, geralmente feita na hora),
+// quem está sendo convidado pode só ver o e-mail bem depois — 1h era curto demais na prática.
+const CONVITE_EXPIRA_MS = 24 * 3600000; // 24 horas
 
 const router = express.Router();
 
@@ -87,7 +90,7 @@ router.post('/', autenticar, validar(usuarioSchema), async (req, res) => {
     const emailExiste = await Usuario.findOne({ email: email.toLowerCase().trim() }).lean();
     if (emailExiste) return res.status(400).json({ erro: 'E-mail já em uso.' });
     const tokenResetSenha = crypto.randomBytes(32).toString('hex');
-    const tokenResetExpira = new Date(Date.now() + TOKEN_EXPIRA_MS);
+    const tokenResetExpira = new Date(Date.now() + CONVITE_EXPIRA_MS);
     const usuario = await Usuario.create({
       nome, email,
       cargo: 'colaborador',
@@ -196,7 +199,7 @@ router.post('/:id/reenviar-convite', autenticar, temPermissao('gerenciarMembros'
 
     const token = crypto.randomBytes(32).toString('hex');
     alvo.tokenResetSenha = token;
-    alvo.tokenResetExpira = new Date(Date.now() + TOKEN_EXPIRA_MS);
+    alvo.tokenResetExpira = new Date(Date.now() + CONVITE_EXPIRA_MS);
     await alvo.save();
 
     const Empresa = require('../models/Empresa');

@@ -338,26 +338,15 @@ function InputSenha({ id, value, onChange, onKeyDown, placeholder, autoFocus }) 
   )
 }
 
-function CategoriaAcessoSenha({ usuario, onNomeAtualizado }) {
+function CategoriaAcessoSenha({ usuario }) {
   const [aba, setAba] = useState(null)
-  const [form, setForm] = useState({ novoNome: '', novoEmail: '', novaSenha: '', confirmar: '' })
+  const [form, setForm] = useState({ novoEmail: '', novaSenha: '', confirmar: '' })
   const [erro, setErro] = useState('')
   const [sucesso, setSucesso] = useState('')
   const [carregando, setCarregando] = useState(false)
 
-  const resetar = () => { setErro(''); setSucesso(''); setForm({ novoNome: '', novoEmail: '', novaSenha: '', confirmar: '' }) }
+  const resetar = () => { setErro(''); setSucesso(''); setForm({ novoEmail: '', novaSenha: '', confirmar: '' }) }
   const trocarAba = (novaAba) => { resetar(); setAba(novaAba) }
-
-  const salvarNome = async () => {
-    if (!form.novoNome.trim()) return setErro('Digite o novo nome.')
-    setCarregando(true); setErro('')
-    try {
-      await api.put('/usuarios/meu-perfil', { nome: form.novoNome.trim() })
-      setSucesso('Nome atualizado!'); setAba(null)
-      if (onNomeAtualizado) onNomeAtualizado()
-    } catch (err) { setErro(err.response?.data?.erro || 'Erro ao atualizar nome.') }
-    finally { setCarregando(false) }
-  }
 
   const salvarEmail = async () => {
     if (!form.novoEmail) return setErro('Digite o novo e-mail.')
@@ -392,26 +381,6 @@ function CategoriaAcessoSenha({ usuario, onNomeAtualizado }) {
           <p style={{ fontSize: '0.75rem', color: 'var(--texto-apagado)', margin: '2px 0 0' }}>{usuario?.cargo === 'admin' ? 'Titular' : 'Colaborador'}</p>
         </div>
       </div>
-
-      {/* Nome */}
-      <div style={s.campo}>
-        <label style={s.label}>Nome</label>
-        <div style={s.valorComAcao}>
-          <span>{usuario?.nome}</span>
-          <button style={s.btnAlterar} onClick={() => trocarAba(aba === 'nome' ? null : 'nome')}>{aba === 'nome' ? 'Cancelar' : 'Alterar'}</button>
-        </div>
-      </div>
-      {aba === 'nome' && (
-        <div style={s.subForm}>
-          {erro && <p style={s.erro}>{erro}</p>}
-          {sucesso && <p style={s.sucessoMsg}>{sucesso}</p>}
-          <div style={s.campo}>
-            <label style={s.label}>Novo nome</label>
-            <input style={s.input} placeholder="Seu nome completo" value={form.novoNome} onChange={e => setForm({ ...form, novoNome: e.target.value })} autoFocus />
-          </div>
-          <button style={s.btnSalvar} onClick={salvarNome} disabled={carregando}>{carregando ? 'Salvando...' : 'Salvar nome'}</button>
-        </div>
-      )}
 
       {/* E-mail */}
       <div style={s.campo}>
@@ -810,7 +779,7 @@ export default function ModalConfiguracoes({ fechar, categoriaInicial }) {
           {categoria === 'colaboradores' && podeColaboradores && (
             <PaginaEquipe usuario={usuario} recarregar={() => window.dispatchEvent(new CustomEvent('zempofy:equipe-atualizada'))} />
           )}
-          {categoria === 'acesso-senha' && <CategoriaAcessoSenha usuario={usuario} onNomeAtualizado={recarregarUsuario} />}
+          {categoria === 'acesso-senha' && <CategoriaAcessoSenha usuario={usuario} />}
           {categoria === 'plano' && isTitular && <CategoriaMeuPlano />}
           {categoria === 'suporte' && <CategoriaSuporte />}
         </div>
