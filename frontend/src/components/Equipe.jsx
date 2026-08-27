@@ -114,6 +114,124 @@ export function PainelPermissoes({ permissoes, onChange }) {
   )
 }
 
+// ── Uma linha da tabela — o menu "···" muda de opção conforme a seção (ativo/pendente/inativo).
+// Hoisted de propósito, fora de PaginaEquipe: definir isso dentro do componente pai fazia a
+// lista inteira desmontar/remontar a cada clique no "···" (uma função inline dentro do render vira
+// um "componente" novo pro React a cada render), o que jogava o scroll da lista pro topo sempre
+// que alguém abria o menu de uma linha lá embaixo.
+function LinhaMembro({
+  f, tipo, editandoPermId, menuPos, isTitular, usuarioId, permEdicao,
+  onAbrirMenu, onAbrirPermissoes, onSetPermEdicao, onSalvarPermissoes, onCancelarPermissoes,
+  onReenviarConvite, onReativar, onDesativarClick, onResetarSenhaClick, onExcluirClick,
+}) {
+  return (
+    <div style={tipo === 'inativo' ? { opacity: 0.55 } : undefined}>
+      <div style={s.linhaTabela}>
+        <Avatar nome={f.nome} foto={f.avatar} size={34} fontSize={14} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={s.nomeFunc}>{f.nome}</p>
+          <p style={s.emailFunc}>{f.email}</p>
+          {f.setores?.length > 0 && (
+            <div style={{ display:'flex', gap:'4px', flexWrap:'wrap', marginTop:'4px' }}>
+              {f.setores.map(setor => (
+                <span key={setor._id||setor} style={{ fontSize:'0.6rem', fontWeight:'600', padding:'1px 7px', borderRadius:'4px', background:'var(--input)', color:'var(--texto-apagado)', border:'1px solid var(--borda)', display:'flex', alignItems:'center', gap:'4px' }}>
+                  <div style={{ width:'5px', height:'5px', borderRadius:'50%', background:setor.cor||'var(--verde)', flexShrink:0 }}/>
+                  {setor.nome||setor}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+        <span style={{ ...s.badgeCargo, color: 'var(--texto-apagado)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <Icone.User size={12} /> {f.cargo === 'admin' ? 'Titular' : 'Colaborador'}
+        </span>
+        {/* Menu "..." — o titular não tem nenhuma ação disponível na própria linha */}
+        {f.cargo !== 'admin' && (
+        <div style={{ position: 'relative' }} data-membro-menu>
+          <button style={s.btnMenu} onClick={(e) => onAbrirMenu(e, f._id)}>
+            ···
+          </button>
+          {editandoPermId === f._id && menuPos && createPortal(
+            // Portal pro body: um dropdown position:absolute dentro da linha ficava cortado pelo
+            // overflow-y:auto do modal de Configurações quando a linha estava perto do rodapé —
+            // fora da árvore do container com scroll, isso não acontece mais.
+            <div data-membro-menu-portal style={{ position: 'fixed', right: menuPos.right, top: menuPos.top, bottom: menuPos.bottom, background: 'var(--card)', border: '1px solid var(--borda)', borderRadius: '9px', overflow: 'hidden', zIndex: 10000, minWidth: '120px', boxShadow: 'var(--sombra-elevada)' }}>
+              {tipo !== 'inativo' && f.cargo !== 'admin' && (
+                <button style={s.dropdownItem} onClick={() => onAbrirPermissoes(f)}>
+                  Permissões
+                </button>
+              )}
+              {tipo === 'pendente' && (
+                <button style={s.dropdownItem} onClick={() => onReenviarConvite(f._id)}>
+                  Reenviar convite
+                </button>
+              )}
+              {tipo === 'ativo' && isTitular && f.cargo !== 'admin' && (
+                <button style={s.dropdownItem} onClick={() => onResetarSenhaClick(f._id)}>
+                  Resetar senha
+                </button>
+              )}
+              {tipo === 'inativo' ? (
+                <button style={s.dropdownItem} onClick={() => onReativar(f._id)}>
+                  Reativar
+                </button>
+              ) : f._id !== usuarioId && f.cargo !== 'admin' && (
+                <button
+                  style={{ ...s.dropdownItem, color: '#f87171' }}
+                  onClick={() => onDesativarClick(f._id)}
+                >
+                  Desativar
+                </button>
+              )}
+              {tipo === 'inativo' && isTitular && (
+                <button style={{ ...s.dropdownItem, color: '#f87171' }} onClick={() => onExcluirClick(f._id)}>
+                  Excluir permanentemente
+                </button>
+              )}
+            </div>, document.body
+          )}
+        </div>
+        )}
+      </div>
+      {/* Painel de permissões expandido abaixo da linha */}
+      {editandoPermId === 'perm_' + f._id && (
+        <div style={{ padding: '16px 20px', borderTop: '1px solid var(--borda)', background: 'rgba(0,0,0,0.15)' }}>
+          <p style={{ fontSize: '0.72rem', fontWeight: '700', color: 'var(--texto-apagado)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '12px' }}>
+            Permissões de {f.nome.split(' ')[0]}
+          </p>
+          <PainelPermissoes permissoes={permEdicao} onChange={onSetPermEdicao} />
+          <div style={{ display: 'flex', gap: '10px', marginTop: '14px' }}>
+            <button style={s.btnPrimario} onClick={() => onSalvarPermissoes(f._id)}>
+              Salvar
+            </button>
+            <button style={s.btnNeutro} onClick={onCancelarPermissoes}>
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function SecaoEquipe({ titulo, lista, tipo, vazio, ...propsLinha }) {
+  if (lista.length === 0 && !vazio) return null
+  return (
+    <div style={{ marginTop: '16px' }}>
+      <p style={{ fontSize: '0.68rem', fontWeight: '700', color: 'var(--texto-apagado)', textTransform: 'uppercase', letterSpacing: '0.8px', margin: '0 0 7px' }}>
+        {titulo} {lista.length > 0 && `(${lista.length})`}
+      </p>
+      <div style={s.tabelaWrapper}>
+        {lista.length === 0 ? (
+          <p style={{ color: 'var(--texto-apagado)', padding: '14px' }}>{vazio}</p>
+        ) : (
+          lista.map((f) => <LinhaMembro key={f._id} f={f} tipo={tipo} {...propsLinha} />)
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ── Equipe: convite por link, reset de senha (titular), ciclo de vida (ativos/pendentes/inativos) ──
 // Usado tanto pelo titular quanto por colaborador com permissão gerenciarEquipe/gerenciarMembros —
 // isTitular (calculado a partir de `usuario`) controla o que cada um pode fazer dentro da mesma tela.
@@ -133,6 +251,7 @@ export default function PaginaEquipe({ usuario, recarregar }) {
   const [confirmandoExcluirId, setConfirmandoExcluirId] = useState(null)
   const [cienteExclusao, setCienteExclusao] = useState(false)
   const [editandoPermId, setEditandoPermId] = useState(null)
+  const [menuPos, setMenuPos] = useState(null)
   const [permEdicao, setPermEdicao] = useState({})
   const [podeAtribuir, setPodeAtribuir] = useState(true)
   const { mostrar } = useToast()
@@ -245,124 +364,43 @@ export default function PaginaEquipe({ usuario, recarregar }) {
   useEffect(() => {
     if (!editandoPermId || editandoPermId.startsWith('perm_')) return
     const aoClicarFora = (e) => {
-      if (!e.target.closest('[data-membro-menu]')) setEditandoPermId(null)
+      if (!e.target.closest('[data-membro-menu]') && !e.target.closest('[data-membro-menu-portal]')) setEditandoPermId(null)
     }
     document.addEventListener('mousedown', aoClicarFora)
     return () => document.removeEventListener('mousedown', aoClicarFora)
   }, [editandoPermId])
 
-  // Uma linha da tabela — o menu "···" muda de opção conforme a seção (ativo/pendente/inativo)
-  const Linha = ({ f, idx, total, tipo }) => (
-    <div style={tipo === 'inativo' ? { opacity: 0.55 } : undefined}>
-      <div style={s.linhaTabela}>
-        <Avatar nome={f.nome} foto={f.avatar} size={34} fontSize={14} />
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={s.nomeFunc}>{f.nome}</p>
-          <p style={s.emailFunc}>{f.email}</p>
-          {f.setores?.length > 0 && (
-            <div style={{ display:'flex', gap:'4px', flexWrap:'wrap', marginTop:'4px' }}>
-              {f.setores.map(setor => (
-                <span key={setor._id||setor} style={{ fontSize:'0.6rem', fontWeight:'600', padding:'1px 7px', borderRadius:'4px', background:'var(--input)', color:'var(--texto-apagado)', border:'1px solid var(--borda)', display:'flex', alignItems:'center', gap:'4px' }}>
-                  <div style={{ width:'5px', height:'5px', borderRadius:'50%', background:setor.cor||'var(--verde)', flexShrink:0 }}/>
-                  {setor.nome||setor}
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
-        <span style={{ ...s.badgeCargo, color: 'var(--texto-apagado)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <Icone.User size={12} /> {f.cargo === 'admin' ? 'Titular' : 'Colaborador'}
-        </span>
-        {/* Menu "..." — o titular não tem nenhuma ação disponível na própria linha */}
-        {f.cargo !== 'admin' && (
-        <div style={{ position: 'relative' }} data-membro-menu>
-          <button
-            style={s.btnMenu}
-            onClick={() => setEditandoPermId(editandoPermId === f._id ? null : f._id)}
-          >
-            ···
-          </button>
-          {editandoPermId === f._id && (
-            <div style={{ ...s.dropdownMenu, ...(idx >= total - 2 ? { bottom: '100%', top: 'auto', marginBottom: '4px', marginTop: 0 } : {}) }}>
-              {tipo !== 'inativo' && f.cargo !== 'admin' && (
-                <button
-                  style={s.dropdownItem}
-                  onClick={() => {
-                    setPermEdicao(f.permissoes || { ...PERMISSOES_VAZIAS })
-                    setEditandoPermId('perm_' + f._id)
-                  }}
-                >
-                  Permissões
-                </button>
-              )}
-              {tipo === 'pendente' && (
-                <button style={s.dropdownItem} onClick={() => { reenviarConvite(f._id); setEditandoPermId(null) }}>
-                  Reenviar convite
-                </button>
-              )}
-              {tipo === 'ativo' && isTitular && f.cargo !== 'admin' && (
-                <button style={s.dropdownItem} onClick={() => { setConfirmandoResetId(f._id); setEditandoPermId(null) }}>
-                  Resetar senha
-                </button>
-              )}
-              {tipo === 'inativo' ? (
-                <button style={s.dropdownItem} onClick={() => { reativar(f._id); setEditandoPermId(null) }}>
-                  Reativar
-                </button>
-              ) : f._id !== usuario?.id && f.cargo !== 'admin' && (
-                <button
-                  style={{ ...s.dropdownItem, color: '#f87171' }}
-                  onClick={() => { setConfirmandoId(f._id); setEditandoPermId(null) }}
-                >
-                  Desativar
-                </button>
-              )}
-              {tipo === 'inativo' && isTitular && (
-                <button style={{ ...s.dropdownItem, color: '#f87171' }} onClick={() => { setConfirmandoExcluirId(f._id); setEditandoPermId(null) }}>
-                  Excluir permanentemente
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-        )}
-      </div>
-      {/* Painel de permissões expandido abaixo da linha */}
-      {editandoPermId === 'perm_' + f._id && (
-        <div style={{ padding: '16px 20px', borderTop: '1px solid var(--borda)', background: 'rgba(0,0,0,0.15)' }}>
-          <p style={{ fontSize: '0.72rem', fontWeight: '700', color: 'var(--texto-apagado)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '12px' }}>
-            Permissões de {f.nome.split(' ')[0]}
-          </p>
-          <PainelPermissoes permissoes={permEdicao} onChange={setPermEdicao} />
-          <div style={{ display: 'flex', gap: '10px', marginTop: '14px' }}>
-            <button style={s.btnPrimario} onClick={() => salvarPermissoes(f._id)}>
-              Salvar
-            </button>
-            <button style={s.btnNeutro} onClick={() => setEditandoPermId(null)}>
-              Cancelar
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  )
+  const abrirMenu = (e, id) => {
+    if (editandoPermId === id) { setEditandoPermId(null); return }
+    // Decide abrir pra cima/baixo pelo espaço real na tela, não pela posição na lista —
+    // um heurístico baseado só em idx/total abria pra cima até em listas com 1 item
+    // (ex: "Convites pendentes" com só 1 pessoa), escondendo o menu atrás do cabeçalho.
+    const rect = e.currentTarget.getBoundingClientRect()
+    const espacoAbaixo = window.innerHeight - rect.bottom
+    const right = window.innerWidth - rect.right
+    setMenuPos(espacoAbaixo < 180
+      ? { right, bottom: window.innerHeight - rect.top + 4 }
+      : { right, top: rect.bottom + 4 })
+    setEditandoPermId(id)
+  }
 
-  const Secao = ({ titulo, lista, tipo, vazio }) => {
-    if (lista.length === 0 && !vazio) return null
-    return (
-      <div style={{ marginTop: '16px' }}>
-        <p style={{ fontSize: '0.68rem', fontWeight: '700', color: 'var(--texto-apagado)', textTransform: 'uppercase', letterSpacing: '0.8px', margin: '0 0 7px' }}>
-          {titulo} {lista.length > 0 && `(${lista.length})`}
-        </p>
-        <div style={s.tabelaWrapper}>
-          {lista.length === 0 ? (
-            <p style={{ color: 'var(--texto-apagado)', padding: '14px' }}>{vazio}</p>
-          ) : (
-            lista.map((f, idx) => <Linha key={f._id} f={f} idx={idx} total={lista.length} tipo={tipo} />)
-          )}
-        </div>
-      </div>
-    )
+  const abrirPermissoes = (f) => {
+    setPermEdicao(f.permissoes || { ...PERMISSOES_VAZIAS })
+    setEditandoPermId('perm_' + f._id)
+  }
+
+  const propsLinha = {
+    editandoPermId, menuPos, isTitular, usuarioId: usuario?.id, permEdicao,
+    onAbrirMenu: abrirMenu,
+    onAbrirPermissoes: abrirPermissoes,
+    onSetPermEdicao: setPermEdicao,
+    onSalvarPermissoes: salvarPermissoes,
+    onCancelarPermissoes: () => setEditandoPermId(null),
+    onReenviarConvite: (id) => { reenviarConvite(id); setEditandoPermId(null) },
+    onReativar: (id) => { reativar(id); setEditandoPermId(null) },
+    onDesativarClick: (id) => { setConfirmandoId(id); setEditandoPermId(null) },
+    onResetarSenhaClick: (id) => { setConfirmandoResetId(id); setEditandoPermId(null) },
+    onExcluirClick: (id) => { setConfirmandoExcluirId(id); setEditandoPermId(null) },
   }
 
   return (
@@ -511,9 +549,9 @@ export default function PaginaEquipe({ usuario, recarregar }) {
         <p style={{ color: 'var(--texto-apagado)', padding: '20px' }}>Carregando equipe...</p>
       ) : (
         <>
-          <Secao titulo="Ativos" lista={ativos} tipo="ativo" vazio="Nenhum membro ativo ainda." />
-          <Secao titulo="Convites pendentes" lista={pendentes} tipo="pendente" />
-          <Secao titulo="Inativos" lista={inativos} tipo="inativo" />
+          <SecaoEquipe titulo="Ativos" lista={ativos} tipo="ativo" vazio="Nenhum membro ativo ainda." {...propsLinha} />
+          <SecaoEquipe titulo="Convites pendentes" lista={pendentes} tipo="pendente" {...propsLinha} />
+          <SecaoEquipe titulo="Inativos" lista={inativos} tipo="inativo" {...propsLinha} />
         </>
       )}
     </div>

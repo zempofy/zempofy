@@ -147,7 +147,7 @@ const enviarConvite = async ({ destinatario, nome, nomeEmpresa, nomeConvidadoPor
       <p>E-mail de acesso</p>
       <span>${destinatario}</span>
     </div>
-    <p>Este link é válido por <strong>1 hora</strong>.</p>
+    <p>Este link é válido por <strong>24 horas</strong>.</p>
     <a class="btn" href="${link}">Definir minha senha</a>
     <p style="margin-top:16px;font-size:0.8rem;color:#71717a">Se tiver dúvidas, entre em contato com seu titular ou acesse suporte@zempofy.com.br</p>
   `;
