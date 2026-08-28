@@ -5,7 +5,6 @@ import { useToast } from './Toast'
 import Icone from './Icones'
 import ImportarClientes from './ImportarClientes'
 import ModalConfirmacao from './ModalConfirmacao'
-import Modal from './Modal'
 import AbaDocumentos from './AbaDocumentos'
 import ListaDocumentos from './ListaDocumentos'
 import { useAuth } from '../contexts/AuthContext'
@@ -1291,8 +1290,8 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
   const [respondendo, setRespondendo] = useState(false)
   const [editandoSituacao, setEditandoSituacao] = useState(false)
   const [valorVigenciaPendente, setValorVigenciaPendente] = useState(null)
-  const [modalDocsAberto, setModalDocsAberto] = useState(false)
   const [qtdDocs, setQtdDocs] = useState(null)
+  const listaDocsRef = useRef(null)
   // Mais permissivo que a edição de campo de propósito: documento pode ser enviado mesmo numa
   // competência já fechada pra edição (mês passado, só titular edita campo) — só precisa ter
   // acesso ao setor, mesma regra de quem preenche a Demanda.
@@ -1497,27 +1496,20 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
         </div>
       )}
 
-      <div style={{ background:'var(--card)', border:'1px solid var(--borda)', borderRadius:'14px', padding:'14px 18px', marginBottom:'20px', display:'flex', alignItems:'center', justifyContent:'space-between', gap:'12px', flexWrap:'wrap' }}>
-        <div>
-          <p style={{ fontSize:'0.82rem', fontWeight:'700', color:'var(--texto)', margin:0 }}>Documentos desta competência</p>
-          <p style={{ fontSize:'0.75rem', color:'var(--texto-apagado)', margin:'2px 0 0' }}>{qtdDocs===null?'—':`${qtdDocs} documento${qtdDocs!==1?'s':''} enviado${qtdDocs!==1?'s':''}`}</p>
+      <div style={{ background:'var(--card)', border:'1px solid var(--borda)', borderRadius:'14px', padding:'14px 18px', marginBottom:'20px' }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:'12px', flexWrap:'wrap', marginBottom:'14px' }}>
+          <div>
+            <p style={{ fontSize:'0.82rem', fontWeight:'700', color:'var(--texto)', margin:0 }}>Documentos desta competência</p>
+            <p style={{ fontSize:'0.75rem', color:'var(--texto-apagado)', margin:'2px 0 0' }}>{qtdDocs===null?'—':`${qtdDocs} documento${qtdDocs!==1?'s':''} enviado${qtdDocs!==1?'s':''}`}</p>
+          </div>
+          {temAcessoDocs && (
+            <button onClick={()=>listaDocsRef.current?.abrirSeletor()} style={{ ...s.btnAcao, display:'flex', alignItems:'center', gap:'6px' }}>
+              <Icone.Paperclip size={13}/>Carregar documentos
+            </button>
+          )}
         </div>
-        <button onClick={()=>setModalDocsAberto(true)} style={{ ...s.btnAcao, display:'flex', alignItems:'center', gap:'6px' }}>
-          <Icone.Paperclip size={13}/>Carregar documentos
-        </button>
+        <ListaDocumentos ref={listaDocsRef} clienteId={clienteId} tipo="demanda" setor={setor} competencia={competencia} podeGerenciar={temAcessoDocs} compacto ocultarDropzone onMudanca={buscarQtdDocs}/>
       </div>
-
-      {modalDocsAberto && (
-        <Modal onFechar={()=>{ setModalDocsAberto(false); buscarQtdDocs() }} maxWidth="480px">
-          <div style={s.modalTopo}>
-            <span style={s.modalTit}>Documentos de {nomeMes(competencia)}</span>
-            <button style={s.btnX} onClick={()=>{ setModalDocsAberto(false); buscarQtdDocs() }}>✕</button>
-          </div>
-          <div style={{ padding:'20px 24px' }}>
-            <ListaDocumentos clienteId={clienteId} tipo="demanda" setor={setor} competencia={competencia} podeGerenciar={temAcessoDocs} compacto/>
-          </div>
-        </Modal>
-      )}
 
       <div style={{ marginBottom:'20px' }}>
         <Campo label="Observações">

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react'
 import api from '../services/api'
 import { useToast } from './Toast'
 import Icone from './Icones'
@@ -14,8 +14,10 @@ const TIPOS_ACEITOS_TEXTO = 'PDF, imagem (JPG, PNG), planilha (XLS, XLSX, CSV) o
 const ACCEPT_ATTR = '.pdf,.jpg,.jpeg,.png,.xls,.xlsx,.csv,.doc,.docx'
 
 // Leaf reutilizável: só a lista + upload, sem navegação de pastas — usado na aba Documentos
-// (nível folha) e no modal "Carregar documentos" dentro da Demanda.
-export default function ListaDocumentos({ clienteId, tipo, setor, competencia, podeGerenciar, compacto = false }) {
+// (nível folha) e embutido direto na tela da Demanda. `ocultarDropzone` tira a caixa grande de
+// arrastar-e-soltar (quando quem chama já tem seu próprio botão "Carregar documentos" — nesse
+// caso usa a ref pra abrir o seletor de arquivo: `ref.current.abrirSeletor()`).
+const ListaDocumentos = forwardRef(function ListaDocumentos({ clienteId, tipo, setor, competencia, podeGerenciar, compacto = false, onMudanca, ocultarDropzone = false }, ref) {
   const { mostrar } = useToast()
   const [documentos, setDocumentos] = useState([])
   const [carregando, setCarregando] = useState(true)
@@ -23,6 +25,8 @@ export default function ListaDocumentos({ clienteId, tipo, setor, competencia, p
   const [confirmarExclusao, setConfirmarExclusao] = useState(null)
   const [arrastando, setArrastando] = useState(false)
   const inputRef = useRef(null)
+
+  useImperativeHandle(ref, () => ({ abrirSeletor: () => !enviando && inputRef.current?.click() }))
 
   const buscar = async () => {
     setCarregando(true)
@@ -32,6 +36,7 @@ export default function ListaDocumentos({ clienteId, tipo, setor, competencia, p
         : `/documentos/demanda/${clienteId}/${setor._id}/${competencia}?incluirInativos=1`
       const res = await api.get(url)
       setDocumentos(res.data)
+      onMudanca?.(res.data)
     } catch { mostrar('Erro ao carregar documentos.', 'erro') }
     finally { setCarregando(false) }
   }
@@ -118,30 +123,37 @@ export default function ListaDocumentos({ clienteId, tipo, setor, competencia, p
       )}
 
       {podeGerenciar && (
-        <div
-          onClick={() => !enviando && inputRef.current?.click()}
-          onDragOver={e => e.preventDefault()}
-          onDragEnter={e => { e.preventDefault(); setArrastando(true) }}
-          onDragLeave={e => { e.preventDefault(); if (!e.currentTarget.contains(e.relatedTarget)) setArrastando(false) }}
-          onDrop={e => { e.preventDefault(); setArrastando(false); const f = e.dataTransfer.files[0]; if (f) enviarArquivo(f) }}
-          style={{
-            ...s.dropzone,
-            border: `2px dashed ${arrastando ? 'var(--verde)' : 'var(--borda)'}`,
-            background: arrastando ? 'var(--verde-glow)' : 'transparent',
-            cursor: enviando ? 'default' : 'pointer',
-            opacity: enviando ? 0.7 : 1,
-          }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px' }}>
-            <Icone.FolderOpen size={compacto ? 24 : 32} style={{ color: 'var(--texto-apagado)', opacity: 0.5 }} />
-          </div>
-          <p style={{ fontSize: '0.82rem', color: 'var(--texto)', fontFamily: 'Inter,sans-serif', margin: 0 }}>
-            {enviando ? 'Enviando...' : 'Clique ou arraste o arquivo aqui'}
-          </p>
-          {!enviando && <p style={{ fontSize: '0.7rem', color: 'var(--texto-apagado)', fontFamily: 'Inter,sans-serif', margin: '4px 0 0' }}>{TIPOS_ACEITOS_TEXTO}</p>}
+        <>
           <input ref={inputRef} type="file" accept={ACCEPT_ATTR} style={{ display: 'none' }}
             onChange={e => { if (e.target.files[0]) enviarArquivo(e.target.files[0]); e.target.value = '' }} disabled={enviando} />
-        </div>
+          {enviando && ocultarDropzone && (
+            <p style={{ fontSize: '0.78rem', color: 'var(--texto-apagado)', fontFamily: 'Inter,sans-serif', margin: 0 }}>Enviando...</p>
+          )}
+          {!ocultarDropzone && (
+            <div
+              onClick={() => !enviando && inputRef.current?.click()}
+              onDragOver={e => e.preventDefault()}
+              onDragEnter={e => { e.preventDefault(); setArrastando(true) }}
+              onDragLeave={e => { e.preventDefault(); if (!e.currentTarget.contains(e.relatedTarget)) setArrastando(false) }}
+              onDrop={e => { e.preventDefault(); setArrastando(false); const f = e.dataTransfer.files[0]; if (f) enviarArquivo(f) }}
+              style={{
+                ...s.dropzone,
+                border: `2px dashed ${arrastando ? 'var(--verde)' : 'var(--borda)'}`,
+                background: arrastando ? 'var(--verde-glow)' : 'transparent',
+                cursor: enviando ? 'default' : 'pointer',
+                opacity: enviando ? 0.7 : 1,
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px' }}>
+                <Icone.FolderOpen size={compacto ? 24 : 32} style={{ color: 'var(--texto-apagado)', opacity: 0.5 }} />
+              </div>
+              <p style={{ fontSize: '0.82rem', color: 'var(--texto)', fontFamily: 'Inter,sans-serif', margin: 0 }}>
+                {enviando ? 'Enviando...' : 'Clique ou arraste o arquivo aqui'}
+              </p>
+              {!enviando && <p style={{ fontSize: '0.7rem', color: 'var(--texto-apagado)', fontFamily: 'Inter,sans-serif', margin: '4px 0 0' }}>{TIPOS_ACEITOS_TEXTO}</p>}
+            </div>
+          )}
+        </>
       )}
 
       {confirmarExclusao && (
@@ -155,7 +167,9 @@ export default function ListaDocumentos({ clienteId, tipo, setor, competencia, p
       )}
     </div>
   )
-}
+})
+
+export default ListaDocumentos
 
 const s = {
   titulo: { fontSize: '0.85rem', fontWeight: '700', color: 'var(--texto)', margin: '0 0 12px', fontFamily: 'Inter,sans-serif' },
