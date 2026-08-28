@@ -3,6 +3,7 @@ import api from '../services/api'
 import { useToast } from './Toast'
 import Icone from './Icones'
 import ModalConfirmacao from './ModalConfirmacao'
+import Modal from './Modal'
 
 const formatarTamanho = (bytes) => {
   if (bytes < 1024) return `${bytes} B`
@@ -15,8 +16,9 @@ const ACCEPT_ATTR = '.pdf,.jpg,.jpeg,.png,.xls,.xlsx,.csv,.doc,.docx'
 
 // Leaf reutilizável: só a lista + upload, sem navegação de pastas — usado na aba Documentos
 // (nível folha) e embutido direto na tela da Demanda. `ocultarDropzone` tira a caixa grande de
-// arrastar-e-soltar (quando quem chama já tem seu próprio botão "Carregar documentos" — nesse
-// caso usa a ref pra abrir o seletor de arquivo: `ref.current.abrirSeletor()`).
+// arrastar-e-soltar de dentro da lista (quando quem chama já tem seu próprio botão "Carregar
+// documentos") — nesse caso a caixa aparece num popup ao chamar `ref.current.abrirSeletor()`,
+// em vez de pular direto pro seletor de arquivo do sistema.
 const ListaDocumentos = forwardRef(function ListaDocumentos({ clienteId, tipo, setor, competencia, podeGerenciar, compacto = false, onMudanca, ocultarDropzone = false }, ref) {
   const { mostrar } = useToast()
   const [documentos, setDocumentos] = useState([])
@@ -24,9 +26,10 @@ const ListaDocumentos = forwardRef(function ListaDocumentos({ clienteId, tipo, s
   const [enviando, setEnviando] = useState(false)
   const [confirmarExclusao, setConfirmarExclusao] = useState(null)
   const [arrastando, setArrastando] = useState(false)
+  const [popupAberto, setPopupAberto] = useState(false)
   const inputRef = useRef(null)
 
-  useImperativeHandle(ref, () => ({ abrirSeletor: () => !enviando && inputRef.current?.click() }))
+  useImperativeHandle(ref, () => ({ abrirSeletor: () => setPopupAberto(true) }))
 
   const buscar = async () => {
     setCarregando(true)
@@ -58,6 +61,13 @@ const ListaDocumentos = forwardRef(function ListaDocumentos({ clienteId, tipo, s
       buscar()
     } catch (e) { mostrar(e.response?.data?.erro || 'Erro ao enviar documento.', 'erro') }
     finally { setEnviando(false) }
+  }
+
+  // Usado pelo popup: envia e já fecha, tanto no caminho de clique quanto no de arrastar-e-soltar
+  const escolherEEnviar = async (arquivo) => {
+    if (!arquivo) return
+    await enviarArquivo(arquivo)
+    setPopupAberto(false)
   }
 
   const baixar = async (doc) => {
@@ -96,6 +106,31 @@ const ListaDocumentos = forwardRef(function ListaDocumentos({ clienteId, tipo, s
 
   if (carregando) return <p style={{ color: 'var(--texto-apagado)', fontSize: '0.85rem' }}>Carregando...</p>
 
+  const caixaDropzone = (
+    <div
+      onClick={() => !enviando && inputRef.current?.click()}
+      onDragOver={e => e.preventDefault()}
+      onDragEnter={e => { e.preventDefault(); setArrastando(true) }}
+      onDragLeave={e => { e.preventDefault(); if (!e.currentTarget.contains(e.relatedTarget)) setArrastando(false) }}
+      onDrop={e => { e.preventDefault(); setArrastando(false); escolherEEnviar(e.dataTransfer.files[0]) }}
+      style={{
+        ...s.dropzone,
+        border: `2px dashed ${arrastando ? 'var(--verde)' : 'var(--borda)'}`,
+        background: arrastando ? 'var(--verde-glow)' : 'transparent',
+        cursor: enviando ? 'default' : 'pointer',
+        opacity: enviando ? 0.7 : 1,
+      }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px' }}>
+        <Icone.FolderOpen size={compacto ? 24 : 32} style={{ color: 'var(--texto-apagado)', opacity: 0.5 }} />
+      </div>
+      <p style={{ fontSize: '0.82rem', color: 'var(--texto)', fontFamily: 'Inter,sans-serif', margin: 0 }}>
+        {enviando ? 'Enviando...' : 'Clique ou arraste o arquivo aqui'}
+      </p>
+      {!enviando && <p style={{ fontSize: '0.7rem', color: 'var(--texto-apagado)', fontFamily: 'Inter,sans-serif', margin: '4px 0 0' }}>{TIPOS_ACEITOS_TEXTO}</p>}
+    </div>
+  )
+
   return (
     <div>
       {!compacto && <p style={s.titulo}>Documentos</p>}
@@ -125,33 +160,20 @@ const ListaDocumentos = forwardRef(function ListaDocumentos({ clienteId, tipo, s
       {podeGerenciar && (
         <>
           <input ref={inputRef} type="file" accept={ACCEPT_ATTR} style={{ display: 'none' }}
-            onChange={e => { if (e.target.files[0]) enviarArquivo(e.target.files[0]); e.target.value = '' }} disabled={enviando} />
-          {enviando && ocultarDropzone && (
-            <p style={{ fontSize: '0.78rem', color: 'var(--texto-apagado)', fontFamily: 'Inter,sans-serif', margin: 0 }}>Enviando...</p>
-          )}
-          {!ocultarDropzone && (
-            <div
-              onClick={() => !enviando && inputRef.current?.click()}
-              onDragOver={e => e.preventDefault()}
-              onDragEnter={e => { e.preventDefault(); setArrastando(true) }}
-              onDragLeave={e => { e.preventDefault(); if (!e.currentTarget.contains(e.relatedTarget)) setArrastando(false) }}
-              onDrop={e => { e.preventDefault(); setArrastando(false); const f = e.dataTransfer.files[0]; if (f) enviarArquivo(f) }}
-              style={{
-                ...s.dropzone,
-                border: `2px dashed ${arrastando ? 'var(--verde)' : 'var(--borda)'}`,
-                background: arrastando ? 'var(--verde-glow)' : 'transparent',
-                cursor: enviando ? 'default' : 'pointer',
-                opacity: enviando ? 0.7 : 1,
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px' }}>
-                <Icone.FolderOpen size={compacto ? 24 : 32} style={{ color: 'var(--texto-apagado)', opacity: 0.5 }} />
+            onChange={e => { escolherEEnviar(e.target.files[0]); e.target.value = '' }} disabled={enviando} />
+
+          {!ocultarDropzone && caixaDropzone}
+
+          {ocultarDropzone && popupAberto && (
+            <Modal onFechar={() => !enviando && setPopupAberto(false)} maxWidth="380px">
+              <div style={{ padding: '20px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                  <span style={{ fontSize: '0.9rem', fontWeight: '700', color: 'var(--texto)', fontFamily: 'Inter,sans-serif' }}>Carregar documento</span>
+                  <button onClick={() => !enviando && setPopupAberto(false)} style={{ background: 'none', border: 'none', color: 'var(--texto-apagado)', cursor: 'pointer', fontSize: '1.1rem', lineHeight: 1 }}>✕</button>
+                </div>
+                {caixaDropzone}
               </div>
-              <p style={{ fontSize: '0.82rem', color: 'var(--texto)', fontFamily: 'Inter,sans-serif', margin: 0 }}>
-                {enviando ? 'Enviando...' : 'Clique ou arraste o arquivo aqui'}
-              </p>
-              {!enviando && <p style={{ fontSize: '0.7rem', color: 'var(--texto-apagado)', fontFamily: 'Inter,sans-serif', margin: '4px 0 0' }}>{TIPOS_ACEITOS_TEXTO}</p>}
-            </div>
+            </Modal>
           )}
         </>
       )}
