@@ -17,7 +17,6 @@ const PERMISSOES_LABELS = [
     { key: 'gerenciarBancoAtividades', label: 'Banco de atividades', desc: 'Gerenciar atividades do checklist' },
   ]},
   { key: 'gerenciarClientes', label: 'Gerenciar clientes', desc: 'Ver e editar a carteira de clientes' },
-  { key: 'verRelatorios', label: 'Ver relatórios', desc: 'Acessar métricas e relatórios da equipe' },
   { key: 'publicarMural', label: 'Publicar no mural', desc: 'Postar avisos para a equipe' },
   { key: 'criarTarefas', label: 'Criar tarefas para outros', desc: 'Atribuir tarefas a outros colaboradores' },
 ]
@@ -26,15 +25,15 @@ export const PERMISSOES_VAZIAS = {
   gerenciarEquipe: false, gerenciarMembros: false, gerenciarSetores: false,
   gerenciarOnboarding: false,
   criarImplantacoes: false, gerenciarModelos: false, gerenciarBancoAtividades: false,
-  gerenciarClientes: false, verRelatorios: false, publicarMural: false, criarTarefas: false,
+  gerenciarClientes: false, publicarMural: false, criarTarefas: false,
 }
 
-function CheckItem({ ativo, label, desc, onClick, sub = false }) {
+function CheckItem({ ativo, label, desc, onClick, sub = false, somenteLeitura = false }) {
   return (
-    <div onClick={onClick} style={{
+    <div onClick={somenteLeitura ? undefined : onClick} style={{
       display: 'flex', alignItems: 'center', gap: '12px',
       padding: sub ? '8px 12px 8px 28px' : '10px 12px',
-      borderRadius: '8px', cursor: 'pointer',
+      borderRadius: '8px', cursor: somenteLeitura ? 'default' : 'pointer',
       background: ativo ? 'rgba(0,177,65,0.08)' : sub ? 'rgba(var(--sobreposicao-rgb),0.02)' : 'transparent',
       border: ativo ? '1px solid rgba(0,177,65,0.2)' : '1px solid var(--borda)',
       transition: 'all 0.15s',
@@ -55,13 +54,13 @@ function CheckItem({ ativo, label, desc, onClick, sub = false }) {
   )
 }
 
-export function PainelPermissoes({ permissoes, onChange }) {
+export function PainelPermissoes({ permissoes, onChange, somenteLeitura = false }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '4px' }}>
       {PERMISSOES_LABELS.map(p => (
         <div key={p.key}>
           <div
-            onClick={() => {
+            onClick={somenteLeitura ? undefined : () => {
               const novo = { ...permissoes, [p.key]: !permissoes[p.key] }
               if (p.subpermissoes) {
                 if (!permissoes[p.key]) {
@@ -74,7 +73,7 @@ export function PainelPermissoes({ permissoes, onChange }) {
             }}
             style={{
               display: 'flex', alignItems: 'center', gap: '12px',
-              padding: '10px 12px', borderRadius: '8px', cursor: 'pointer',
+              padding: '10px 12px', borderRadius: '8px', cursor: somenteLeitura ? 'default' : 'pointer',
               background: permissoes[p.key] ? 'rgba(0,177,65,0.08)' : 'transparent',
               border: permissoes[p.key] ? '1px solid rgba(0,177,65,0.2)' : '1px solid var(--borda)',
               transition: 'all 0.15s',
@@ -92,6 +91,13 @@ export function PainelPermissoes({ permissoes, onChange }) {
               <p style={{ margin: 0, fontSize: '0.875rem', fontWeight: '500', color: 'var(--texto)', fontFamily: 'Inter, sans-serif' }}>{p.label}</p>
               <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--texto-apagado)' }}>{p.desc}</p>
             </div>
+            {p.subpermissoes?.length > 0 && (
+              <Icone.ChevronDown size={14} style={{
+                color: 'var(--texto-apagado)', flexShrink: 0,
+                transition: 'transform 0.2s',
+                transform: permissoes[p.key] ? 'rotate(180deg)' : 'rotate(0deg)',
+              }} />
+            )}
           </div>
 
           {p.subpermissoes && permissoes[p.key] && (
@@ -103,6 +109,7 @@ export function PainelPermissoes({ permissoes, onChange }) {
                   label={sub.label}
                   desc={sub.desc}
                   sub
+                  somenteLeitura={somenteLeitura}
                   onClick={e => { e.stopPropagation(); onChange({ ...permissoes, [sub.key]: !permissoes[sub.key] }) }}
                 />
               ))}
@@ -199,15 +206,31 @@ function LinhaMembro({
           <p style={{ fontSize: '0.72rem', fontWeight: '700', color: 'var(--texto-apagado)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '12px' }}>
             Permissões de {f.nome.split(' ')[0]}
           </p>
-          <PainelPermissoes permissoes={permEdicao} onChange={onSetPermEdicao} />
-          <div style={{ display: 'flex', gap: '10px', marginTop: '14px' }}>
-            <button style={s.btnPrimario} onClick={() => onSalvarPermissoes(f._id)}>
-              Salvar
-            </button>
-            <button style={s.btnNeutro} onClick={onCancelarPermissoes}>
-              Cancelar
-            </button>
-          </div>
+          {f._id === usuarioId ? (
+            <>
+              <p style={{ fontSize: '0.78rem', color: 'var(--texto-apagado)', margin: '0 0 12px', fontFamily: 'Inter, sans-serif' }}>
+                Você não pode editar suas próprias permissões — só o titular pode alterar isso.
+              </p>
+              <PainelPermissoes permissoes={f.permissoes || PERMISSOES_VAZIAS} onChange={() => {}} somenteLeitura />
+              <div style={{ display: 'flex', gap: '10px', marginTop: '14px' }}>
+                <button style={s.btnNeutro} onClick={onCancelarPermissoes}>
+                  Fechar
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <PainelPermissoes permissoes={permEdicao} onChange={onSetPermEdicao} />
+              <div style={{ display: 'flex', gap: '10px', marginTop: '14px' }}>
+                <button style={s.btnPrimario} onClick={() => onSalvarPermissoes(f._id)}>
+                  Salvar
+                </button>
+                <button style={s.btnNeutro} onClick={onCancelarPermissoes}>
+                  Cancelar
+                </button>
+              </div>
+            </>
+          )}
         </div>
       )}
     </div>

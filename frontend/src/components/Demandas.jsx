@@ -46,6 +46,7 @@ export default function Demandas() {
   const [demandas, setDemandas] = useState([])
   const [carregando, setCarregando] = useState(false)
   const [filtro, setFiltro] = useState('todas')
+  const [busca, setBusca] = useState('')
   const [setorDropdownAberto, setSetorDropdownAberto] = useState(false)
   const [clienteAberto, setClienteAberto] = useState(null) // { clienteId, setorId, competencia } | null
   const setorDropdownRef = useRef(null)
@@ -114,6 +115,7 @@ export default function Demandas() {
 
   const filtrados = comStatus
     .filter(d => filtro === 'todas' || d._status === filtro)
+    .filter(d => (d.nome || '').toLowerCase().includes(busca.toLowerCase()))
     .sort((a, b) => (a.nome || '').toLowerCase().localeCompare((b.nome || '').toLowerCase(), 'pt-BR', { numeric: true }))
 
   // Sem trava — o padrão (mês defasado) continua sendo a competência de abertura,
@@ -193,13 +195,24 @@ export default function Demandas() {
         </div>
       </div>
 
-      {/* Chips de filtro */}
-      <div style={{ display: 'flex', gap: '6px', marginBottom: '16px' }}>
-        {chipsFiltro.map(c => (
-          <button key={c.id} onClick={() => setFiltro(c.id)} style={{ padding: '6px 14px', borderRadius: '8px', fontSize: '0.78rem', fontWeight: '600', cursor: 'pointer', fontFamily: 'Inter,sans-serif', border: `1px solid ${filtro === c.id ? 'rgba(0,177,65,0.3)' : 'var(--borda)'}`, background: filtro === c.id ? 'rgba(0,177,65,0.08)' : 'var(--input)', color: filtro === c.id ? 'var(--verde)' : 'var(--texto-apagado)' }}>
-            {c.label}
-          </button>
-        ))}
+      {/* Chips de filtro + busca por cliente */}
+      <div style={{ display: 'flex', gap: '10px', marginBottom: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+          {chipsFiltro.map(c => (
+            <button key={c.id} onClick={() => setFiltro(c.id)} style={{ padding: '6px 14px', borderRadius: '8px', fontSize: '0.78rem', fontWeight: '600', cursor: 'pointer', fontFamily: 'Inter,sans-serif', border: `1px solid ${filtro === c.id ? 'rgba(0,177,65,0.3)' : 'var(--borda)'}`, background: filtro === c.id ? 'rgba(0,177,65,0.08)' : 'var(--input)', color: filtro === c.id ? 'var(--verde)' : 'var(--texto-apagado)' }}>
+              {c.label}
+            </button>
+          ))}
+        </div>
+        <div style={{ position: 'relative', flex: '1', minWidth: '180px', maxWidth: '420px' }}>
+          <Icone.Search size={13} style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)', color: 'var(--texto-apagado)' }} />
+          <input
+            value={busca}
+            onChange={e => setBusca(e.target.value)}
+            placeholder="Buscar cliente..."
+            style={{ width: '100%', boxSizing: 'border-box', padding: '7px 12px 7px 32px', borderRadius: '8px', border: '1px solid var(--borda)', background: 'var(--input)', color: 'var(--texto)', fontSize: '0.8rem', fontFamily: 'Inter,sans-serif' }}
+          />
+        </div>
       </div>
 
       {/* Lista */}

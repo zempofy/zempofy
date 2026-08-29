@@ -2,13 +2,16 @@ import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 're
 import api from '../services/api'
 import { useToast } from './Toast'
 import Icone from './Icones'
-import ModalConfirmacao from './ModalConfirmacao'
 import Modal from './Modal'
 
-const formatarTamanho = (bytes) => {
+// Também usada pelo total da empresa na tela de Armazenamento — por isso vai até GB.
+export const formatarTamanho = (bytes) => {
+  const n = (valor, casas) => valor.toFixed(casas).replace('.', ',')
+  if (!bytes) return '0 B'
   if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  if (bytes < 1024 * 1024) return `${n(bytes / 1024, 1)} KB`
+  if (bytes < 1024 * 1024 * 1024) return `${n(bytes / (1024 * 1024), 1)} MB`
+  return `${n(bytes / (1024 * 1024 * 1024), 2)} GB`
 }
 
 const TIPOS_ACEITOS_TEXTO = 'PDF, imagem (JPG, PNG), planilha (XLS, XLSX, CSV) ou Word (DOC, DOCX)'
@@ -24,7 +27,6 @@ const ListaDocumentos = forwardRef(function ListaDocumentos({ clienteId, tipo, s
   const [documentos, setDocumentos] = useState([])
   const [carregando, setCarregando] = useState(true)
   const [enviando, setEnviando] = useState(false)
-  const [confirmarExclusao, setConfirmarExclusao] = useState(null)
   const [arrastando, setArrastando] = useState(false)
   const [popupAberto, setPopupAberto] = useState(false)
   const inputRef = useRef(null)
@@ -35,8 +37,8 @@ const ListaDocumentos = forwardRef(function ListaDocumentos({ clienteId, tipo, s
     setCarregando(true)
     try {
       const url = tipo === 'geral'
-        ? `/documentos/cliente/${clienteId}?incluirInativos=1`
-        : `/documentos/demanda/${clienteId}/${setor._id}/${competencia}?incluirInativos=1`
+        ? `/documentos/cliente/${clienteId}`
+        : `/documentos/demanda/${clienteId}/${setor._id}/${competencia}`
       const res = await api.get(url)
       setDocumentos(res.data)
       onMudanca?.(res.data)
@@ -46,28 +48,50 @@ const ListaDocumentos = forwardRef(function ListaDocumentos({ clienteId, tipo, s
 
   useEffect(() => { buscar() }, [clienteId, tipo, setor?._id, competencia])
 
-  const enviarArquivo = async (arquivo) => {
-    if (!arquivo) return
-    if (arquivo.size > 16 * 1024 * 1024) return mostrar('Arquivo maior que 16MB.', 'erro')
-    setEnviando(true)
+  // Envia um arquivo por vez (uma requisição cada), em sequência — não em paralelo, pra não
+  // sobrecarregar o backend nem complicar o feedback de progresso. Retorna motivo do erro, se houver.
+  const enviarArquivoIndividual = async (arquivo) => {
+    if (arquivo.size > 16 * 1024 * 1024) return { ok: false, motivo: 'Arquivo maior que 16MB.' }
     try {
       const form = new FormData()
-      form.append('arquivo', arquivo)
+      form.append('arquivos', arquivo)
       form.append('clienteId', clienteId)
       form.append('tipo', tipo)
       if (tipo === 'demanda') { form.append('setorId', setor._id); form.append('competencia', competencia) }
       await api.post('/documentos', form)
-      mostrar('Documento enviado!', 'sucesso')
-      buscar()
-    } catch (e) { mostrar(e.response?.data?.erro || 'Erro ao enviar documento.', 'erro') }
-    finally { setEnviando(false) }
+      return { ok: true }
+    } catch (e) {
+      const dados = e.response?.data
+      const motivo = Array.isArray(dados) ? dados[0]?.erro : dados?.erro
+      return { ok: false, motivo: motivo || 'Erro ao enviar documento.' }
+    }
   }
 
-  // Usado pelo popup: envia e já fecha, tanto no caminho de clique quanto no de arrastar-e-soltar
-  const escolherEEnviar = async (arquivo) => {
-    if (!arquivo) return
-    await enviarArquivo(arquivo)
+  // Usado pelo popup e pelo dropzone: envia todos os arquivos escolhidos (arrastados ou selecionados)
+  // e fecha o popup ao final, resumindo o resultado num único toast.
+  const enviarArquivos = async (listaDeArquivos) => {
+    const lista = Array.from(listaDeArquivos || [])
+    if (lista.length === 0) return
+    setEnviando(true)
+    let sucesso = 0
+    const falhas = []
+    for (const arquivo of lista) {
+      const resultado = await enviarArquivoIndividual(arquivo)
+      if (resultado.ok) sucesso++
+      else falhas.push({ nome: arquivo.name, motivo: resultado.motivo })
+    }
+    setEnviando(false)
     setPopupAberto(false)
+    buscar()
+
+    if (lista.length === 1) {
+      mostrar(sucesso === 1 ? 'Documento enviado!' : (falhas[0]?.motivo || 'Erro ao enviar documento.'), sucesso === 1 ? 'sucesso' : 'erro')
+    } else if (falhas.length === 0) {
+      mostrar(`${sucesso} de ${lista.length} arquivos enviados.`, 'sucesso')
+    } else {
+      const detalhe = falhas.length === 1 ? ` (${falhas[0].motivo})` : ''
+      mostrar(`${sucesso} de ${lista.length} enviados — ${falhas.length} arquivo(s) recusado(s)${detalhe}.`, sucesso > 0 ? 'aviso' : 'erro')
+    }
   }
 
   const baixar = async (doc) => {
@@ -81,28 +105,17 @@ const ListaDocumentos = forwardRef(function ListaDocumentos({ clienteId, tipo, s
     } catch { mostrar('Erro ao baixar documento.', 'erro') }
   }
 
-  const inativar = async (doc) => {
+  // Excluir manda pra lixeira (Configurações → Lixeira), de onde dá pra restaurar por 30 dias —
+  // o documento some daqui na hora, sem passar pelo estado "inativo e cinza" de antes.
+  const excluir = async (doc) => {
     try {
-      await api.patch(`/documentos/${doc._id}/inativar`)
-      mostrar('Documento inativado.', 'sucesso')
+      await api.patch(`/documentos/${doc._id}/excluir`)
+      mostrar('Documento movido para a lixeira. Será excluído permanentemente em 30 dias.', 'sucesso')
       buscar()
-    } catch (e) { mostrar(e.response?.data?.erro || 'Erro ao inativar.', 'erro') }
+    } catch (e) { mostrar(e.response?.data?.erro || 'Erro ao excluir documento.', 'erro') }
   }
 
-  const excluirDefinitivo = async () => {
-    try {
-      await api.delete(`/documentos/${confirmarExclusao._id}`)
-      mostrar('Documento excluído permanentemente.', 'sucesso')
-      setConfirmarExclusao(null)
-      buscar()
-    } catch (e) { mostrar(e.response?.data?.erro || 'Erro ao excluir.', 'erro') }
-  }
-
-  const ordenados = [...documentos].sort((a, b) => {
-    const iA = a.ativo ? 0 : 1, iB = b.ativo ? 0 : 1
-    if (iA !== iB) return iA - iB
-    return new Date(b.enviadoEm) - new Date(a.enviadoEm)
-  })
+  const ordenados = [...documentos].sort((a, b) => new Date(b.enviadoEm) - new Date(a.enviadoEm))
 
   if (carregando) return <p style={{ color: 'var(--texto-apagado)', fontSize: '0.85rem' }}>Carregando...</p>
 
@@ -112,7 +125,7 @@ const ListaDocumentos = forwardRef(function ListaDocumentos({ clienteId, tipo, s
       onDragOver={e => e.preventDefault()}
       onDragEnter={e => { e.preventDefault(); setArrastando(true) }}
       onDragLeave={e => { e.preventDefault(); if (!e.currentTarget.contains(e.relatedTarget)) setArrastando(false) }}
-      onDrop={e => { e.preventDefault(); setArrastando(false); escolherEEnviar(e.dataTransfer.files[0]) }}
+      onDrop={e => { e.preventDefault(); setArrastando(false); enviarArquivos(e.dataTransfer.files) }}
       style={{
         ...s.dropzone,
         border: `2px dashed ${arrastando ? 'var(--verde)' : 'var(--borda)'}`,
@@ -140,18 +153,16 @@ const ListaDocumentos = forwardRef(function ListaDocumentos({ clienteId, tipo, s
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: podeGerenciar ? '14px' : 0 }}>
           {ordenados.map(doc => (
-            <div key={doc._id} style={{ ...s.linha, opacity: doc.ativo ? 1 : 0.55 }}>
+            <div key={doc._id} style={s.linha}>
               <Icone.FileText size={16} style={{ color: 'var(--texto-apagado)', flexShrink: 0 }} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={s.nome}>{doc.nomeOriginal}</p>
                 <p style={s.meta}>{formatarTamanho(doc.tamanho)} · {doc.enviadoPor?.nome || '—'} · {new Date(doc.enviadoEm).toLocaleDateString('pt-BR')}</p>
               </div>
               <button onClick={() => baixar(doc)} style={s.btnIcone} title="Baixar"><Icone.Download size={14} /></button>
-              {podeGerenciar && (doc.ativo ? (
-                <button onClick={() => inativar(doc)} style={s.btnIcone} title="Inativar"><Icone.X size={14} /></button>
-              ) : (
-                <button onClick={() => setConfirmarExclusao(doc)} style={{ ...s.btnIcone, color: '#f87171' }} title="Excluir definitivamente"><Icone.Trash size={14} /></button>
-              ))}
+              {podeGerenciar && (
+                <button onClick={() => excluir(doc)} style={{ ...s.btnIcone, color: '#f87171' }} title="Excluir"><Icone.Trash size={14} /></button>
+              )}
             </div>
           ))}
         </div>
@@ -159,8 +170,8 @@ const ListaDocumentos = forwardRef(function ListaDocumentos({ clienteId, tipo, s
 
       {podeGerenciar && (
         <>
-          <input ref={inputRef} type="file" accept={ACCEPT_ATTR} style={{ display: 'none' }}
-            onChange={e => { escolherEEnviar(e.target.files[0]); e.target.value = '' }} disabled={enviando} />
+          <input ref={inputRef} type="file" accept={ACCEPT_ATTR} multiple style={{ display: 'none' }}
+            onChange={e => { enviarArquivos(e.target.files); e.target.value = '' }} disabled={enviando} />
 
           {!ocultarDropzone && caixaDropzone}
 
@@ -178,15 +189,6 @@ const ListaDocumentos = forwardRef(function ListaDocumentos({ clienteId, tipo, s
         </>
       )}
 
-      {confirmarExclusao && (
-        <ModalConfirmacao
-          titulo="Excluir documento"
-          mensagem={`Tem certeza que deseja excluir "${confirmarExclusao.nomeOriginal}" permanentemente? Essa ação não pode ser desfeita.`}
-          textoBotao="Excluir" perigo
-          onConfirmar={excluirDefinitivo}
-          onCancelar={() => setConfirmarExclusao(null)}
-        />
-      )}
     </div>
   )
 })

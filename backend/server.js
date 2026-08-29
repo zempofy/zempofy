@@ -261,8 +261,15 @@ app.get('/', (req, res) => {
   res.json({ mensagem: 'Zempofy API rodando 🚀' });
 });
 
+// `ambiente` vem de uma flag explícita (AMBIENTE=dev no .env local), não de tentar adivinhar pelo
+// nome do banco na MONGODB_URI — isso não depende de manter um padrão de nome pra sempre. No Render
+// (produção) a variável não existe, e a ausência dela já significa produção por padrão.
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    ambiente: process.env.AMBIENTE === 'dev' ? 'dev' : 'producao',
+  });
 });
 
 // ── Conectar ao MongoDB e iniciar servidor ──
@@ -403,6 +410,49 @@ mongoose.connect(process.env.MONGODB_URI)
       }
     } catch (err) {
       console.error('⚠️ Erro na migração de subpermissões:', err.message);
+    }
+
+    // ── Migração: Documento passa de "ativo/inativo" para o fluxo de lixeira (excluido/excluidoEm) ──
+    // Bloco próprio de propósito: se a migração acima falhar, esta ainda roda. Sem ela, documentos
+    // antigos (sem o campo `excluido`) continuariam aparecendo por causa do filtro tolerante
+    // `$ne: true` nas rotas, mas ficariam sem o campo no banco — aqui o dado é normalizado de vez.
+    try {
+      const Documento = require('./models/Documento');
+
+      // Quem estava inativado no fluxo antigo entra na lixeira contando os 30 dias a partir de agora
+      // (não da inativação original, que não era registrada) — assim ninguém perde arquivo de repente.
+      // `excluido: { $ne: true }` mantém isso idempotente: sem ele, todo restart do servidor
+      // reprocessaria os mesmos documentos e renovaria o prazo de 30 dias deles do zero.
+      const inativados = await Documento.updateMany(
+        { ativo: false, excluido: { $ne: true } },
+        { $set: { excluido: true, excluidoEm: new Date(), excluidoPor: null } }
+      );
+      if (inativados.modifiedCount > 0) {
+        console.log(`✅ Migração: ${inativados.modifiedCount} documento(s) inativo(s) movido(s) para a lixeira.`);
+      }
+
+      const semCampo = await Documento.updateMany(
+        { excluido: { $exists: false } },
+        { $set: { excluido: false, excluidoPor: null, excluidoEm: null } }
+      );
+      if (semCampo.modifiedCount > 0) {
+        console.log(`✅ Migração: ${semCampo.modifiedCount} documento(s) marcado(s) como não excluídos.`);
+      }
+
+      // O campo legado `ativo` fica no banco de propósito, espelhando o novo estado, em vez de ser
+      // apagado: durante o deploy (e num eventual rollback) a versão antiga do backend ainda roda e
+      // filtra por `ativo` — sem o campo, ela mostraria todo documento como inativo e zeraria os
+      // contadores por competência. `strict:false` é necessário porque `ativo` saiu do schema, e sem
+      // ele o Mongoose descarta a operação silenciosamente. Pode ser removido quando não houver mais
+      // risco de rodar a versão antiga.
+      const espelhoLixeira = await Documento.updateMany({ excluido: true, ativo: { $ne: false } }, { $set: { ativo: false } }, { strict: false });
+      const espelhoAtivos = await Documento.updateMany({ excluido: { $ne: true }, ativo: { $ne: true } }, { $set: { ativo: true } }, { strict: false });
+      const espelhados = espelhoLixeira.modifiedCount + espelhoAtivos.modifiedCount;
+      if (espelhados > 0) {
+        console.log(`✅ Migração: campo legado 'ativo' sincronizado em ${espelhados} documento(s).`);
+      }
+    } catch (err) {
+      console.error('⚠️ Erro na migração da lixeira de documentos:', err.message);
     }
 
     app.listen(PORT, () => console.log(`🚀 Servidor rodando na porta ${PORT}`));

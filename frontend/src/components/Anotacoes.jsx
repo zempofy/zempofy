@@ -314,9 +314,7 @@ const s = {
   btnVerMais: { background: 'none', border: 'none', color: 'var(--verde)', fontSize: '0.75rem', cursor: 'pointer', padding: '4px 0', fontFamily: 'Inter, sans-serif' },
   cardData: { fontSize: '0.7rem', color: 'var(--texto-apagado)', margin: 0 },
 
-  modalTopo: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px', borderBottom: '1px solid var(--borda)' },
   modalTituloTexto: { fontFamily: 'Inter, sans-serif', fontWeight: '700', fontSize: '1rem', color: 'var(--texto)' },
-  modalCorpo: { padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' },
   // Modal
   fundo: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1000 },
   modal: { position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '100%', maxWidth: '480px', background: 'var(--sidebar)', border: '1px solid var(--borda)', borderRadius: '16px', zIndex: 1001, boxShadow: '0 24px 64px rgba(0,0,0,0.6)', overflow: 'hidden' },

@@ -18,7 +18,6 @@ const usuarioSchema = new mongoose.Schema({
     gerenciarModelos:       { type: Boolean, default: false },
     gerenciarBancoAtividades: { type: Boolean, default: false },
     gerenciarClientes:      { type: Boolean, default: false },
-    verRelatorios:          { type: Boolean, default: false },
     publicarMural:          { type: Boolean, default: false },
     criarTarefas:           { type: Boolean, default: false },
   },
