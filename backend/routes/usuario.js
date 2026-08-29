@@ -125,6 +125,9 @@ router.post('/', autenticar, validar(usuarioSchema), async (req, res) => {
 router.put('/:id', autenticar, apenasAdmin, async (req, res) => {
   const { nome, email, permissoes, setores } = req.body;
   try {
+    if (req.params.id === req.usuario._id.toString()) {
+      return res.status(403).json({ erro: 'Você não pode editar as próprias permissões.' });
+    }
     const alvo = await Usuario.findOne({ _id: req.params.id, empresa: req.usuario.empresa._id }).lean();
     if (!alvo) return res.status(404).json({ erro: 'Usuário não encontrado.' });
     if (alvo.cargo === 'admin') return res.status(403).json({ erro: 'Não é possível editar o titular.' });

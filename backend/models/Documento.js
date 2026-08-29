@@ -16,7 +16,14 @@ const documentoSchema = new mongoose.Schema({
   enviadoPor: { type: mongoose.Schema.Types.ObjectId, ref: 'Usuario', required: true },
   enviadoEm: { type: Date, default: Date.now },
 
-  ativo: { type: Boolean, default: true }, // mesmo padrão de Setor.js — inativar antes de excluir
+  // ── Lixeira ──
+  // Documento não segue mais o padrão "inativar antes de excluir" dos outros models (Setor, Cliente):
+  // excluir manda pra lixeira, de onde some da listagem de origem e é apagado de vez (banco + R2)
+  // 30 dias depois, via purge lazy em GET /lixeira. A data de expiração é derivada de
+  // excluidoEm + 30 dias — não existe campo separado pra isso.
+  excluido: { type: Boolean, default: false, index: true },
+  excluidoPor: { type: mongoose.Schema.Types.ObjectId, ref: 'Usuario', default: null },
+  excluidoEm: { type: Date, default: null },
 });
 
 documentoSchema.index({ cliente: 1, tipo: 1 });

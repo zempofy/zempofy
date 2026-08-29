@@ -8,7 +8,6 @@ import Icone from '../components/Icones'
 import Chat from '../components/Chat'
 import Anotacoes from '../components/Anotacoes'
 import Mural from '../components/Mural'
-import Relatorios from '../components/Relatorios'
 import Implantacao from '../components/Implantacao'
 import PaginaInicio from '../components/PaginaInicio'
 import Clientes from '../components/Clientes'
@@ -440,12 +439,6 @@ export default function DashboardFuncionario() {
       ]
     },
     { id: 'anotacoes', label: 'Anotações', icone: <Icone.Edit size={16} /> },
-
-    // Separador Análise — só se tiver permissão de relatórios
-    ...(temPermissao('verRelatorios') ? [
-      { id: '__sep_analise', separador: true, label: 'Análise' },
-      { id: 'relatorios', label: 'Relatórios', icone: <Icone.BarChart size={16} /> }
-    ] : []),
   ]
 
   return (
@@ -465,7 +458,6 @@ export default function DashboardFuncionario() {
         {pagina === 'onboarding' && <Implantacao setPagina={setPagina} setClienteDetalheId={setClienteDetalheId} onImplantacaoCriada={carregarDados} />}
         {pagina === 'chat' && <Chat setPagina={setPagina} />}
         {pagina === 'anotacoes' && <Anotacoes />}
-        {pagina === 'relatorios' && <Relatorios />}
         {pagina === 'mural' && <Mural />}
       </Fragment>
     </Layout>

@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import api from '../services/api'
 import Turnstile from '../components/Turnstile'
+import Icone from '../components/Icones'
 
 const turnstileObrigatorio = !!import.meta.env.VITE_TURNSTILE_SITE_KEY
 
@@ -19,6 +20,7 @@ export default function Login() {
   const [tokenTurnstileEsqueci, setTokenTurnstileEsqueci] = useState('')
   const [erro, setErro] = useState('')
   const [carregando, setCarregando] = useState(false)
+  const [mostrarSenha, setMostrarSenha] = useState(false)
 
   const canvasRef = useRef(null)
   const paginaRef = useRef(null)
@@ -169,16 +171,28 @@ export default function Login() {
 
             <div style={styles.campo}>
               <label style={styles.label}>Senha</label>
-              <input
-                type="password"
-                placeholder="••••••••"
-                id="input-senha-login"
-                value={form.senha}
-                onChange={e => setForm({ ...form, senha: e.target.value })}
-                onKeyDown={e => e.key === 'Enter' && document.querySelector('[type="submit"]')?.click()}
-                style={styles.input}
-                required
-              />
+              <div style={{ position: 'relative' }}>
+                <input
+                  type={mostrarSenha ? 'text' : 'password'}
+                  placeholder="••••••••"
+                  id="input-senha-login"
+                  value={form.senha}
+                  onChange={e => setForm({ ...form, senha: e.target.value })}
+                  onKeyDown={e => e.key === 'Enter' && document.querySelector('[type="submit"]')?.click()}
+                  style={{ ...styles.input, paddingRight: '42px' }}
+                  required
+                />
+                <button
+                  type="button"
+                  className="btn-olho-senha"
+                  onClick={() => setMostrarSenha(v => !v)}
+                  tabIndex={-1}
+                  aria-label={mostrarSenha ? 'Ocultar senha' : 'Mostrar senha'}
+                  style={styles.botaoOlho}
+                >
+                  {mostrarSenha ? <Icone.EyeOff size={17} /> : <Icone.Eye size={17} />}
+                </button>
+              </div>
             </div>
 
             <div style={styles.linhaOpcoes}>
@@ -275,6 +289,7 @@ export default function Login() {
         }
         .cb-oculto:checked + .cb-caixa svg { stroke-dashoffset: 0; }
         .cb-oculto:active + .cb-caixa { transform: scale(0.9); }
+        .btn-olho-senha:hover { color: var(--texto); }
       `}</style>
     </div>
   )
@@ -362,6 +377,21 @@ const styles = {
     fontSize: '0.95rem',
     transition: 'border-color 0.2s',
     width: '100%',
+  },
+  botaoOlho: {
+    position: 'absolute',
+    right: '12px',
+    top: '50%',
+    transform: 'translateY(-50%)',
+    background: 'none',
+    border: 'none',
+    padding: 0,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: 'var(--texto-apagado)',
+    cursor: 'pointer',
+    transition: 'color 0.15s',
   },
   linhaOpcoes: {
     display: 'flex',

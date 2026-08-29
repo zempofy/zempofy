@@ -278,4 +278,38 @@ const enviarLembreteTarefa = async ({ destinatario, nome, titulo, prazo, criadoP
   } catch (err) { console.error('Erro lembrete tarefa:', err); }
 };
 
-module.exports = { enviarOnboardingCriado, enviarEtapaDesbloqueada, enviarTarefaAtribuida, enviarVerificacaoEmail, enviarConvite, enviarAlertaOnboardingParado, enviarRedefinicaoSenha, enviarResumo, enviarLembreteTarefa };
+// 10. Código de confirmação para excluir uma empresa (Painel Admin)
+// Vai para o ADMIN_EMAIL (a caixa do próprio administrador do sistema), nunca para a empresa
+// que está sendo excluída. Diferente das outras funções daqui, esta **propaga** o erro em vez de
+// engolir: se o e-mail não sair, o código não chega em lugar nenhum e a rota precisa avisar isso
+// em vez de responder "enviado" e deixar o admin esperando.
+const enviarCodigoExclusaoEmpresa = async ({ destinatario, nomeEmpresa, codigo }) => {
+  const corpo = `
+    <p>Foi solicitada a <strong>exclusão permanente</strong> de uma empresa pelo Painel Admin.</p>
+    <div class="card">
+      <p style="font-size:0.8rem;color:#71717a;margin:0 0 6px">Empresa que será excluída</p>
+      <p style="font-size:1rem;font-weight:700;color:#fff;margin:0">${nomeEmpresa}</p>
+    </div>
+    <p>Use o código abaixo para confirmar. Ele vale por <strong>10 minutos</strong> e só pode ser usado uma vez.</p>
+    <div class="card" style="text-align:center">
+      <p style="font-family:'JetBrains Mono',monospace;font-size:2rem;font-weight:700;color:#00b141;letter-spacing:8px;margin:0">${codigo}</p>
+    </div>
+    <p style="margin-top:16px;font-size:0.8rem;color:#71717a">Essa ação apaga em definitivo todos os usuários, clientes, onboardings, documentos e histórico da empresa — não há como desfazer. Se não foi você que solicitou, ignore este e-mail e troque a chave de acesso do painel.</p>
+  `;
+  // Sem try/catch de propósito — quem chama precisa saber se o envio falhou.
+  const resultado = await resend.emails.send({
+    from: FROM,
+    to: destinatario,
+    subject: `Código de confirmação — exclusão de empresa ${nomeEmpresa}`,
+    html: template('Confirmação de exclusão', corpo),
+  });
+  // O SDK do Resend não lança exceção quando a API recusa o envio: devolve { data, error }.
+  // Sem checar isso aqui, um endereço inválido passaria como "enviado" e o admin ficaria
+  // esperando um código que nunca chega.
+  if (resultado?.error) {
+    throw new Error(resultado.error.message || 'Falha no envio do e-mail.');
+  }
+  return resultado;
+};
+
+module.exports = { enviarOnboardingCriado, enviarEtapaDesbloqueada, enviarTarefaAtribuida, enviarVerificacaoEmail, enviarConvite, enviarAlertaOnboardingParado, enviarRedefinicaoSenha, enviarResumo, enviarLembreteTarefa, enviarCodigoExclusaoEmpresa };

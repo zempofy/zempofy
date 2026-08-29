@@ -79,6 +79,37 @@ function BannerVerificacao() {
   )
 }
 
+// ── Banner de ambiente de teste (dev) ──
+// Checagem leve, uma vez só ao montar o Layout — sem polling, sem repetir a cada troca de tela.
+// Silencioso por padrão: erro na chamada ou ambiente 'producao' não renderiza nada.
+function BannerAmbienteTeste() {
+  const [ehDev, setEhDev] = useState(false)
+
+  useEffect(() => {
+    api.get('/health')
+      .then(r => setEhDev(r.data?.ambiente === 'dev'))
+      .catch(() => {})
+  }, [])
+
+  if (!ehDev) return null
+
+  return (
+    <div style={{
+      background: 'rgba(217,119,6,0.12)',
+      border: '1px solid rgba(217,119,6,0.3)',
+      borderRadius: '12px',
+      padding: '10px 20px',
+      display: 'flex', alignItems: 'center', gap: '10px',
+      marginBottom: '8px',
+    }}>
+      <Icone.AlertTriangle size={15} style={{ color: '#D97706', flexShrink: 0 }} />
+      <span style={{ fontSize: '0.82rem', color: '#D97706', fontFamily: 'Inter, sans-serif', fontWeight: '600' }}>
+        Ambiente de teste — conectado ao banco de desenvolvimento
+      </span>
+    </div>
+  )
+}
+
 // ── Navegação ──
 function NavItens({ menuItens, paginaAtual, setPagina, sidebarAberta, onItemClick }) {
   const [gruposAbertos, setGruposAbertos] = useState(() => {
@@ -481,6 +512,7 @@ export default function Layout({ children, menuItens, paginaAtual, setPagina }) 
         marginTop: TOPBAR_ALTURA,
       }}>
         <div style={styles.conteudoInner} className="fade-in">
+          <BannerAmbienteTeste />
           {usuario && !usuario.emailVerificado && <BannerVerificacao />}
           {children}
         </div>

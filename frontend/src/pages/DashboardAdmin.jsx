@@ -17,6 +17,7 @@ import Clientes from '../components/Clientes'
 import Demandas from '../components/Demandas'
 import CRM from '../components/CRM'
 import PaginaInicio from '../components/PaginaInicio'
+import Relatorios from '../components/Relatorios'
 
 // ============ PÁGINAS INTERNAS ============
 
@@ -1079,6 +1080,10 @@ function PaginaHistorico() {
       membro_adicionado:           { icone: <Icone.Users size={14} />,      cor: '#a78bfa', bg: 'rgba(167,139,250,0.12)' },
       membro_removido:             { icone: <Icone.Users size={14} />,      cor: '#f87171', bg: 'rgba(248,113,113,0.12)' },
       tarefa_concluida:            { icone: <Icone.CheckCircle size={14} />, cor: '#00b141', bg: 'rgba(0,177,65,0.12)' },
+      documento_enviado:           { icone: <Icone.Upload size={14} />,     cor: '#38bdf8', bg: 'rgba(56,189,248,0.12)' },
+      documento_excluido:          { icone: <Icone.Trash size={14} />,      cor: '#f87171', bg: 'rgba(248,113,113,0.12)' },
+      documento_restaurado:        { icone: <Icone.Check size={14} />,      cor: '#00b141', bg: 'rgba(0,177,65,0.12)' },
+      documento_excluido_permanente: { icone: <Icone.Trash size={14} />,    cor: '#f87171', bg: 'rgba(248,113,113,0.12)' },
     }
     return mapa[tipo] || { icone: <Icone.CheckCircle size={14} />, cor: 'var(--texto-apagado)', bg: 'var(--input)' }
   }
@@ -1091,6 +1096,7 @@ function PaginaHistorico() {
       cliente:    { label: 'Cliente',    cor: '#fbbf24', bg: 'rgba(251,191,36,0.1)' },
       equipe:     { label: 'Equipe',     cor: '#a78bfa', bg: 'rgba(167,139,250,0.1)' },
       tarefa:     { label: 'Tarefa',     cor: '#00b141', bg: 'rgba(0,177,65,0.1)' },
+      documento:  { label: 'Documento',  cor: '#38bdf8', bg: 'rgba(56,189,248,0.1)' },
     }
     const c = mapa[cat] || { label: cat, cor: 'var(--texto-apagado)', bg: 'var(--input)' }
     return (
@@ -1105,6 +1111,7 @@ function PaginaHistorico() {
     { key: 'onboarding', label: 'Onboarding' },
     { key: 'cliente',    label: 'Clientes' },
     { key: 'equipe',     label: 'Equipe' },
+    { key: 'documento',  label: 'Documentos' },
   ]
 
   return (
@@ -1261,12 +1268,9 @@ export default function DashboardAdmin() {
     // Anotações — sempre visível
     { id: 'anotacoes', label: 'Anotações', icone: <Icone.Edit size={16} /> },
 
-    // Separador — Análise
-    ...(isTitular || temPermissao('verRelatorios') ? [
-      { id: '__sep_analise', separador: true, label: 'Análise' }
-    ] : []),
-
-
+    // Separador — Análise (só o titular tem Relatórios)
+    { id: '__sep_analise', separador: true, label: 'Análise' },
+    { id: 'relatorios', label: 'Relatórios', icone: <Icone.BarChart size={16} /> },
 
     // Histórico — sempre visível
     { id: 'historico', label: 'Histórico', icone: <Icone.Clock size={16} /> },
@@ -1277,6 +1281,7 @@ export default function DashboardAdmin() {
     if (pagina === 'inicio') return <PaginaInicio usuario={usuario} setPagina={setPagina} isTitular={true} temPermissao={temPermissao} />
     if (pagina === 'tarefas') return <PaginaTarefas tarefas={tarefas} funcionarios={funcionarios} recarregar={carregarDados} />
     if (pagina === 'historico') return <PaginaHistorico />
+    if (pagina === 'relatorios') return <Relatorios />
     if (pagina === 'agenda') return <Agenda cargo="admin" usuarios={funcionarios} usuarioAtualId={usuario?.id} />
     if (pagina === 'clientes') return <Clientes detalheInicial={clienteDetalheId} abaInicial="onboardings" onDetalheAberto={()=>setClienteDetalheId(null)}
       onIniciarOnboarding={(cliente)=>{ setClienteParaOnboarding({ id: cliente._id, nome: cliente.razaoSocial||cliente.nomeFantasia||'', cnpj: cliente.cnpj||'' }); setPagina('implantacao') }} />

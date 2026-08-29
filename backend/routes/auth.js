@@ -112,6 +112,15 @@ router.post('/login', validar(authLoginSchema), async (req, res) => {
       return res.status(401).json({ erro: 'E-mail ou senha incorretos.' });
     }
 
+    // Empresa inativada pelo Painel Admin bloqueia todo mundo, titular incluído.
+    // `ativa !== false` de propósito: empresas antigas que não tenham o campo gravado
+    // continuam entrando normalmente (o default:true do schema só vale pra documento novo).
+    // Empresa ausente (registro órfão de uma exclusão que falhou no meio) também cai aqui,
+    // em vez de estourar 500 mais abaixo ao ler usuario.empresa._id.
+    if (!usuario.empresa || usuario.empresa.ativa === false) {
+      return res.status(403).json({ erro: 'Esta conta está temporariamente inativa. Entre em contato com o suporte.' });
+    }
+
     const token = gerarToken(usuario, !!lembrar);
 
     // Não bloqueia a resposta do login por causa disso

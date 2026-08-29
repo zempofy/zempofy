@@ -8,6 +8,13 @@ const autenticar = async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const usuario = await Usuario.findById(decoded.id).populate('empresa').populate('setores', 'nome cor');
     if (!usuario || !usuario.ativo) return res.status(401).json({ erro: 'Usuário não encontrado ou inativo.' });
+    // Empresa inativada pelo Painel Admin corta o acesso na próxima requisição, sem esperar o
+    // token expirar (podia levar até 30 dias com "lembrar de mim"). O populate('empresa') acima
+    // já trazia o documento, então isso não adiciona consulta nenhuma.
+    // `=== false` explícito: empresa antiga sem o campo gravado continua funcionando normalmente.
+    if (usuario.empresa && usuario.empresa.ativa === false) {
+      return res.status(401).json({ erro: 'Esta conta está temporariamente inativa. Entre em contato com o suporte.' });
+    }
     req.usuario = usuario;
     next();
   } catch (err) {

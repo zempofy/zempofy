@@ -11,6 +11,7 @@ import ModelosOnboarding from './ModelosOnboarding'
 import BancoAtividades from './BancoAtividades'
 import ConfigAlertas from './ConfigAlertas'
 import PaginaEquipe from './Equipe'
+import { formatarTamanho } from './ListaDocumentos'
 
 const CORES_SETOR = ['#2DAA59', '#378ADD', '#EF9F27', '#7F77DD', '#D85A30', '#1D9E75', '#D4537E', '#888780']
 
@@ -687,6 +688,166 @@ function CategoriaSuporte() {
   )
 }
 
+// ── Categoria Armazenamento ──
+// Titular vê os documentos da empresa inteira; colaborador vê só os que ele mesmo enviou.
+// O total em bytes é sempre da empresa (métrica de conta) — ainda sem teto de plano, então
+// só o número consumido, sem barra de progresso proporcional a um limite que não existe.
+function CategoriaArmazenamento() {
+  const { usuario } = useAuth()
+  const { mostrar } = useToast()
+  const isTitular = usuario?.cargo === 'admin'
+  const [documentos, setDocumentos] = useState([])
+  const [totalBytes, setTotalBytes] = useState(0)
+  const [busca, setBusca] = useState('')
+  const [carregando, setCarregando] = useState(true)
+
+  useEffect(() => {
+    // Debounce: a busca vai no backend (regex por nome), não filtra em memória
+    const t = setTimeout(async () => {
+      setCarregando(true)
+      try {
+        const res = await api.get('/documentos/armazenamento', { params: busca.trim() ? { busca: busca.trim() } : {} })
+        setDocumentos(res.data.documentos || [])
+        setTotalBytes(res.data.totalBytesEmpresa || 0)
+      } catch { mostrar('Erro ao carregar o armazenamento.', 'erro') }
+      finally { setCarregando(false) }
+    }, busca ? 350 : 0)
+    return () => clearTimeout(t)
+  }, [busca])
+
+  return (
+    <div>
+      <h2 style={s.categoriaTitulo}>Armazenamento</h2>
+
+      <div style={{ background: 'var(--input)', border: '1px solid var(--borda)', borderRadius: '11px', padding: '14px 16px', marginBottom: '14px' }}>
+        <p style={{ fontSize: '1.4rem', fontWeight: '700', color: 'var(--texto)', margin: 0, fontFamily: 'Inter, sans-serif', letterSpacing: '-0.02em' }}>
+          {formatarTamanho(totalBytes)}
+        </p>
+        <p style={{ fontSize: '0.74rem', color: 'var(--texto-apagado)', margin: '2px 0 0', fontFamily: 'Inter, sans-serif' }}>
+          usados por documentos do escritório
+        </p>
+      </div>
+
+      <div style={{ position: 'relative', marginBottom: '12px' }}>
+        <Icone.Search size={13} style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)', color: 'var(--texto-apagado)' }} />
+        <input
+          style={{ ...s.input, paddingLeft: '32px' }}
+          value={busca}
+          onChange={e => setBusca(e.target.value)}
+          placeholder="Buscar documento pelo nome..."
+        />
+      </div>
+
+      {carregando ? (
+        <p style={{ color: 'var(--texto-apagado)', fontSize: '0.82rem' }}>Carregando...</p>
+      ) : documentos.length === 0 ? (
+        <p style={{ color: 'var(--texto-apagado)', fontSize: '0.82rem' }}>
+          {busca.trim() ? 'Nenhum documento encontrado com esse nome.' : 'Nenhum documento enviado ainda.'}
+        </p>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {documentos.map(doc => (
+            <div key={doc._id} style={s.linhaDoc}>
+              <Icone.FileText size={16} style={{ color: 'var(--texto-apagado)', flexShrink: 0 }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={s.nomeDoc}>{doc.nomeOriginal}</p>
+                <p style={s.metaDoc}>
+                  {formatarTamanho(doc.tamanho)} · {new Date(doc.enviadoEm).toLocaleDateString('pt-BR')}
+                  {isTitular && ` · ${doc.enviadoPor?.nome || '—'}`}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Categoria Lixeira ──
+// Documento excluído fica aqui por 30 dias antes de sumir de vez (banco + R2). O purge roda no
+// backend ao abrir esta tela, então a lista já chega sem o que venceu.
+function CategoriaLixeira() {
+  const { usuario } = useAuth()
+  const { mostrar } = useToast()
+  const isTitular = usuario?.cargo === 'admin'
+  const [documentos, setDocumentos] = useState([])
+  const [carregando, setCarregando] = useState(true)
+  const [restaurandoId, setRestaurandoId] = useState(null)
+
+  const buscar = async () => {
+    setCarregando(true)
+    try {
+      const res = await api.get('/documentos/lixeira')
+      setDocumentos(res.data)
+    } catch { mostrar('Erro ao carregar a lixeira.', 'erro') }
+    finally { setCarregando(false) }
+  }
+
+  useEffect(() => { buscar() }, [])
+
+  const restaurar = async (doc) => {
+    setRestaurandoId(doc._id)
+    try {
+      await api.patch(`/documentos/${doc._id}/restaurar`)
+      mostrar('Documento restaurado!', 'sucesso')
+      setDocumentos(prev => prev.filter(d => d._id !== doc._id))
+    } catch (e) { mostrar(e.response?.data?.erro || 'Erro ao restaurar documento.', 'erro') }
+    finally { setRestaurandoId(null) }
+  }
+
+  const quandoExcluido = (d) => {
+    if (!d) return ''
+    const dias = Math.floor((Date.now() - new Date(d)) / 86400000)
+    if (dias === 0) return 'Hoje'
+    if (dias === 1) return 'Ontem'
+    return `${dias} dias atrás`
+  }
+
+  return (
+    <div>
+      <h2 style={s.categoriaTitulo}>Lixeira</h2>
+      <p style={{ fontSize: '0.8rem', color: 'var(--texto-apagado)', margin: '-7px 0 14px' }}>
+        Documentos excluídos ficam aqui por 30 dias e depois são apagados permanentemente.
+        {isTitular && ' Como titular, você vê o que toda a equipe excluiu.'}
+      </p>
+
+      {carregando ? (
+        <p style={{ color: 'var(--texto-apagado)', fontSize: '0.82rem' }}>Carregando...</p>
+      ) : documentos.length === 0 ? (
+        <p style={{ color: 'var(--texto-apagado)', fontSize: '0.82rem' }}>Nenhum documento na lixeira.</p>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {documentos.map(doc => (
+            <div key={doc._id} style={s.linhaDoc}>
+              <Icone.FileText size={16} style={{ color: 'var(--texto-apagado)', flexShrink: 0 }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={s.nomeDoc}>{doc.nomeOriginal}</p>
+                <p style={s.metaDoc}>
+                  Excluído {quandoExcluido(doc.excluidoEm).toLowerCase()}
+                  {/* Documentos migrados do fluxo antigo (inativados) não têm quem excluiu — some o "por" */}
+                  {isTitular && doc.excluidoPor?.nome && ` por ${doc.excluidoPor.nome}`}
+                  {' · '}
+                  <span style={{ color: doc.diasRestantes <= 5 ? '#f87171' : 'var(--texto-apagado)', fontWeight: doc.diasRestantes <= 5 ? '600' : '400' }}>
+                    {doc.diasRestantes === 1 ? 'expira amanhã' : `expira em ${doc.diasRestantes} dias`}
+                  </span>
+                </p>
+              </div>
+              <button
+                onClick={() => restaurar(doc)}
+                disabled={restaurandoId === doc._id}
+                style={s.btnRestaurar}
+              >
+                {restaurandoId === doc._id ? 'Restaurando...' : 'Restaurar'}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Categoria Meu plano ──
 function CategoriaMeuPlano() {
   return (
@@ -727,6 +888,9 @@ export default function ModalConfiguracoes({ fechar, categoriaInicial }) {
     ]},
     { grupo: 'Conta', itens: [
       { id: 'acesso-senha', label: 'Acesso e senha', icone: <Icone.Lock size={15} /> },
+      // Visíveis pra todo usuário: cada um vê o que enviou/excluiu, o titular vê o da equipe toda
+      { id: 'armazenamento', label: 'Armazenamento', icone: <Icone.FolderOpen size={15} /> },
+      { id: 'lixeira', label: 'Lixeira', icone: <Icone.Trash size={15} /> },
       ...(isTitular ? [{ id: 'plano', label: 'Meu plano', icone: <Icone.CreditCard size={15} /> }] : []),
       { id: 'suporte', label: 'Suporte', icone: <Icone.MessageSquare size={15} /> },
     ]},
@@ -780,6 +944,8 @@ export default function ModalConfiguracoes({ fechar, categoriaInicial }) {
             <PaginaEquipe usuario={usuario} recarregar={() => window.dispatchEvent(new CustomEvent('zempofy:equipe-atualizada'))} />
           )}
           {categoria === 'acesso-senha' && <CategoriaAcessoSenha usuario={usuario} />}
+          {categoria === 'armazenamento' && <CategoriaArmazenamento />}
+          {categoria === 'lixeira' && <CategoriaLixeira />}
           {categoria === 'plano' && isTitular && <CategoriaMeuPlano />}
           {categoria === 'suporte' && <CategoriaSuporte />}
         </div>
@@ -803,6 +969,12 @@ const s = {
 
   categoriaHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', gap: '10px', flexWrap: 'wrap' },
   categoriaTitulo: { fontSize: '0.95rem', fontWeight: '700', color: 'var(--texto)', margin: '0 0 14px', fontFamily: 'Inter, sans-serif', letterSpacing: '-0.01em' },
+
+  // Linhas de documento (Armazenamento e Lixeira) — mesmo visual das linhas de ListaDocumentos
+  linhaDoc: { display: 'flex', alignItems: 'center', gap: '10px', background: 'var(--card)', border: '1px solid var(--borda)', borderRadius: '10px', padding: '10px 12px' },
+  nomeDoc: { fontSize: '0.82rem', color: 'var(--texto)', margin: 0, fontFamily: 'Inter,sans-serif', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  metaDoc: { fontSize: '0.7rem', color: 'var(--texto-apagado)', margin: '2px 0 0', fontFamily: 'Inter,sans-serif' },
+  btnRestaurar: { background: 'var(--verde-glow)', border: '1px solid rgba(0,177,65,0.25)', borderRadius: '7px', color: 'var(--verde)', padding: '5px 12px', fontSize: '0.76rem', fontWeight: '600', cursor: 'pointer', fontFamily: 'Inter, sans-serif', flexShrink: 0, whiteSpace: 'nowrap' },
 
   secao: { display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' },
   secaoTitulo: { fontSize: '0.66rem', fontWeight: '700', color: 'var(--verde)', textTransform: 'uppercase', letterSpacing: '1.2px', margin: 0 },

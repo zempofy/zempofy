@@ -24,8 +24,8 @@ const CATEGORIAS = {
   membro_senha_resetada:       'equipe',
   tarefa_concluida:            'tarefa',
   documento_enviado:           'documento',
-  documento_inativado:         'documento',
-  documento_reativado:         'documento',
+  documento_excluido:          'documento', // move pra lixeira (antigo documento_inativado)
+  documento_restaurado:        'documento', // volta da lixeira (antigo documento_reativado)
   documento_excluido_permanente: 'documento',
 };
 
