@@ -266,7 +266,7 @@ function PaginaMinhasTarefas({ tarefas, recarregar, modo = 'onboarding' }) {
       {/* Formulário nova tarefa — só no modo minhas */}
       {modo === 'minhas' && mostrarForm && (
         <div style={styles.formulario}>
-          <h3 style={{ color: 'var(--texto)', marginBottom: '16px', fontFamily: 'Inter, sans-serif', fontSize: '0.95rem', fontWeight: '600' }}>
+          <h3 style={{ color: 'var(--texto)', marginBottom: '16px', fontFamily: 'var(--fonte-corpo)', fontSize: '0.95rem', fontWeight: '600' }}>
             Nova tarefa
           </h3>
           {erro && <p style={styles.erroMsg}>{erro}</p>}
@@ -288,7 +288,7 @@ function PaginaMinhasTarefas({ tarefas, recarregar, modo = 'onboarding' }) {
                 }
               }} />
               {form._isFeriado && (
-                <p style={{ fontSize:'0.72rem', color:'#f59e0b', margin:'4px 0 0', fontFamily:'Inter,sans-serif', display:'flex', alignItems:'center', gap:'4px' }}>
+                <p style={{ fontSize:'0.72rem', color:'#f59e0b', margin:'4px 0 0', fontFamily:'var(--fonte-corpo)', display:'flex', alignItems:'center', gap:'4px' }}>
                   ⚠️ Este dia é feriado nacional
                 </p>
               )}
@@ -469,13 +469,13 @@ const styles = {
   overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)' },
   popup: { background: 'var(--card)', border: '1px solid var(--borda)', borderRadius: '18px', width: '100%', maxWidth: '420px', margin: '0 16px', boxShadow: '0 8px 32px rgba(0,0,0,0.5)', overflow: 'hidden' },
   popupTopo: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 22px', borderBottom: '1px solid var(--borda)' },
-  popupTitulo: { fontWeight: '700', fontSize: '0.95rem', color: 'var(--texto)', fontFamily: 'Inter, sans-serif' },
+  popupTitulo: { fontWeight: '700', fontSize: '0.95rem', color: 'var(--texto)', fontFamily: 'var(--fonte-corpo)' },
   popupCorpo: { padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: '16px' },
   popupLinha: { display: 'flex', flexDirection: 'column', gap: '3px' },
   popupLabel: { fontSize: '0.65rem', fontWeight: '700', color: 'var(--texto-apagado)', textTransform: 'uppercase', letterSpacing: '0.8px' },
-  popupValor: { fontSize: '0.9rem', color: 'var(--texto)', fontFamily: 'Inter, sans-serif', fontWeight: '500' },
+  popupValor: { fontSize: '0.9rem', color: 'var(--texto)', fontFamily: 'var(--fonte-corpo)', fontWeight: '500' },
   popupRodape: { padding: '14px 22px', borderTop: '1px solid var(--borda)', display: 'flex', justifyContent: 'flex-end' },
-  btnFecharPopup: { background: 'none', border: '1px solid var(--borda)', borderRadius: '8px', color: 'var(--texto-apagado)', padding: '8px 18px', fontFamily: 'Inter, sans-serif', fontSize: '0.875rem', cursor: 'pointer' },
+  btnFecharPopup: { background: 'none', border: '1px solid var(--borda)', borderRadius: '8px', color: 'var(--texto-apagado)', padding: '8px 18px', fontFamily: 'var(--fonte-corpo)', fontSize: '0.875rem', cursor: 'pointer' },
   btnX: { background: 'none', border: '1px solid var(--borda)', borderRadius: '6px', color: 'var(--texto-apagado)', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', cursor: 'pointer' },
 
   // Badges
@@ -491,21 +491,21 @@ const styles = {
   // Formulário
   formulario: { background: 'var(--card)', border: '1px solid var(--borda)', borderRadius: '14px', padding: '20px', marginBottom: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' },
   label: { fontSize: '0.68rem', fontWeight: '700', color: 'var(--texto-apagado)', textTransform: 'uppercase', letterSpacing: '0.8px' },
-  input: { background: 'var(--input)', border: '1px solid var(--borda)', borderRadius: '10px', padding: '10px 14px', color: 'var(--texto)', fontSize: '0.9rem', fontFamily: 'Inter, sans-serif', width: '100%', boxSizing: 'border-box' },
+  input: { background: 'var(--input)', border: '1px solid var(--borda)', borderRadius: '10px', padding: '10px 14px', color: 'var(--texto)', fontSize: '0.9rem', fontFamily: 'var(--fonte-corpo)', width: '100%', boxSizing: 'border-box' },
   erroMsg: { color: '#f87171', fontSize: '0.8rem', background: 'rgba(248,113,113,0.08)', padding: '8px 12px', borderRadius: '8px', border: '1px solid rgba(248,113,113,0.2)', marginBottom: '12px' },
 
   // Botões
-  btnNovo: { background: 'var(--gradiente-verde)', color: '#fff', border: 'none', borderRadius: '10px', padding: '10px 20px', fontFamily: 'Inter, sans-serif', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,177,65,0.3)', whiteSpace: 'nowrap' },
-  btnCancelar: { background: 'none', border: '1px solid var(--borda)', borderRadius: '10px', color: 'var(--texto-apagado)', padding: '10px 20px', fontFamily: 'Inter, sans-serif', fontWeight: '500', fontSize: '0.875rem', cursor: 'pointer' },
-  btnVerde: { display: 'flex', alignItems: 'center', gap: '5px', background: 'rgba(0,177,65,0.12)', color: 'var(--verde)', border: '1px solid rgba(0,177,65,0.25)', borderRadius: '8px', padding: '7px 12px', fontSize: '0.8rem', cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap', fontWeight: '600' },
-  btnDesmarcar: { background: 'none', border: '1px solid var(--borda)', borderRadius: '8px', color: 'var(--texto-apagado)', padding: '7px 12px', fontSize: '0.8rem', cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' },
-  btnInfo: { display: 'flex', alignItems: 'center', gap: '5px', background: 'rgba(0,177,65,0.06)', border: '1px solid rgba(0,177,65,0.2)', borderRadius: '8px', color: 'var(--verde)', padding: '7px 10px', fontSize: '0.78rem', cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap', fontWeight: '600' },
+  btnNovo: { background: 'var(--gradiente-verde)', color: '#fff', border: 'none', borderRadius: '10px', padding: '10px 20px', fontFamily: 'var(--fonte-corpo)', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,177,65,0.3)', whiteSpace: 'nowrap' },
+  btnCancelar: { background: 'none', border: '1px solid var(--borda)', borderRadius: '10px', color: 'var(--texto-apagado)', padding: '10px 20px', fontFamily: 'var(--fonte-corpo)', fontWeight: '500', fontSize: '0.875rem', cursor: 'pointer' },
+  btnVerde: { display: 'flex', alignItems: 'center', gap: '5px', background: 'rgba(0,177,65,0.12)', color: 'var(--verde)', border: '1px solid rgba(0,177,65,0.25)', borderRadius: '8px', padding: '7px 12px', fontSize: '0.8rem', cursor: 'pointer', fontFamily: 'var(--fonte-corpo)', whiteSpace: 'nowrap', fontWeight: '600' },
+  btnDesmarcar: { background: 'none', border: '1px solid var(--borda)', borderRadius: '8px', color: 'var(--texto-apagado)', padding: '7px 12px', fontSize: '0.8rem', cursor: 'pointer', fontFamily: 'var(--fonte-corpo)', whiteSpace: 'nowrap' },
+  btnInfo: { display: 'flex', alignItems: 'center', gap: '5px', background: 'rgba(0,177,65,0.06)', border: '1px solid rgba(0,177,65,0.2)', borderRadius: '8px', color: 'var(--verde)', padding: '7px 10px', fontSize: '0.78rem', cursor: 'pointer', fontFamily: 'var(--fonte-corpo)', whiteSpace: 'nowrap', fontWeight: '600' },
 
   // Layout geral
   gridDois: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px' },
   secaoCard: { background: 'var(--card)', border: '1px solid var(--borda)', borderRadius: '14px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' },
   secaoCardTopo: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
-  btnVer: { background: 'none', border: 'none', color: 'var(--verde)', fontSize: '0.78rem', cursor: 'pointer', fontFamily: 'Inter, sans-serif', fontWeight: '600' },
+  btnVer: { background: 'none', border: 'none', color: 'var(--verde)', fontSize: '0.78rem', cursor: 'pointer', fontFamily: 'var(--fonte-corpo)', fontWeight: '600' },
   vazioCard: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', padding: '20px 0', color: 'var(--texto-apagado)', fontSize: '0.85rem' },
   linhaTarefa: { display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '8px 0', borderBottom: '1px solid var(--borda)' },
   linhaTarefaPonto: { width: '7px', height: '7px', borderRadius: '50%', background: '#F59E0B', flexShrink: 0, marginTop: '5px' },
@@ -521,7 +521,7 @@ const styles = {
   cards: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '16px', marginBottom: '32px' },
   card: { background: 'var(--card)', border: '1px solid var(--borda)', borderRadius: '16px', padding: '20px', display: 'flex', alignItems: 'center', gap: '16px' },
   cardIcone: { color: 'var(--texto-apagado)', flexShrink: 0 },
-  cardNum: { fontSize: '1.8rem', fontFamily: 'Inter, sans-serif', fontWeight: '700', color: 'var(--texto)', lineHeight: 1 },
+  cardNum: { fontSize: '1.8rem', fontFamily: 'var(--fonte-corpo)', fontWeight: '700', color: 'var(--texto)', lineHeight: 1 },
   cardLabel: { fontSize: '0.8rem', color: 'var(--texto-apagado)', marginTop: '4px' },
   secao: { marginBottom: '32px' },
   secaoTitulo: { fontSize: '0.72rem', fontWeight: '700', color: 'var(--texto-apagado)', textTransform: 'uppercase', letterSpacing: '1.5px', margin: 0 },

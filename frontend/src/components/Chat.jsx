@@ -298,7 +298,7 @@ const s = {
     borderBottom: '1px solid var(--borda)',
   },
   sidebarTitulo: {
-    fontFamily: 'Inter, sans-serif', fontWeight: '700',
+    fontFamily: 'var(--fonte-corpo)', fontWeight: '700',
     fontSize: '1rem', color: 'var(--texto)', margin: 0,
   },
   badge: {
@@ -320,7 +320,7 @@ const s = {
     width: '40px', height: '40px', minWidth: '40px',
     background: 'linear-gradient(135deg, #22C55E, #1A6B3C)',
     borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-    fontFamily: 'Inter, sans-serif', fontWeight: '700', fontSize: '16px', color: '#fff',
+    fontFamily: 'var(--fonte-corpo)', fontWeight: '700', fontSize: '16px', color: '#fff',
     position: 'relative',
   },
   avatarBadge: {
@@ -351,7 +351,7 @@ const s = {
     width: '36px', height: '36px', minWidth: '36px',
     background: 'linear-gradient(135deg, #22C55E, #1A6B3C)',
     borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-    fontFamily: 'Inter, sans-serif', fontWeight: '700', fontSize: '14px', color: '#fff',
+    fontFamily: 'var(--fonte-corpo)', fontWeight: '700', fontSize: '14px', color: '#fff',
   },
   conversaNome: { fontSize: '0.95rem', fontWeight: '600', color: 'var(--texto)', margin: 0 },
   conversaCargo: { fontSize: '0.75rem', color: 'var(--texto-apagado)', margin: 0 },
@@ -413,7 +413,7 @@ const s = {
     flex: 1, background: 'var(--input)', border: '1px solid var(--borda)',
     borderRadius: '12px', padding: '10px 14px',
     color: 'var(--texto)', fontSize: '0.9rem',
-    fontFamily: 'Inter, sans-serif',
+    fontFamily: 'var(--fonte-corpo)',
     outline: 'none',
   },
   btnEnviar: {

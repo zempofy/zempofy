@@ -132,18 +132,18 @@ export default function Servicos() {
     <div>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
         <div>
-          <h1 style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--texto)', margin: 0, letterSpacing: '-0.03em', fontFamily: 'Inter, sans-serif' }}>Serviços</h1>
-          <p style={{ fontSize: '0.82rem', color: 'var(--texto-apagado)', marginTop: '5px', fontFamily: 'Inter, sans-serif' }}>Serviços oferecidos pelo escritório — vinculados aos clientes</p>
+          <h1 style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--texto)', margin: 0, letterSpacing: '-0.03em', fontFamily: 'var(--fonte-corpo)' }}>Serviços</h1>
+          <p style={{ fontSize: '0.82rem', color: 'var(--texto-apagado)', marginTop: '5px', fontFamily: 'var(--fonte-corpo)' }}>Serviços oferecidos pelo escritório — vinculados aos clientes</p>
         </div>
         <button onClick={() => { setEditando(null); setModalAberto(true) }} style={s.btnNovo}>+ Novo serviço</button>
       </div>
 
-      {carregando ? <p style={{ color: 'var(--texto-apagado)', fontFamily: 'Inter, sans-serif' }}>Carregando...</p>
+      {carregando ? <p style={{ color: 'var(--texto-apagado)', fontFamily: 'var(--fonte-corpo)' }}>Carregando...</p>
       : servicos.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--texto-apagado)' }}>
           <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'var(--card)', border: '1px solid var(--borda)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', fontSize: '22px' }}>📋</div>
-          <p style={{ fontSize: '0.9rem', marginBottom: '6px', fontFamily: 'Inter, sans-serif' }}>Nenhum serviço cadastrado ainda.</p>
-          <p style={{ fontSize: '0.8rem', fontFamily: 'Inter, sans-serif' }}>Cadastre os serviços do escritório para vincular aos clientes.</p>
+          <p style={{ fontSize: '0.9rem', marginBottom: '6px', fontFamily: 'var(--fonte-corpo)' }}>Nenhum serviço cadastrado ainda.</p>
+          <p style={{ fontSize: '0.8rem', fontFamily: 'var(--fonte-corpo)' }}>Cadastre os serviços do escritório para vincular aos clientes.</p>
           <button onClick={() => { setEditando(null); setModalAberto(true) }} style={{ ...s.btnNovo, marginTop: '16px' }}>Criar primeiro serviço</button>
         </div>
       ) : (
@@ -155,11 +155,11 @@ export default function Servicos() {
               <span style={{ fontSize: '0.72rem', fontWeight: '700', color: 'var(--texto-apagado)', width: '20px', flexShrink: 0, textAlign: 'center' }}>{i + 1}</span>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                  <p style={{ fontWeight: '600', color: 'var(--texto)', margin: 0, fontSize: '0.9rem', fontFamily: 'Inter, sans-serif' }}>{sv.nome}</p>
+                  <p style={{ fontWeight: '600', color: 'var(--texto)', margin: 0, fontSize: '0.9rem', fontFamily: 'var(--fonte-corpo)' }}>{sv.nome}</p>
                   <span style={{ fontSize: '0.68rem', fontWeight: '600', padding: '2px 8px', borderRadius: '5px', background: 'var(--input)', color: 'var(--texto-apagado)', border: '1px solid var(--borda)' }}>{labelPeriodicidade(sv.periodicidade)}</span>
                   {sv.honorarioPadrao > 0 && <span style={{ fontSize: '0.75rem', color: 'var(--verde)', fontWeight: '600' }}>{formatMoeda(sv.honorarioPadrao)}</span>}
                 </div>
-                {sv.descricao && <p style={{ fontSize: '0.78rem', color: 'var(--texto-apagado)', margin: '3px 0 0', fontFamily: 'Inter, sans-serif' }}>{sv.descricao}</p>}
+                {sv.descricao && <p style={{ fontSize: '0.78rem', color: 'var(--texto-apagado)', margin: '3px 0 0', fontFamily: 'var(--fonte-corpo)' }}>{sv.descricao}</p>}
               </div>
               <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
                 <button onClick={() => { setEditando(sv); setModalAberto(true) }} style={s.btnAcao}>Editar</button>
@@ -177,8 +177,8 @@ export default function Servicos() {
           <div style={{ ...s.modal, maxWidth: '400px' }} onClick={e => e.stopPropagation()}>
             <div style={s.modalTopo}><p style={s.modalTit}>Remover serviço</p><button style={s.btnX} onClick={() => setConfirmandoId(null)}>✕</button></div>
             <div style={{ padding: '20px 24px' }}>
-              <p style={{ fontSize: '0.875rem', color: 'var(--texto)', margin: '0 0 12px', fontFamily: 'Inter, sans-serif' }}>Tem certeza que deseja remover <strong>"{servicoParaRemover?.nome}"</strong>?</p>
-              <p style={{ fontSize: '0.8rem', color: '#fbbf24', background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.2)', borderRadius: '8px', padding: '10px 12px', margin: 0, fontFamily: 'Inter, sans-serif' }}>⚠️ Clientes que possuem este serviço vinculado não serão afetados.</p>
+              <p style={{ fontSize: '0.875rem', color: 'var(--texto)', margin: '0 0 12px', fontFamily: 'var(--fonte-corpo)' }}>Tem certeza que deseja remover <strong>"{servicoParaRemover?.nome}"</strong>?</p>
+              <p style={{ fontSize: '0.8rem', color: '#fbbf24', background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.2)', borderRadius: '8px', padding: '10px 12px', margin: 0, fontFamily: 'var(--fonte-corpo)' }}>⚠️ Clientes que possuem este serviço vinculado não serão afetados.</p>
             </div>
             <div style={s.modalRodape}>
               <button style={s.btnCanc} onClick={() => setConfirmandoId(null)}>Cancelar</button>
@@ -196,15 +196,15 @@ const s = {
   overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' },
   modal: { background: 'var(--card)', border: '1px solid var(--borda)', borderRadius: '16px', width: '100%', maxWidth: '480px', boxShadow: '0 24px 64px rgba(0,0,0,0.6)' },
   modalTopo: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px', borderBottom: '1px solid var(--borda)' },
-  modalTit: { fontWeight: '700', fontSize: '1rem', color: 'var(--texto)', fontFamily: 'Inter, sans-serif', margin: 0 },
+  modalTit: { fontWeight: '700', fontSize: '1rem', color: 'var(--texto)', fontFamily: 'var(--fonte-corpo)', margin: 0 },
   modalRodape: { display: 'flex', gap: '12px', justifyContent: 'flex-end', padding: '16px 24px', borderTop: '1px solid var(--borda)' },
   btnX: { background: 'none', border: '1px solid var(--borda)', borderRadius: '6px', color: 'var(--texto-apagado)', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', cursor: 'pointer' },
-  btnNovo: { background: 'var(--gradiente-verde)', color: '#fff', border: 'none', borderRadius: '10px', padding: '10px 20px', fontFamily: 'Inter, sans-serif', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,177,65,0.25)', whiteSpace: 'nowrap' },
-  btnCanc: { background: 'none', border: '1px solid var(--borda)', borderRadius: '10px', color: 'var(--texto-apagado)', padding: '10px 20px', fontFamily: 'Inter, sans-serif', fontWeight: '500', fontSize: '0.875rem', cursor: 'pointer' },
-  btnSalv: { background: 'var(--gradiente-verde)', color: '#fff', border: 'none', borderRadius: '10px', padding: '10px 20px', fontFamily: 'Inter, sans-serif', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer' },
-  btnAcao: { background: 'none', border: '1px solid var(--borda)', borderRadius: '6px', color: 'var(--texto-apagado)', fontSize: '0.75rem', cursor: 'pointer', padding: '5px 12px', fontFamily: 'Inter, sans-serif' },
+  btnNovo: { background: 'var(--gradiente-verde)', color: '#fff', border: 'none', borderRadius: '10px', padding: '10px 20px', fontFamily: 'var(--fonte-corpo)', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,177,65,0.25)', whiteSpace: 'nowrap' },
+  btnCanc: { background: 'none', border: '1px solid var(--borda)', borderRadius: '10px', color: 'var(--texto-apagado)', padding: '10px 20px', fontFamily: 'var(--fonte-corpo)', fontWeight: '500', fontSize: '0.875rem', cursor: 'pointer' },
+  btnSalv: { background: 'var(--gradiente-verde)', color: '#fff', border: 'none', borderRadius: '10px', padding: '10px 20px', fontFamily: 'var(--fonte-corpo)', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer' },
+  btnAcao: { background: 'none', border: '1px solid var(--borda)', borderRadius: '6px', color: 'var(--texto-apagado)', fontSize: '0.75rem', cursor: 'pointer', padding: '5px 12px', fontFamily: 'var(--fonte-corpo)' },
   campo: { display: 'flex', flexDirection: 'column', gap: '6px' },
-  lbl: { fontSize: '0.7rem', fontWeight: '600', color: 'var(--texto-apagado)', textTransform: 'uppercase', letterSpacing: '1px', fontFamily: 'Inter, sans-serif' },
-  inp: { background: 'var(--input)', border: '1px solid var(--borda)', borderRadius: '10px', padding: '10px 14px', color: 'var(--texto)', fontSize: '0.9rem', fontFamily: 'Inter, sans-serif', width: '100%', boxSizing: 'border-box' },
-  erro: { color: '#FCA5A5', fontSize: '0.8rem', background: 'rgba(239,68,68,0.1)', padding: '8px 12px', borderRadius: '8px', fontFamily: 'Inter, sans-serif' },
+  lbl: { fontSize: '0.7rem', fontWeight: '600', color: 'var(--texto-apagado)', textTransform: 'uppercase', letterSpacing: '1px', fontFamily: 'var(--fonte-corpo)' },
+  inp: { background: 'var(--input)', border: '1px solid var(--borda)', borderRadius: '10px', padding: '10px 14px', color: 'var(--texto)', fontSize: '0.9rem', fontFamily: 'var(--fonte-corpo)', width: '100%', boxSizing: 'border-box' },
+  erro: { color: '#FCA5A5', fontSize: '0.8rem', background: 'rgba(239,68,68,0.1)', padding: '8px 12px', borderRadius: '8px', fontFamily: 'var(--fonte-corpo)' },
 }

@@ -61,7 +61,7 @@ function ItemObrigacao({ item, servicoId, mes, ano, onAtualizado }) {
       {/* Info */}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-          <p style={{ fontSize: '0.875rem', fontWeight: '500', color: item.feito ? 'var(--texto-apagado)' : 'var(--texto)', margin: 0, fontFamily: 'Inter, sans-serif', textDecoration: item.feito ? 'line-through' : 'none' }}>
+          <p style={{ fontSize: '0.875rem', fontWeight: '500', color: item.feito ? 'var(--texto-apagado)' : 'var(--texto)', margin: 0, fontFamily: 'var(--fonte-corpo)', textDecoration: item.feito ? 'line-through' : 'none' }}>
             {item.nomeCliente}
           </p>
           {item.cnpj && <span style={{ fontSize: '0.68rem', color: 'var(--texto-apagado)' }}>{item.cnpj}</span>}
@@ -77,16 +77,16 @@ function ItemObrigacao({ item, servicoId, mes, ano, onAtualizado }) {
           <div style={{ marginTop: '6px', display: 'flex', gap: '8px', alignItems: 'center' }}>
             <input
               ref={inputRef}
-              style={{ flex: 1, background: 'var(--input)', border: '1px solid var(--borda)', borderRadius: '6px', padding: '5px 10px', color: 'var(--texto)', fontSize: '0.8rem', fontFamily: 'Inter, sans-serif' }}
+              style={{ flex: 1, background: 'var(--input)', border: '1px solid var(--borda)', borderRadius: '6px', padding: '5px 10px', color: 'var(--texto)', fontSize: '0.8rem', fontFamily: 'var(--fonte-corpo)' }}
               value={obs}
               onChange={e => setObs(e.target.value)}
               placeholder="Observação..."
               onKeyDown={e => e.key === 'Enter' && salvarObs()}
             />
-            <button onClick={salvarObs} disabled={salvandoObs} style={{ background: 'var(--verde)', border: 'none', borderRadius: '6px', color: '#fff', padding: '5px 12px', fontSize: '0.75rem', cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' }}>
+            <button onClick={salvarObs} disabled={salvandoObs} style={{ background: 'var(--verde)', border: 'none', borderRadius: '6px', color: '#fff', padding: '5px 12px', fontSize: '0.75rem', cursor: 'pointer', fontFamily: 'var(--fonte-corpo)', whiteSpace: 'nowrap' }}>
               {salvandoObs ? '...' : 'Salvar'}
             </button>
-            <button onClick={() => { setEditandoObs(false); setObs(item.observacao || '') }} style={{ background: 'none', border: '1px solid var(--borda)', borderRadius: '6px', color: 'var(--texto-apagado)', padding: '5px 10px', fontSize: '0.75rem', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
+            <button onClick={() => { setEditandoObs(false); setObs(item.observacao || '') }} style={{ background: 'none', border: '1px solid var(--borda)', borderRadius: '6px', color: 'var(--texto-apagado)', padding: '5px 10px', fontSize: '0.75rem', cursor: 'pointer', fontFamily: 'var(--fonte-corpo)' }}>
               Cancelar
             </button>
           </div>
@@ -95,7 +95,7 @@ function ItemObrigacao({ item, servicoId, mes, ano, onAtualizado }) {
             {obs ? (
               <p style={{ fontSize: '0.78rem', color: 'var(--texto-apagado)', margin: 0, fontStyle: 'italic' }}>{obs}</p>
             ) : null}
-            <button onClick={() => setEditandoObs(true)} style={{ background: 'none', border: 'none', color: 'var(--texto-apagado)', fontSize: '0.72rem', cursor: 'pointer', padding: 0, fontFamily: 'Inter, sans-serif', opacity: 0.6 }}>
+            <button onClick={() => setEditandoObs(true)} style={{ background: 'none', border: 'none', color: 'var(--texto-apagado)', fontSize: '0.72rem', cursor: 'pointer', padding: 0, fontFamily: 'var(--fonte-corpo)', opacity: 0.6 }}>
               {obs ? '✏️ editar obs.' : '+ observação'}
             </button>
           </div>
@@ -119,7 +119,7 @@ function CardServico({ grupo, mes, ano, onAtualizado }) {
       >
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-            <p style={{ fontWeight: '700', color: 'var(--texto)', margin: 0, fontSize: '1rem', fontFamily: 'Inter, sans-serif' }}>{grupo.nomeServico}</p>
+            <p style={{ fontWeight: '700', color: 'var(--texto)', margin: 0, fontSize: '1rem', fontFamily: 'var(--fonte-corpo)' }}>{grupo.nomeServico}</p>
             <span style={{ fontSize: '0.68rem', fontWeight: '600', padding: '2px 8px', borderRadius: '5px', background: 'var(--input)', color: 'var(--texto-apagado)', border: '1px solid var(--borda)' }}>
               {grupo.periodicidade}
             </span>
@@ -190,8 +190,8 @@ export default function Obrigacoes() {
       {/* Cabeçalho */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
         <div>
-          <h1 style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--texto)', margin: 0, letterSpacing: '-0.03em', fontFamily: 'Inter, sans-serif' }}>Obrigações</h1>
-          <p style={{ fontSize: '0.82rem', color: 'var(--texto-apagado)', marginTop: '5px', fontFamily: 'Inter, sans-serif' }}>
+          <h1 style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--texto)', margin: 0, letterSpacing: '-0.03em', fontFamily: 'var(--fonte-corpo)' }}>Obrigações</h1>
+          <p style={{ fontSize: '0.82rem', color: 'var(--texto-apagado)', marginTop: '5px', fontFamily: 'var(--fonte-corpo)' }}>
             Acompanhamento mensal dos serviços por cliente
           </p>
         </div>
@@ -203,10 +203,10 @@ export default function Obrigacoes() {
             style={{ background: 'none', border: '1px solid var(--borda)', borderRadius: '8px', color: 'var(--texto-apagado)', width: '32px', height: '32px', cursor: 'pointer', fontSize: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           >‹</button>
           <div style={{ display: 'flex', gap: '6px' }}>
-            <select value={mes} onChange={e => setMes(Number(e.target.value))} style={{ background: 'var(--input)', border: '1px solid var(--borda)', borderRadius: '8px', padding: '6px 10px', color: 'var(--texto)', fontSize: '0.85rem', fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}>
+            <select value={mes} onChange={e => setMes(Number(e.target.value))} style={{ background: 'var(--input)', border: '1px solid var(--borda)', borderRadius: '8px', padding: '6px 10px', color: 'var(--texto)', fontSize: '0.85rem', fontFamily: 'var(--fonte-corpo)', cursor: 'pointer' }}>
               {MESES.map((m, i) => <option key={i+1} value={i+1}>{m}</option>)}
             </select>
-            <select value={ano} onChange={e => setAno(Number(e.target.value))} style={{ background: 'var(--input)', border: '1px solid var(--borda)', borderRadius: '8px', padding: '6px 10px', color: 'var(--texto)', fontSize: '0.85rem', fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}>
+            <select value={ano} onChange={e => setAno(Number(e.target.value))} style={{ background: 'var(--input)', border: '1px solid var(--borda)', borderRadius: '8px', padding: '6px 10px', color: 'var(--texto)', fontSize: '0.85rem', fontFamily: 'var(--fonte-corpo)', cursor: 'pointer' }}>
               {anos.map(a => <option key={a} value={a}>{a}</option>)}
             </select>
           </div>
@@ -225,7 +225,7 @@ export default function Obrigacoes() {
               <div style={{ height: '100%', width: `${Math.round((totalConcluidos/totalGeral)*100)}%`, background: 'var(--verde)', borderRadius: '99px', transition: 'width 0.3s' }} />
             </div>
           </div>
-          <p style={{ fontSize: '0.82rem', color: 'var(--texto-apagado)', margin: 0, fontFamily: 'Inter, sans-serif', flexShrink: 0 }}>
+          <p style={{ fontSize: '0.82rem', color: 'var(--texto-apagado)', margin: 0, fontFamily: 'var(--fonte-corpo)', flexShrink: 0 }}>
             <strong style={{ color: 'var(--texto)' }}>{totalConcluidos}</strong> de <strong style={{ color: 'var(--texto)' }}>{totalGeral}</strong> obrigações concluídas em {MESES[mes-1]}/{ano}
           </p>
         </div>
@@ -233,13 +233,13 @@ export default function Obrigacoes() {
 
       {/* Conteúdo */}
       {carregando ? (
-        <p style={{ color: 'var(--texto-apagado)', fontFamily: 'Inter, sans-serif' }}>Carregando...</p>
+        <p style={{ color: 'var(--texto-apagado)', fontFamily: 'var(--fonte-corpo)' }}>Carregando...</p>
       ) : grupos.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--texto-apagado)' }}>
-          <p style={{ fontSize: '0.9rem', marginBottom: '8px', fontFamily: 'Inter, sans-serif' }}>
+          <p style={{ fontSize: '0.9rem', marginBottom: '8px', fontFamily: 'var(--fonte-corpo)' }}>
             Nenhuma obrigação para {MESES[mes-1]}/{ano}.
           </p>
-          <p style={{ fontSize: '0.8rem', fontFamily: 'Inter, sans-serif' }}>
+          <p style={{ fontSize: '0.8rem', fontFamily: 'var(--fonte-corpo)' }}>
             Cadastre serviços com periodicidade mensal, trimestral ou anual e vincule-os aos clientes.
           </p>
         </div>

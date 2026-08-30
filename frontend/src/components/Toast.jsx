@@ -113,7 +113,7 @@ const s = {
     flex: 1,
     fontSize: '0.875rem',
     color: 'var(--texto)',
-    fontFamily: 'Inter, sans-serif',
+    fontFamily: 'var(--fonte-corpo)',
     lineHeight: '1.4',
   },
   fechar: {

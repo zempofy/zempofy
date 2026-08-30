@@ -23,7 +23,7 @@ export default function Avatar({ nome = '', foto = '', size = 36, fontSize = 14 
       background: 'linear-gradient(135deg, #22C55E, #1A6B3C)',
       borderRadius: '50%',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontFamily: 'Inter, sans-serif', fontWeight: '700',
+      fontFamily: 'var(--fonte-corpo)', fontWeight: '700',
       fontSize, color: '#fff',
       flexShrink: 0,
     }}>

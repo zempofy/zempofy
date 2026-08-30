@@ -43,7 +43,7 @@ function ModalAtividade({ setor, atividade, fechar, onSalvo, funcionarios }) {
             <span style={s.modalTitulo}>{atividade ? 'Editar atividade' : 'Nova atividade'}</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
               <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: setor.cor }} />
-              <span style={{ fontSize: '0.78rem', color: 'var(--texto-apagado)', fontFamily: 'Inter, sans-serif' }}>{setor.nome}</span>
+              <span style={{ fontSize: '0.78rem', color: 'var(--texto-apagado)', fontFamily: 'var(--fonte-corpo)' }}>{setor.nome}</span>
             </div>
           </div>
           <button style={s.btnX} onClick={fechar}>✕</button>
@@ -229,36 +229,36 @@ export default function Checklist() {
 
 const s = {
   header: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '24px' },
-  titulo: { fontSize: '1.4rem', fontWeight: '700', color: 'var(--texto)', margin: 0, fontFamily: 'Inter, sans-serif' },
-  subtitulo: { fontSize: '0.82rem', color: 'var(--texto-apagado)', marginTop: '4px', fontFamily: 'Inter, sans-serif' },
+  titulo: { fontSize: '1.4rem', fontWeight: '700', color: 'var(--texto)', margin: 0, fontFamily: 'var(--fonte-corpo)' },
+  subtitulo: { fontSize: '0.82rem', color: 'var(--texto-apagado)', marginTop: '4px', fontFamily: 'var(--fonte-corpo)' },
   setorBloco: { paddingTop: '4px', paddingBottom: '4px' },
   setorHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' },
   setorEsq: { display: 'flex', alignItems: 'center', gap: '10px' },
   bolinha: { width: '11px', height: '11px', borderRadius: '50%', flexShrink: 0 },
-  setorNome: { fontSize: '0.95rem', fontWeight: '600', color: 'var(--texto)', fontFamily: 'Inter, sans-serif' },
-  countBadge: { fontSize: '0.72rem', color: 'var(--texto-apagado)', background: 'var(--input)', border: '1px solid var(--borda)', padding: '1px 8px', borderRadius: '99px', fontFamily: 'Inter, sans-serif' },
-  btnAddSetor: { fontSize: '0.78rem', color: 'var(--texto-apagado)', background: 'none', border: '1px dashed var(--borda)', borderRadius: '6px', padding: '4px 10px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' },
+  setorNome: { fontSize: '0.95rem', fontWeight: '600', color: 'var(--texto)', fontFamily: 'var(--fonte-corpo)' },
+  countBadge: { fontSize: '0.72rem', color: 'var(--texto-apagado)', background: 'var(--input)', border: '1px solid var(--borda)', padding: '1px 8px', borderRadius: '99px', fontFamily: 'var(--fonte-corpo)' },
+  btnAddSetor: { fontSize: '0.78rem', color: 'var(--texto-apagado)', background: 'none', border: '1px dashed var(--borda)', borderRadius: '6px', padding: '4px 10px', cursor: 'pointer', fontFamily: 'var(--fonte-corpo)' },
   atividades: { display: 'flex', flexDirection: 'column', gap: '6px', marginLeft: '21px' },
   atividadeCard: { display: 'flex', alignItems: 'center', gap: '10px', background: 'var(--input)', border: '1px solid var(--borda)', borderRadius: '10px', padding: '11px 14px' },
   atividadeIcone: { width: '30px', height: '30px', borderRadius: '7px', background: 'var(--input-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  atividadeDesc: { fontSize: '0.875rem', color: 'var(--texto)', flex: 1, fontFamily: 'Inter, sans-serif' },
-  respBadge: { fontSize: '0.75rem', color: 'var(--verde)', background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.2)', padding: '3px 10px', borderRadius: '99px', whiteSpace: 'nowrap', fontFamily: 'Inter, sans-serif' },
+  atividadeDesc: { fontSize: '0.875rem', color: 'var(--texto)', flex: 1, fontFamily: 'var(--fonte-corpo)' },
+  respBadge: { fontSize: '0.75rem', color: 'var(--verde)', background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.2)', padding: '3px 10px', borderRadius: '99px', whiteSpace: 'nowrap', fontFamily: 'var(--fonte-corpo)' },
   acoes: { display: 'flex', gap: '6px', opacity: 0, transition: 'opacity .15s' },
-  btnAcao: { background: 'none', border: '1px solid var(--borda)', borderRadius: '6px', color: 'var(--texto-apagado)', fontSize: '0.75rem', cursor: 'pointer', padding: '4px 10px', fontFamily: 'Inter, sans-serif' },
-  vazio: { fontSize: '0.82rem', color: 'var(--texto-apagado)', padding: '10px 0', fontFamily: 'Inter, sans-serif' },
-  vazioGlobal: { color: 'var(--texto-apagado)', textAlign: 'center', marginTop: '40px', fontFamily: 'Inter, sans-serif' },
+  btnAcao: { background: 'none', border: '1px solid var(--borda)', borderRadius: '6px', color: 'var(--texto-apagado)', fontSize: '0.75rem', cursor: 'pointer', padding: '4px 10px', fontFamily: 'var(--fonte-corpo)' },
+  vazio: { fontSize: '0.82rem', color: 'var(--texto-apagado)', padding: '10px 0', fontFamily: 'var(--fonte-corpo)' },
+  vazioGlobal: { color: 'var(--texto-apagado)', textAlign: 'center', marginTop: '40px', fontFamily: 'var(--fonte-corpo)' },
   divisor: { border: 'none', borderTop: '1px solid var(--borda)', margin: '16px 0' },
   overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' },
   modal: { background: 'var(--card)', border: '1px solid var(--borda)', borderRadius: '20px', width: '100%', maxWidth: '460px', boxShadow: '0 24px 64px rgba(0,0,0,0.6)' },
   modalTopo: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', padding: '20px 24px', borderBottom: '1px solid var(--borda)' },
-  modalTitulo: { fontWeight: '700', fontSize: '1rem', color: 'var(--texto)', fontFamily: 'Inter, sans-serif' },
+  modalTitulo: { fontWeight: '700', fontSize: '1rem', color: 'var(--texto)', fontFamily: 'var(--fonte-corpo)' },
   btnX: { background: 'none', border: '1px solid var(--borda)', borderRadius: '6px', color: 'var(--texto-apagado)', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', cursor: 'pointer', flexShrink: 0 },
   modalCorpo: { padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' },
   modalRodape: { display: 'flex', gap: '12px', justifyContent: 'flex-end', padding: '16px 24px', borderTop: '1px solid var(--borda)' },
   campo: { display: 'flex', flexDirection: 'column', gap: '8px' },
-  label: { fontSize: '0.7rem', fontWeight: '600', color: 'var(--texto-apagado)', textTransform: 'uppercase', letterSpacing: '1px', fontFamily: 'Inter, sans-serif' },
-  input: { background: 'var(--input)', border: '1px solid var(--borda)', borderRadius: '10px', padding: '10px 14px', color: 'var(--texto)', fontSize: '0.9rem', fontFamily: 'Inter, sans-serif', width: '100%', boxSizing: 'border-box' },
-  btnCancelar: { background: 'none', border: '1px solid var(--borda)', borderRadius: '10px', color: 'var(--texto-apagado)', padding: '10px 20px', fontFamily: 'Inter, sans-serif', fontWeight: '500', fontSize: '0.875rem', cursor: 'pointer' },
-  btnSalvar: { background: 'linear-gradient(135deg, #22C55E, #1A6B3C)', color: '#fff', border: 'none', borderRadius: '10px', padding: '10px 20px', fontFamily: 'Inter, sans-serif', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer' },
+  label: { fontSize: '0.7rem', fontWeight: '600', color: 'var(--texto-apagado)', textTransform: 'uppercase', letterSpacing: '1px', fontFamily: 'var(--fonte-corpo)' },
+  input: { background: 'var(--input)', border: '1px solid var(--borda)', borderRadius: '10px', padding: '10px 14px', color: 'var(--texto)', fontSize: '0.9rem', fontFamily: 'var(--fonte-corpo)', width: '100%', boxSizing: 'border-box' },
+  btnCancelar: { background: 'none', border: '1px solid var(--borda)', borderRadius: '10px', color: 'var(--texto-apagado)', padding: '10px 20px', fontFamily: 'var(--fonte-corpo)', fontWeight: '500', fontSize: '0.875rem', cursor: 'pointer' },
+  btnSalvar: { background: 'linear-gradient(135deg, #22C55E, #1A6B3C)', color: '#fff', border: 'none', borderRadius: '10px', padding: '10px 20px', fontFamily: 'var(--fonte-corpo)', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer' },
   erro: { color: '#FCA5A5', fontSize: '0.8rem', background: 'rgba(239,68,68,0.1)', padding: '8px 12px', borderRadius: '8px' },
 }

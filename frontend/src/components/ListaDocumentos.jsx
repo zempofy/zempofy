@@ -137,10 +137,10 @@ const ListaDocumentos = forwardRef(function ListaDocumentos({ clienteId, tipo, s
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px' }}>
         <Icone.FolderOpen size={compacto ? 24 : 32} style={{ color: 'var(--texto-apagado)', opacity: 0.5 }} />
       </div>
-      <p style={{ fontSize: '0.82rem', color: 'var(--texto)', fontFamily: 'Inter,sans-serif', margin: 0 }}>
+      <p style={{ fontSize: '0.82rem', color: 'var(--texto)', fontFamily: 'var(--fonte-corpo)', margin: 0 }}>
         {enviando ? 'Enviando...' : 'Clique ou arraste o arquivo aqui'}
       </p>
-      {!enviando && <p style={{ fontSize: '0.7rem', color: 'var(--texto-apagado)', fontFamily: 'Inter,sans-serif', margin: '4px 0 0' }}>{TIPOS_ACEITOS_TEXTO}</p>}
+      {!enviando && <p style={{ fontSize: '0.7rem', color: 'var(--texto-apagado)', fontFamily: 'var(--fonte-corpo)', margin: '4px 0 0' }}>{TIPOS_ACEITOS_TEXTO}</p>}
     </div>
   )
 
@@ -179,7 +179,7 @@ const ListaDocumentos = forwardRef(function ListaDocumentos({ clienteId, tipo, s
             <Modal onFechar={() => !enviando && setPopupAberto(false)} maxWidth="380px">
               <div style={{ padding: '20px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-                  <span style={{ fontSize: '0.9rem', fontWeight: '700', color: 'var(--texto)', fontFamily: 'Inter,sans-serif' }}>Carregar documento</span>
+                  <span style={{ fontSize: '0.9rem', fontWeight: '700', color: 'var(--texto)', fontFamily: 'var(--fonte-corpo)' }}>Carregar documento</span>
                   <button onClick={() => !enviando && setPopupAberto(false)} style={{ background: 'none', border: 'none', color: 'var(--texto-apagado)', cursor: 'pointer', fontSize: '1.1rem', lineHeight: 1 }}>✕</button>
                 </div>
                 {caixaDropzone}
@@ -196,10 +196,10 @@ const ListaDocumentos = forwardRef(function ListaDocumentos({ clienteId, tipo, s
 export default ListaDocumentos
 
 const s = {
-  titulo: { fontSize: '0.85rem', fontWeight: '700', color: 'var(--texto)', margin: '0 0 12px', fontFamily: 'Inter,sans-serif' },
+  titulo: { fontSize: '0.85rem', fontWeight: '700', color: 'var(--texto)', margin: '0 0 12px', fontFamily: 'var(--fonte-corpo)' },
   linha: { display: 'flex', alignItems: 'center', gap: '10px', background: 'var(--card)', border: '1px solid var(--borda)', borderRadius: '10px', padding: '10px 12px' },
-  nome: { fontSize: '0.82rem', color: 'var(--texto)', margin: 0, fontFamily: 'Inter,sans-serif', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-  meta: { fontSize: '0.7rem', color: 'var(--texto-apagado)', margin: '2px 0 0', fontFamily: 'Inter,sans-serif' },
+  nome: { fontSize: '0.82rem', color: 'var(--texto)', margin: 0, fontFamily: 'var(--fonte-corpo)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  meta: { fontSize: '0.7rem', color: 'var(--texto-apagado)', margin: '2px 0 0', fontFamily: 'var(--fonte-corpo)' },
   btnIcone: { background: 'none', border: '1px solid var(--borda)', borderRadius: '6px', color: 'var(--texto-apagado)', width: '26px', height: '26px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 },
   dropzone: { border: '2px dashed var(--borda)', borderRadius: '12px', padding: '20px', textAlign: 'center', transition: 'all 0.15s' },
 }

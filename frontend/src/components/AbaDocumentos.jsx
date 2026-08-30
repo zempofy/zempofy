@@ -37,8 +37,8 @@ export default function AbaDocumentos({ clienteId, setores }) {
   const abrirEmpresa = () => { setSetorAberto(null); setAnoSelecionado(null); setMesSelecionado(null) }
   const abrirSetor = (setor) => { setSetorAberto(setor); setAnoSelecionado(null); setMesSelecionado(null) }
 
-  const btnPasta = { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '20px 12px', background: 'var(--card)', border: '1px solid var(--borda)', borderRadius: '12px', cursor: 'pointer', fontFamily: 'Inter,sans-serif', fontSize: '0.82rem', fontWeight: '600', color: 'var(--texto)' }
-  const btnVoltar = { background: 'none', border: 'none', color: 'var(--texto-apagado)', cursor: 'pointer', fontFamily: 'Inter,sans-serif', fontSize: '0.82rem', padding: '0 0 16px', display: 'flex', alignItems: 'center', gap: '6px' }
+  const btnPasta = { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '20px 12px', background: 'var(--card)', border: '1px solid var(--borda)', borderRadius: '12px', cursor: 'pointer', fontFamily: 'var(--fonte-corpo)', fontSize: '0.82rem', fontWeight: '600', color: 'var(--texto)' }
+  const btnVoltar = { background: 'none', border: 'none', color: 'var(--texto-apagado)', cursor: 'pointer', fontFamily: 'var(--fonte-corpo)', fontSize: '0.82rem', padding: '0 0 16px', display: 'flex', alignItems: 'center', gap: '6px' }
   const grid = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(140px,1fr))', gap: '12px' }
 
   // Nível 3 — documentos do mês selecionado
