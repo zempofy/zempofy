@@ -170,12 +170,11 @@ const CONFIG_DEMANDA = {
         ativoQuando: ['clt','ambos'],
         campos: [
           { id:'funcionariosAtivos', label:'Funcionários ativos no mês', tipo:'numero' },
-          { id:'folhaProcessada', label:'Folha de pagamento processada', tipo:'booleano' },
           { id:'admissoes', label:'Nº de admissões no mês', tipo:'numero' },
           { id:'rescisoes', label:'Nº de rescisões no mês', tipo:'numero' },
           { id:'ferias', label:'Nº de férias programadas/pagas no mês', tipo:'numero' },
-          { id:'esocialEnviado', label:'eSocial enviado', tipo:'booleano' },
-          { id:'fgtsInssRecolhidos', label:'FGTS/INSS recolhidos', tipo:'booleano' },
+          { id:'esocialEnviado', label:'eSocial enviado', tipo:'booleano', pendenteSeNao:true },
+          { id:'fgtsInssRecolhidos', label:'FGTS/INSS recolhidos', tipo:'booleano', pendenteSeNao:true },
         ],
         camposSazonais: {
           meses: [11,12],
@@ -188,10 +187,10 @@ const CONFIG_DEMANDA = {
       proLabore: {
         ativoQuando: ['pro_labore','ambos'],
         campos: [
-          { id:'valorProLabore', label:'Valor do pró-labore', tipo:'moeda' },
-          { id:'inssProLabore', label:'INSS (11%)', tipo:'moeda' },
-          { id:'irrfProLabore', label:'IRRF', tipo:'moeda' },
-          // campo 'guiaPaga' removido (27/07/2026) — vencimento é fixo dia 20, não há o que rastrear
+          { id:'proLaboreProcessado', label:'Pró-labore enviado para o eSocial?', tipo:'booleano' },
+          // campos de valor/INSS/IRRF removidos (30/08/2026) — vira uma confirmação booleana,
+          // igual contabilFeito; lançamentos antigos com valorProLabore/inssProLabore/irrfProLabore
+          // continuam salvos no banco, só deixam de aparecer na tela
         ]
       }
     },
@@ -1291,6 +1290,7 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
   const [editandoSituacao, setEditandoSituacao] = useState(false)
   const [valorVigenciaPendente, setValorVigenciaPendente] = useState(null)
   const [qtdDocs, setQtdDocs] = useState(null)
+  const [observacaoAnterior, setObservacaoAnterior] = useState(null)
   const listaDocsRef = useRef(null)
   // Mais permissivo que a edição de campo de propósito: documento pode ser enviado mesmo numa
   // competência já fechada pra edição (mês passado, só titular edita campo) — só precisa ter
@@ -1306,11 +1306,33 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
   const situacaoResolvida = lancamento?.situacaoResolvida ?? situacao
   const blocos = blocosFixosDoSetor(config, { regime: regimeResolvido, situacao: situacaoResolvida, competencia })
 
+  const vazio = (v) => v === undefined || v === null || v === ''
+
   useEffect(() => {
     setCarregando(true)
     setEditandoSituacao(false)
+    setObservacaoAnterior(null)
     api.get(`/clientes/${clienteId}/lancamentos/${setor._id}/${competencia}`)
-      .then(r => { setLancamento(r.data); setValores(r.data?.dados || {}) })
+      .then(r => {
+        setLancamento(r.data)
+        const dadosAtuais = r.data?.dados || {}
+        setValores(dadosAtuais)
+
+        // Busca o mês anterior pra (a) mostrar a observação como referência de leitura e
+        // (b) pré-preencher "Funcionários ativos" — só se o campo deste mês ainda estiver vazio.
+        // Roda depois do fetch acima (não em paralelo) pra saber com certeza se está vazio antes de decidir.
+        const competenciaAnterior = mudarCompetencia(competencia, -1)
+        api.get(`/clientes/${clienteId}/lancamentos/${setor._id}/${competenciaAnterior}`)
+          .then(rAnterior => {
+            const dadosAnteriores = rAnterior.data?.dados || {}
+            setObservacaoAnterior(dadosAnteriores.observacoesGerais?.trim() || null)
+            if (vazio(dadosAtuais.funcionariosAtivos) && !vazio(dadosAnteriores.funcionariosAtivos)) {
+              // Guard funcional: se a pessoa já digitou algo nesse meio-tempo, não sobrescreve.
+              setValores(vs => vazio(vs.funcionariosAtivos) ? { ...vs, funcionariosAtivos: dadosAnteriores.funcionariosAtivos } : vs)
+            }
+          })
+          .catch(() => setObservacaoAnterior(null))
+      })
       .catch(() => mostrar('Erro ao carregar dados.', 'erro'))
       .finally(() => setCarregando(false))
   }, [clienteId, setor._id, competencia])
@@ -1512,6 +1534,12 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
       </div>
 
       <div style={{ marginBottom:'20px' }}>
+        {observacaoAnterior && (
+          <div style={{ background:'var(--input)', border:'1px solid var(--borda)', borderRadius:'10px', padding:'10px 14px', marginBottom:'10px' }}>
+            <p style={{ fontSize:'0.72rem', fontWeight:'700', color:'var(--texto-apagado)', margin:'0 0 4px' }}>Observação de {nomeMes(mudarCompetencia(competencia,-1))}:</p>
+            <p style={{ fontSize:'0.82rem', color:'var(--texto)', margin:0, whiteSpace:'pre-wrap' }}>{observacaoAnterior}</p>
+          </div>
+        )}
         <Campo label="Observações">
           {podeEditar ? (
             <textarea style={{ ...s.inp, minHeight:'56px', resize:'vertical' }} value={valores.observacoesGerais||''} onChange={e=>setValor('observacoesGerais', e.target.value)} placeholder="Opcional" />
@@ -1688,7 +1716,11 @@ function AbaHistorico({ clienteId, setor, clienteRegime, configSetor, onAtualiza
   const anoAtual = Number(competenciaAtual().slice(0,4))
   // Teto de navegação pra frente: setor em modo "defasada" nunca deveria abrir o mês civil
   // atual, só a competência (mês anterior) e os passados — ver competenciaPadraoDoSetor
-  const teto = competenciaPadraoDoSetor(setor.nome)
+  const tetoPadrao = competenciaPadraoDoSetor(setor.nome)
+  // Titular pode preencher um mês além do teto padrão — se isso já aconteceu, o teto efetivo
+  // acompanha a competência mais avançada com dado, senão a pasta dela nem aparece pra abrir
+  const maiorComDado = lancamentos.reduce((max, l) => l.competencia > max ? l.competencia : max, tetoPadrao)
+  const teto = maiorComDado > tetoPadrao ? maiorComDado : tetoPadrao
   const anoTeto = Number(teto.slice(0,4))
   const mesTetoNum = Number(teto.slice(5,7))
 
@@ -1733,7 +1765,7 @@ function AbaHistorico({ clienteId, setor, clienteRegime, configSetor, onAtualiza
 
   // Nível 1 — anos
   const anos = []
-  for (let a = INICIO_DEMANDA_ANO; a <= anoAtual; a++) anos.push(a)
+  for (let a = INICIO_DEMANDA_ANO; a <= Math.max(anoAtual, anoTeto); a++) anos.push(a)
 
   return (
     <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(140px,1fr))', gap:'12px' }}>

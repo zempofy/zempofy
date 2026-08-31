@@ -26,7 +26,10 @@ const statusDemanda = (setorNome, item, competencia) => {
     const v = item.dados?.[c.id]
     return !(v === undefined || v === null || v === '')
   })
-  return completo ? 'concluido' : 'pendente'
+  // Pergunta booleana marcada como "Não" conta como preenchida, mas ainda precisa de atenção —
+  // campo com pendenteSeNao mantém a competência pendente mesmo com tudo mais respondido.
+  const algumNaoPendente = campos.some(c => c.pendenteSeNao && item.dados?.[c.id] === false)
+  return (completo && !algumNaoPendente) ? 'concluido' : 'pendente'
 }
 
 const mudarCompetencia = (competencia, delta) => {

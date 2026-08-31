@@ -5,6 +5,7 @@ const { autenticar, temPermissao } = require('../middleware/auth');
 const { temAcessoAoSetor, podeMudarConfigSetor } = require('./cliente');
 const Documento = require('../models/Documento');
 const Cliente = require('../models/Cliente');
+const Setor = require('../models/Setor');
 const { subirArquivo, buscarArquivo, apagarArquivo } = require('../services/storage');
 
 const router = express.Router();
@@ -41,11 +42,10 @@ const podeVerOuEnviar = async (usuario, documentoOuDados) => {
   return temAcessoAoSetor(usuario, (setor?._id || setor)?.toString());
 };
 
-const podeGerenciar = async (usuario, documentoOuDados) => {
-  const { tipo, setor } = documentoOuDados;
-  if (tipo === 'geral') return usuario.cargo === 'admin' || !!usuario.permissoes?.gerenciarClientes;
-  return temAcessoAoSetor(usuario, (setor?._id || setor)?.toString());
-};
+// Mover pra lixeira é o "remover" do dia a dia — qualquer usuário autenticado da empresa pode,
+// pros dois tipos (igual `podeVerOuEnviar`). A exclusão definitiva (`podeExcluirDefinitivo`,
+// logo abaixo) continua restrita.
+const podeGerenciar = async (usuario, documentoOuDados) => true;
 
 const podeExcluirDefinitivo = async (usuario, documento) => {
   if (documento.tipo === 'geral') return usuario.cargo === 'admin' || !!usuario.permissoes?.gerenciarClientes;
@@ -222,7 +222,13 @@ router.get('/lixeira', autenticar, async (req, res) => {
     await purgarExpirados(req.usuario.empresa._id);
 
     const filtro = { empresa: req.usuario.empresa._id, excluido: true };
-    if (req.usuario.cargo !== 'admin') filtro.excluidoPor = req.usuario._id;
+    if (req.usuario.cargo !== 'admin') {
+      // Além do que o próprio usuário excluiu, o responsável de um setor também vê o que
+      // qualquer colaborador do setor dele excluiu.
+      const setoresQueRespondePor = await Setor.find({ empresa: req.usuario.empresa._id, responsavel: req.usuario._id }).select('_id').lean();
+      const setorIds = setoresQueRespondePor.map(s => s._id);
+      filtro.$or = [{ excluidoPor: req.usuario._id }, { setor: { $in: setorIds } }];
+    }
 
     const documentos = await Documento.find(filtro)
       .populate('excluidoPor', 'nome')

@@ -56,7 +56,11 @@ export default function AbaDocumentos({ clienteId, setores }) {
 
   // Nível 2 — meses do ano selecionado
   if (setorAberto && anoSelecionado) {
-    const teto = competenciaPadraoDoSetor(setorAberto.nome)
+    const tetoPadrao = competenciaPadraoDoSetor(setorAberto.nome)
+    // Titular pode anexar documento num mês além do teto padrão — se isso já aconteceu, o teto
+    // efetivo acompanha a competência mais avançada com dado, senão a pasta dela nem aparece
+    const maiorComDado = Object.keys(mapa).reduce((max, c) => c > max ? c : max, tetoPadrao)
+    const teto = maiorComDado > tetoPadrao ? maiorComDado : tetoPadrao
     const anoTeto = Number(teto.slice(0, 4))
     const mesTetoNum = Number(teto.slice(5, 7))
     const ultimoMes = anoSelecionado < anoTeto ? 12 : (anoSelecionado === anoTeto ? mesTetoNum : 0)
@@ -84,8 +88,11 @@ export default function AbaDocumentos({ clienteId, setores }) {
   // Nível 1 — anos do setor
   if (setorAberto) {
     const anoAtual = Number(competenciaAtual().slice(0, 4))
+    const tetoPadrao = competenciaPadraoDoSetor(setorAberto.nome)
+    const maiorComDado = Object.keys(mapa).reduce((max, c) => c > max ? c : max, tetoPadrao)
+    const anoTeto = Number((maiorComDado > tetoPadrao ? maiorComDado : tetoPadrao).slice(0, 4))
     const anos = []
-    for (let a = INICIO_DEMANDA_ANO; a <= anoAtual; a++) anos.push(a)
+    for (let a = INICIO_DEMANDA_ANO; a <= Math.max(anoAtual, anoTeto); a++) anos.push(a)
     return (
       <div>
         <button onClick={irParaRaiz} style={btnVoltar}><Icone.ChevronLeft size={14} /> Documentos</button>
