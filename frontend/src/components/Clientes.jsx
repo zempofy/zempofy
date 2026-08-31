@@ -1282,6 +1282,10 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
   const [salvando, setSalvando] = useState(false)
   const [lancamento, setLancamento] = useState(null)
   const [valores, setValores] = useState({})
+  // Referência pra saber se tem alteração não salva — nasce igual ao que a tela mostra assim que
+  // carrega (incluindo preenchimento automático tipo funcionariosAtivos), não ao que está no banco
+  // (lancamento.dados), senão o aviso dispara sozinho por causa do valor pré-preenchido.
+  const [valoresBase, setValoresBase] = useState({})
   const [criandoCampo, setCriandoCampo] = useState(false)
   const [novoLabel, setNovoLabel] = useState('')
   const [novoTipo, setNovoTipo] = useState('moeda')
@@ -1317,6 +1321,7 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
         setLancamento(r.data)
         const dadosAtuais = r.data?.dados || {}
         setValores(dadosAtuais)
+        setValoresBase(dadosAtuais)
 
         // Busca o mês anterior pra (a) mostrar a observação como referência de leitura e
         // (b) pré-preencher "Funcionários ativos" — só se o campo deste mês ainda estiver vazio.
@@ -1328,7 +1333,10 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
             setObservacaoAnterior(dadosAnteriores.observacoesGerais?.trim() || null)
             if (vazio(dadosAtuais.funcionariosAtivos) && !vazio(dadosAnteriores.funcionariosAtivos)) {
               // Guard funcional: se a pessoa já digitou algo nesse meio-tempo, não sobrescreve.
+              // valoresBase acompanha o mesmo preenchimento — senão o aviso de alteração não
+              // salva dispara sozinho, comparando a tela com um baseline que nunca teve o valor.
               setValores(vs => vazio(vs.funcionariosAtivos) ? { ...vs, funcionariosAtivos: dadosAnteriores.funcionariosAtivos } : vs)
+              setValoresBase(vb => vazio(vb.funcionariosAtivos) ? { ...vb, funcionariosAtivos: dadosAnteriores.funcionariosAtivos } : vb)
             }
           })
           .catch(() => setObservacaoAnterior(null))
@@ -1347,9 +1355,10 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
   const setValor = (id, v) => setValores(vs => ({ ...vs, [id]: v }))
   const podeEditar = !!lancamento?.podeEditar
 
-  // Compara com o que veio salvo do servidor pra saber se tem algo digitado que ainda não foi
-  // pro banco — usado pra avisar antes de trocar de competência e perder isso.
-  const alteracaoNaoSalva = !carregando && JSON.stringify(valores) !== JSON.stringify(lancamento?.dados || {})
+  // Compara com valoresBase (o que a tela mostrava assim que carregou, já incluindo qualquer
+  // preenchimento automático) — não com lancamento?.dados direto, senão um campo pré-preenchido
+  // sozinho (que só existe na tela, nunca foi salvo) já dispara o aviso à toa.
+  const alteracaoNaoSalva = !carregando && JSON.stringify(valores) !== JSON.stringify(valoresBase)
   useEffect(() => { onAlteracaoNaoSalva && onAlteracaoNaoSalva(alteracaoNaoSalva) }, [alteracaoNaoSalva])
 
   const salvar = async () => {
@@ -1357,6 +1366,7 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
     try {
       const r = await api.post(`/clientes/${clienteId}/lancamentos/${setor._id}/${competencia}`, { dados: valores })
       setLancamento(r.data)
+      setValoresBase(r.data?.dados || {})
       mostrar('Dados salvos!', 'sucesso')
     } catch (e) { mostrar(e.response?.data?.erro || 'Erro ao salvar.', 'erro') }
     finally { setSalvando(false) }
