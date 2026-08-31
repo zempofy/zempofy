@@ -344,7 +344,6 @@ router.post('/:id/lancamentos/:setorId/:competencia', autenticar, async (req, re
   try {
     const { competencia } = req.params;
     if (!/^\d{4}-\d{2}$/.test(competencia)) return res.status(400).json({ erro: 'Competência inválida.' });
-    if (competencia > competenciaAtual()) return res.status(400).json({ erro: 'Não é possível lançar uma competência futura.' });
 
     const cliente = await Cliente.findOne({ _id: req.params.id, empresa: req.usuario.empresa._id }).lean();
     if (!cliente) return res.status(404).json({ erro: 'Cliente não encontrado.' });
