@@ -257,13 +257,14 @@ router.delete('/:id', autenticar, temPermissao('gerenciarClientes'), async (req,
 // mês futuro sempre abertos pra quem tem acesso ao setor — dado de um mês que ainda não chegou
 // não é definitivo, então não trava mesmo já tendo algo salvo ali. Só quando o mês realmente
 // vira passado (o calendário avança) é que a trava passa a valer: fecha pra colaborador se já
-// tem dado salvo, só o titular pode reabrir e editar. Exceção: setor Contábil nunca trava, em
-// nenhuma competência.
-const podeEditarCompetencia = (usuario, setorId, competencia, clienteAtivo, setorNome, temDadosSalvos) => {
+// tem dado salvo, fecha pra colaborador comum — titular e o responsável designado do setor sempre
+// podem reabrir e editar. Exceção: setor Contábil nunca trava, em nenhuma competência.
+const podeEditarCompetencia = (usuario, setorId, competencia, clienteAtivo, setorNome, temDadosSalvos, responsavelSetor) => {
   if (!clienteAtivo) return false;
   const temAcesso = usuario.cargo === 'admin' || usuario.setores?.some(s => (s._id || s).toString() === setorId);
   if (!temAcesso) return false;
-  if (usuario.cargo === 'admin') return true;
+  const ehResponsavel = !!responsavelSetor && responsavelSetor.toString() === usuario._id.toString();
+  if (usuario.cargo === 'admin' || ehResponsavel) return true;
   if (setorNome === 'contabil' || competencia >= competenciaAtual()) return true;
   return !temDadosSalvos;
 };
@@ -319,7 +320,7 @@ router.get('/:id/lancamentos/:setorId/:competencia', autenticar, async (req, res
     const cliente = await Cliente.findOne({ _id: req.params.id, empresa: req.usuario.empresa._id }).lean();
     if (!cliente) return res.status(404).json({ erro: 'Cliente não encontrado.' });
 
-    const setor = await Setor.findById(req.params.setorId).select('nome').lean();
+    const setor = await Setor.findById(req.params.setorId).select('nome responsavel').lean();
     const setorNome = normalizarNome(setor?.nome || '');
 
     const lancamento = await LancamentoSetor.findOne({
@@ -332,7 +333,7 @@ router.get('/:id/lancamentos/:setorId/:competencia', autenticar, async (req, res
     res.json({
       ...base,
       preenchido: !!lancamento,
-      podeEditar: podeEditarCompetencia(req.usuario, req.params.setorId, competencia, cliente.status !== 'inativo', setorNome, !!lancamento),
+      podeEditar: podeEditarCompetencia(req.usuario, req.params.setorId, competencia, cliente.status !== 'inativo', setorNome, !!lancamento, setor?.responsavel),
       regimeResolvido: resolverPorVigencia(cliente.historicoRegime, competencia, cliente.regime),
       situacaoResolvida: resolverPorVigencia(cliente.configSetores?.[setorNome]?.historicoSituacao, competencia, cliente.configSetores?.[setorNome]?.situacao),
     });
@@ -350,18 +351,18 @@ router.post('/:id/lancamentos/:setorId/:competencia', autenticar, async (req, re
     const cliente = await Cliente.findOne({ _id: req.params.id, empresa: req.usuario.empresa._id }).lean();
     if (!cliente) return res.status(404).json({ erro: 'Cliente não encontrado.' });
 
-    const setor = await Setor.findById(req.params.setorId).select('nome').lean();
+    const setor = await Setor.findById(req.params.setorId).select('nome responsavel').lean();
     const setorNome = normalizarNome(setor?.nome || '');
 
     const jaExiste = await LancamentoSetor.exists({
       cliente: req.params.id, setor: req.params.setorId, competencia, empresa: req.usuario.empresa._id,
     });
 
-    if (!podeEditarCompetencia(req.usuario, req.params.setorId, competencia, cliente.status !== 'inativo', setorNome, !!jaExiste)) {
+    if (!podeEditarCompetencia(req.usuario, req.params.setorId, competencia, cliente.status !== 'inativo', setorNome, !!jaExiste, setor?.responsavel)) {
       const temAcesso = req.usuario.cargo === 'admin' || req.usuario.setores?.some(s => (s._id || s).toString() === req.params.setorId);
       const motivo = cliente.status === 'inativo'
         ? 'Cliente inativo — reative pra poder editar.'
-        : (!temAcesso ? 'Você não tem acesso a este setor.' : 'Esta competência já tem dado salvo — só o titular pode editar.');
+        : (!temAcesso ? 'Você não tem acesso a este setor.' : 'Esta competência já tem dado salvo — só o titular ou o responsável do setor podem editar.');
       return res.status(403).json({ erro: motivo });
     }
 
