@@ -37,8 +37,8 @@ export default function AbaDocumentos({ clienteId, setores }) {
   const abrirEmpresa = () => { setSetorAberto(null); setAnoSelecionado(null); setMesSelecionado(null) }
   const abrirSetor = (setor) => { setSetorAberto(setor); setAnoSelecionado(null); setMesSelecionado(null) }
 
-  const btnPasta = { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '20px 12px', background: 'var(--card)', border: '1px solid var(--borda)', borderRadius: '12px', cursor: 'pointer', fontFamily: 'Inter,sans-serif', fontSize: '0.82rem', fontWeight: '600', color: 'var(--texto)' }
-  const btnVoltar = { background: 'none', border: 'none', color: 'var(--texto-apagado)', cursor: 'pointer', fontFamily: 'Inter,sans-serif', fontSize: '0.82rem', padding: '0 0 16px', display: 'flex', alignItems: 'center', gap: '6px' }
+  const btnPasta = { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '20px 12px', background: 'var(--card)', border: '1px solid var(--borda)', borderRadius: '12px', cursor: 'pointer', fontFamily: 'var(--fonte-corpo)', fontSize: '0.82rem', fontWeight: '600', color: 'var(--texto)' }
+  const btnVoltar = { background: 'none', border: 'none', color: 'var(--texto-apagado)', cursor: 'pointer', fontFamily: 'var(--fonte-corpo)', fontSize: '0.82rem', padding: '0 0 16px', display: 'flex', alignItems: 'center', gap: '6px' }
   const grid = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(140px,1fr))', gap: '12px' }
 
   // Nível 3 — documentos do mês selecionado
@@ -56,7 +56,11 @@ export default function AbaDocumentos({ clienteId, setores }) {
 
   // Nível 2 — meses do ano selecionado
   if (setorAberto && anoSelecionado) {
-    const teto = competenciaPadraoDoSetor(setorAberto.nome)
+    const tetoPadrao = competenciaPadraoDoSetor(setorAberto.nome)
+    // Titular pode anexar documento num mês além do teto padrão — se isso já aconteceu, o teto
+    // efetivo acompanha a competência mais avançada com dado, senão a pasta dela nem aparece
+    const maiorComDado = Object.keys(mapa).reduce((max, c) => c > max ? c : max, tetoPadrao)
+    const teto = maiorComDado > tetoPadrao ? maiorComDado : tetoPadrao
     const anoTeto = Number(teto.slice(0, 4))
     const mesTetoNum = Number(teto.slice(5, 7))
     const ultimoMes = anoSelecionado < anoTeto ? 12 : (anoSelecionado === anoTeto ? mesTetoNum : 0)
@@ -84,8 +88,11 @@ export default function AbaDocumentos({ clienteId, setores }) {
   // Nível 1 — anos do setor
   if (setorAberto) {
     const anoAtual = Number(competenciaAtual().slice(0, 4))
+    const tetoPadrao = competenciaPadraoDoSetor(setorAberto.nome)
+    const maiorComDado = Object.keys(mapa).reduce((max, c) => c > max ? c : max, tetoPadrao)
+    const anoTeto = Number((maiorComDado > tetoPadrao ? maiorComDado : tetoPadrao).slice(0, 4))
     const anos = []
-    for (let a = INICIO_DEMANDA_ANO; a <= anoAtual; a++) anos.push(a)
+    for (let a = INICIO_DEMANDA_ANO; a <= Math.max(anoAtual, anoTeto); a++) anos.push(a)
     return (
       <div>
         <button onClick={irParaRaiz} style={btnVoltar}><Icone.ChevronLeft size={14} /> Documentos</button>

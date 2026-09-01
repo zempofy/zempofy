@@ -187,7 +187,7 @@ const stylesGuia = {
     display: 'flex', alignItems: 'center', gap: '10px',
     padding: '10px 14px', borderRadius: '10px',
     border: '1px solid transparent',
-    fontFamily: 'Inter, sans-serif',
+    fontFamily: 'var(--fonte-corpo)',
     cursor: 'pointer', transition: 'all 0.15s',
     background: 'none',
   },
@@ -314,14 +314,14 @@ function Subtarefas({ tarefaMaeId, concluida }) {
           {adicionando && (
             <div style={{ display: 'flex', gap: '6px' }}>
               <input
-                style={{ flex: 1, background: 'var(--input)', border: '1px solid var(--verde)', borderRadius: '8px', padding: '6px 10px', color: 'var(--texto)', fontSize: '0.85rem', fontFamily: 'Inter, sans-serif' }}
+                style={{ flex: 1, background: 'var(--input)', border: '1px solid var(--verde)', borderRadius: '8px', padding: '6px 10px', color: 'var(--texto)', fontSize: '0.85rem', fontFamily: 'var(--fonte-corpo)' }}
                 placeholder="Descrição da subtarefa..."
                 value={novaDesc}
                 onChange={e => setNovaDesc(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') adicionar(); if (e.key === 'Escape') setAdicionando(false) }}
                 autoFocus
               />
-              <button style={{ background: 'var(--verde)', border: 'none', borderRadius: '8px', padding: '6px 12px', color: '#fff', fontSize: '0.82rem', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }} onClick={adicionar}>Ok</button>
+              <button style={{ background: 'var(--verde)', border: 'none', borderRadius: '8px', padding: '6px 12px', color: '#fff', fontSize: '0.82rem', cursor: 'pointer', fontFamily: 'var(--fonte-corpo)' }} onClick={adicionar}>Ok</button>
               <button style={{ background: 'none', border: '1px solid var(--borda)', borderRadius: '8px', padding: '6px 10px', color: 'var(--texto-apagado)', fontSize: '0.82rem', cursor: 'pointer' }} onClick={() => setAdicionando(false)}>Cancelar</button>
             </div>
           )}
@@ -498,7 +498,7 @@ function PopupOnboardingAdmin({ tarefaId, onFechar }) {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 22px', borderBottom: '1px solid var(--borda)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <span style={{ fontSize: '0.62rem', fontWeight: '700', padding: '2px 7px', borderRadius: '6px', background: 'var(--verde-glow)', color: 'var(--verde)', border: '1px solid rgba(0,177,65,0.2)' }}>Onboarding</span>
-            <span style={{ fontWeight: '700', fontSize: '0.95rem', color: 'var(--texto)', fontFamily: 'Inter, sans-serif' }}>Informações do cliente</span>
+            <span style={{ fontWeight: '700', fontSize: '0.95rem', color: 'var(--texto)', fontFamily: 'var(--fonte-corpo)' }}>Informações do cliente</span>
           </div>
           <button style={{ background: 'none', border: '1px solid var(--borda)', borderRadius: '6px', color: 'var(--texto-apagado)', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', cursor: 'pointer' }} onClick={onFechar}>✕</button>
         </div>
@@ -519,7 +519,7 @@ function PopupOnboardingAdmin({ tarefaId, onFechar }) {
               ].filter(Boolean).map(item => (
                 <div key={item.label} style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
                   <span style={{ fontSize: '0.65rem', fontWeight: '700', color: 'var(--texto-apagado)', textTransform: 'uppercase', letterSpacing: '0.8px' }}>{item.label}</span>
-                  <span style={{ fontSize: '0.9rem', color: 'var(--texto)', fontWeight: '500', fontFamily: item.mono ? 'monospace' : 'Inter, sans-serif', letterSpacing: item.mono ? '0.5px' : 0 }}>{item.valor}</span>
+                  <span style={{ fontSize: '0.9rem', color: 'var(--texto)', fontWeight: '500', fontFamily: item.mono ? 'monospace' : 'var(--fonte-corpo)', letterSpacing: item.mono ? '0.5px' : 0 }}>{item.valor}</span>
                 </div>
               ))}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
@@ -532,7 +532,7 @@ function PopupOnboardingAdmin({ tarefaId, onFechar }) {
           )}
         </div>
         <div style={{ padding: '14px 22px', borderTop: '1px solid var(--borda)', display: 'flex', justifyContent: 'flex-end' }}>
-          <button style={{ background: 'none', border: '1px solid var(--borda)', borderRadius: '8px', color: 'var(--texto-apagado)', padding: '8px 18px', fontFamily: 'Inter, sans-serif', fontSize: '0.875rem', cursor: 'pointer' }} onClick={onFechar}>Fechar</button>
+          <button style={{ background: 'none', border: '1px solid var(--borda)', borderRadius: '8px', color: 'var(--texto-apagado)', padding: '8px 18px', fontFamily: 'var(--fonte-corpo)', fontSize: '0.875rem', cursor: 'pointer' }} onClick={onFechar}>Fechar</button>
         </div>
       </div>
     </div>, document.body)
@@ -670,7 +670,7 @@ function PaginaTarefas({ tarefas, funcionarios, recarregar }) {
             Onboarding
           </span>
           <button
-            style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'rgba(0,177,65,0.06)', border: '1px solid rgba(0,177,65,0.2)', borderRadius: '6px', color: 'var(--verde)', padding: '1px 7px', fontSize: '0.72rem', cursor: 'pointer', fontFamily: 'Inter, sans-serif', fontWeight: '600' }}
+            style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'rgba(0,177,65,0.06)', border: '1px solid rgba(0,177,65,0.2)', borderRadius: '6px', color: 'var(--verde)', padding: '1px 7px', fontSize: '0.72rem', cursor: 'pointer', fontFamily: 'var(--fonte-corpo)', fontWeight: '600' }}
             onClick={() => setPopupTarefaId(t._id)}
           >
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
@@ -760,7 +760,7 @@ function PaginaTarefas({ tarefas, funcionarios, recarregar }) {
             ))}
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>
-            <input style={{ background: 'var(--input)', border: '1px solid var(--borda)', borderRadius: '8px', padding: '8px 12px', color: 'var(--texto)', fontSize: '0.875rem', flex: 1, fontFamily: 'Inter, sans-serif' }}
+            <input style={{ background: 'var(--input)', border: '1px solid var(--borda)', borderRadius: '8px', padding: '8px 12px', color: 'var(--texto)', fontSize: '0.875rem', flex: 1, fontFamily: 'var(--fonte-corpo)' }}
               placeholder="Nome da nova etiqueta..."
               value={novaEtiqueta}
               onChange={e => setNovaEtiqueta(e.target.value)}
@@ -773,7 +773,7 @@ function PaginaTarefas({ tarefas, funcionarios, recarregar }) {
       {/* Formulário nova tarefa */}
       {mostrarForm && (
         <div style={styles.formulario}>
-          <h3 style={{ color: 'var(--texto)', marginBottom: '16px', fontFamily: 'Inter, sans-serif' }}>Nova tarefa</h3>
+          <h3 style={{ color: 'var(--texto)', marginBottom: '16px', fontFamily: 'var(--fonte-corpo)' }}>Nova tarefa</h3>
           {erro && <div style={styles.erro}>{erro}</div>}
           <form onSubmit={criar} style={styles.formGrid}>
             <div style={{ ...styles.campo, gridColumn: '1 / -1' }}>
@@ -803,7 +803,7 @@ function PaginaTarefas({ tarefas, funcionarios, recarregar }) {
                 }
               }} />
               {form._isFeriado && (
-                <p style={{ fontSize:'0.72rem', color:'#f59e0b', margin:'4px 0 0', fontFamily:'Inter,sans-serif', display:'flex', alignItems:'center', gap:'4px', position:'absolute', bottom:'-20px', left:0, whiteSpace:'nowrap' }}>
+                <p style={{ fontSize:'0.72rem', color:'#f59e0b', margin:'4px 0 0', fontFamily:'var(--fonte-corpo)', display:'flex', alignItems:'center', gap:'4px', position:'absolute', bottom:'-20px', left:0, whiteSpace:'nowrap' }}>
                   <Icone.AlertTriangle size={11}/> Este dia é feriado nacional
                 </p>
               )}
@@ -954,7 +954,7 @@ const stylesTarefas = {
   descricao: {
     fontSize: '0.875rem',
     color: 'var(--texto)',
-    fontFamily: 'Inter, sans-serif',
+    fontFamily: 'var(--fonte-corpo)',
     flex: 1,
     minWidth: 0,
     whiteSpace: 'nowrap',
@@ -993,7 +993,7 @@ const stylesTarefas = {
     background: 'none', border: '1px solid rgba(0,177,65,0.2)',
     borderRadius: '6px', color: 'var(--verde)',
     fontSize: '0.72rem', cursor: 'pointer',
-    padding: '2px 8px', fontFamily: 'Inter, sans-serif', fontWeight: '600',
+    padding: '2px 8px', fontFamily: 'var(--fonte-corpo)', fontWeight: '600',
     whiteSpace: 'nowrap',
   },
   btnConcluir: {
@@ -1128,7 +1128,7 @@ function PaginaHistorico() {
         {filtros.map(f => (
           <button key={f.key} onClick={() => filtrar(f.key)} style={{
             fontSize: '0.8rem', padding: '5px 14px', borderRadius: '99px', cursor: 'pointer',
-            fontFamily: 'Inter, sans-serif', fontWeight: categoriaFiltro === f.key ? '600' : '400',
+            fontFamily: 'var(--fonte-corpo)', fontWeight: categoriaFiltro === f.key ? '600' : '400',
             background: categoriaFiltro === f.key ? 'rgba(0,177,65,0.1)' : 'none',
             border: categoriaFiltro === f.key ? '1px solid rgba(0,177,65,0.3)' : '1px solid var(--borda)',
             color: categoriaFiltro === f.key ? 'var(--verde)' : 'var(--texto-apagado)',
@@ -1303,17 +1303,17 @@ export default function DashboardAdmin() {
 const styles = {
   barraFiltros: { display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' },
   buscaWrapper: { display: 'flex', alignItems: 'center', gap: '10px', background: 'var(--card)', border: '1px solid var(--borda)', borderRadius: '10px', padding: '10px 14px', boxShadow: 'var(--sombra-card)' },
-  inputBusca: { flex: 1, background: 'none', border: 'none', color: 'var(--texto)', fontSize: '0.9rem', fontFamily: 'Inter, sans-serif', outline: 'none' },
+  inputBusca: { flex: 1, background: 'none', border: 'none', color: 'var(--texto)', fontSize: '0.9rem', fontFamily: 'var(--fonte-corpo)', outline: 'none' },
   btnLimpar: { background: 'none', border: 'none', color: 'var(--texto-apagado)', cursor: 'pointer', fontSize: '12px', padding: '2px 4px', flexShrink: 0 },
   filtrosWrapper: { display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' },
-  selectFiltro: { background: 'var(--card)', border: '1px solid var(--borda)', borderRadius: '8px', padding: '7px 12px', color: 'var(--texto)', fontSize: '0.82rem', fontFamily: 'Inter, sans-serif', cursor: 'pointer' },
-  btnLimparFiltros: { background: 'none', border: '1px solid var(--borda)', borderRadius: '8px', padding: '7px 12px', color: 'var(--texto-apagado)', fontSize: '0.82rem', cursor: 'pointer', fontFamily: 'Inter, sans-serif' },
-  btnGerenciarEtiquetas: { display: 'flex', alignItems: 'center', gap: '5px', background: 'var(--verde-glow)', border: '1px solid rgba(0,177,65,0.2)', borderRadius: '8px', padding: '7px 12px', color: 'var(--verde)', fontSize: '0.82rem', cursor: 'pointer', fontFamily: 'Inter, sans-serif', fontWeight: '600' },
+  selectFiltro: { background: 'var(--card)', border: '1px solid var(--borda)', borderRadius: '8px', padding: '7px 12px', color: 'var(--texto)', fontSize: '0.82rem', fontFamily: 'var(--fonte-corpo)', cursor: 'pointer' },
+  btnLimparFiltros: { background: 'none', border: '1px solid var(--borda)', borderRadius: '8px', padding: '7px 12px', color: 'var(--texto-apagado)', fontSize: '0.82rem', cursor: 'pointer', fontFamily: 'var(--fonte-corpo)' },
+  btnGerenciarEtiquetas: { display: 'flex', alignItems: 'center', gap: '5px', background: 'var(--verde-glow)', border: '1px solid rgba(0,177,65,0.2)', borderRadius: '8px', padding: '7px 12px', color: 'var(--verde)', fontSize: '0.82rem', cursor: 'pointer', fontFamily: 'var(--fonte-corpo)', fontWeight: '600' },
   gerenciarBox: { background: 'var(--card)', border: '1px solid var(--borda)', borderRadius: '12px', padding: '16px', marginBottom: '16px', boxShadow: 'var(--sombra-card)' },
   gridDois: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' },
   secaoCard: { background: 'var(--card)', border: '1px solid var(--borda)', borderRadius: '16px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px', boxShadow: 'var(--sombra-card)' },
   secaoCardTopo: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
-  btnVer: { background: 'none', border: 'none', color: 'var(--verde)', fontSize: '0.78rem', cursor: 'pointer', fontFamily: 'Inter, sans-serif', fontWeight: '600' },
+  btnVer: { background: 'none', border: 'none', color: 'var(--verde)', fontSize: '0.78rem', cursor: 'pointer', fontFamily: 'var(--fonte-corpo)', fontWeight: '600' },
   vazioCard: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', padding: '20px 0', color: 'var(--texto-apagado)', fontSize: '0.85rem' },
   linhaTarefa: { display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '8px 0', borderBottom: '1px solid var(--borda)' },
   linhaTarefaPonto: { width: '7px', height: '7px', borderRadius: '50%', background: '#fbbf24', flexShrink: 0, marginTop: '5px' },
@@ -1340,7 +1340,7 @@ const styles = {
     transition: 'box-shadow 0.2s, border-color 0.2s',
   },
   cardIcone: { color: 'var(--texto-apagado)', flexShrink: 0, padding: '10px', background: 'var(--input)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  cardNum: { fontSize: '2rem', fontFamily: 'Inter, sans-serif', fontWeight: '700', color: 'var(--texto)', lineHeight: 1, letterSpacing: '-0.03em' },
+  cardNum: { fontSize: '2rem', fontFamily: 'var(--fonte-corpo)', fontWeight: '700', color: 'var(--texto)', lineHeight: 1, letterSpacing: '-0.03em' },
   cardLabel: { fontSize: '0.78rem', color: 'var(--texto-apagado)', marginTop: '4px', fontWeight: '500' },
   secao: { marginBottom: '32px' },
   secaoTitulo: { fontSize: '0.72rem', fontWeight: '700', color: 'var(--texto-apagado)', textTransform: 'uppercase', letterSpacing: '1.5px', marginBottom: '12px', paddingBottom: '8px', borderBottom: '1px solid var(--borda)' },
@@ -1353,22 +1353,22 @@ const styles = {
   formGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', alignItems: 'end' },
   campo: { display: 'flex', flexDirection: 'column', gap: '6px' },
   label: { fontSize: '0.72rem', fontWeight: '600', color: 'var(--texto-apagado)', textTransform: 'uppercase', letterSpacing: '0.8px' },
-  input: { background: 'var(--input)', border: '1px solid var(--borda)', borderRadius: '10px', padding: '10px 14px', color: 'var(--texto)', fontSize: '0.9rem', width: '100%', fontFamily: 'Inter, sans-serif' },
+  input: { background: 'var(--input)', border: '1px solid var(--borda)', borderRadius: '10px', padding: '10px 14px', color: 'var(--texto)', fontSize: '0.9rem', width: '100%', fontFamily: 'var(--fonte-corpo)' },
   erro: { background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.25)', borderRadius: '8px', padding: '10px 14px', color: '#f87171', fontSize: '0.85rem', marginBottom: '12px' },
-  btnPrimario: { background: 'var(--gradiente-verde)', color: '#fff', border: 'none', borderRadius: '10px', padding: '10px 20px', fontFamily: 'Inter, sans-serif', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer', whiteSpace: 'nowrap', boxShadow: '0 2px 8px rgba(0,177,65,0.3)', transition: 'all 0.15s' },
-  btnVerde: { background: 'var(--verde-glow)', color: 'var(--verde)', border: '1px solid rgba(0,177,65,0.25)', borderRadius: '8px', padding: '6px 14px', fontSize: '0.8rem', cursor: 'pointer', fontFamily: 'Inter, sans-serif', fontWeight: '600' },
-  btnPerigo: { background: 'rgba(248,113,113,0.08)', color: '#f87171', border: '1px solid rgba(248,113,113,0.2)', borderRadius: '8px', padding: '6px 12px', fontSize: '0.8rem', cursor: 'pointer', fontFamily: 'Inter, sans-serif' },
+  btnPrimario: { background: 'var(--gradiente-verde)', color: '#fff', border: 'none', borderRadius: '10px', padding: '10px 20px', fontFamily: 'var(--fonte-corpo)', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer', whiteSpace: 'nowrap', boxShadow: '0 2px 8px rgba(0,177,65,0.3)', transition: 'all 0.15s' },
+  btnVerde: { background: 'var(--verde-glow)', color: 'var(--verde)', border: '1px solid rgba(0,177,65,0.25)', borderRadius: '8px', padding: '6px 14px', fontSize: '0.8rem', cursor: 'pointer', fontFamily: 'var(--fonte-corpo)', fontWeight: '600' },
+  btnPerigo: { background: 'rgba(248,113,113,0.08)', color: '#f87171', border: '1px solid rgba(248,113,113,0.2)', borderRadius: '8px', padding: '6px 12px', fontSize: '0.8rem', cursor: 'pointer', fontFamily: 'var(--fonte-corpo)' },
   tabelaWrapper: { background: 'var(--card)', border: '1px solid var(--borda)', borderRadius: '16px', overflow: 'hidden', boxShadow: 'var(--sombra-card)' },
   linhaTabela: { display: 'flex', alignItems: 'center', gap: '14px', padding: '16px 20px', borderBottom: '1px solid var(--borda)' },
-  avatar: { width: '36px', height: '36px', minWidth: '36px', background: 'var(--gradiente-verde)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Inter, sans-serif', fontWeight: '700', fontSize: '14px', color: '#fff', boxShadow: '0 2px 6px rgba(0,177,65,0.3)' },
+  avatar: { width: '36px', height: '36px', minWidth: '36px', background: 'var(--gradiente-verde)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--fonte-corpo)', fontWeight: '700', fontSize: '14px', color: '#fff', boxShadow: '0 2px 6px rgba(0,177,65,0.3)' },
   nomeFunc: { fontSize: '0.9rem', fontWeight: '600', color: 'var(--texto)', letterSpacing: '-0.01em' },
   emailFunc: { fontSize: '0.8rem', color: 'var(--texto-apagado)' },
   badgeCargo: { fontSize: '0.72rem', color: 'var(--texto-apagado)', background: 'var(--input)', borderRadius: '6px', padding: '3px 9px', whiteSpace: 'nowrap', border: '1px solid var(--borda)' },
   cardTarefa: { background: 'var(--card)', border: '1px solid var(--borda)', borderRadius: '12px', padding: '16px 20px', marginBottom: '8px', display: 'flex', flexDirection: 'column', gap: '10px', boxShadow: 'var(--sombra-card)', transition: 'box-shadow 0.2s' },
   etiqueta: { fontSize: '0.7rem', fontWeight: '600', padding: '3px 8px', borderRadius: '6px', border: '1px solid', whiteSpace: 'nowrap' },
   etiquetasSeletor: { display: 'flex', flexWrap: 'wrap', gap: '6px', width: '100%', padding: '8px', background: 'var(--input)', borderRadius: '8px', marginTop: '4px' },
-  etiquetaOpcao: { fontSize: '0.72rem', fontWeight: '500', padding: '4px 10px', borderRadius: '6px', border: '1px solid', cursor: 'pointer', fontFamily: 'Inter, sans-serif', transition: 'all 0.15s' },
-  btnFecharEtiquetas: { fontSize: '0.72rem', padding: '4px 10px', borderRadius: '6px', border: '1px solid var(--borda)', background: 'none', color: 'var(--texto-apagado)', cursor: 'pointer', fontFamily: 'Inter, sans-serif', marginLeft: 'auto' },
+  etiquetaOpcao: { fontSize: '0.72rem', fontWeight: '500', padding: '4px 10px', borderRadius: '6px', border: '1px solid', cursor: 'pointer', fontFamily: 'var(--fonte-corpo)', transition: 'all 0.15s' },
+  btnFecharEtiquetas: { fontSize: '0.72rem', padding: '4px 10px', borderRadius: '6px', border: '1px solid var(--borda)', background: 'none', color: 'var(--texto-apagado)', cursor: 'pointer', fontFamily: 'var(--fonte-corpo)', marginLeft: 'auto' },
   cardLinhaTopo: { display: 'flex', alignItems: 'center', gap: '16px' },
   cardDescWrapper: { flex: 1, minWidth: 0 },
   cardBotoes: { display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 },
@@ -1376,10 +1376,10 @@ const styles = {
   cardInfoItem: { fontSize: '0.82rem', color: 'var(--texto-apagado)', display: 'flex', alignItems: 'center', gap: '6px' },
   cardInfoSep: { color: 'var(--borda)', fontWeight: '700' },
   tarefaDesc: { fontSize: '0.95rem', color: 'var(--texto)', lineHeight: '1.5', wordBreak: 'break-word', fontWeight: '500' },
-  inputEdicao: { flex: 1, background: 'var(--input)', border: '1px solid var(--verde)', borderRadius: '8px', padding: '8px 12px', color: 'var(--texto)', fontSize: '0.95rem', fontFamily: 'Inter, sans-serif' },
-  btnConcluir: { background: 'var(--verde-glow)', color: 'var(--verde)', border: '1px solid rgba(0,177,65,0.25)', borderRadius: '8px', padding: '6px 14px', fontSize: '0.8rem', cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap', fontWeight: '600' },
+  inputEdicao: { flex: 1, background: 'var(--input)', border: '1px solid var(--verde)', borderRadius: '8px', padding: '8px 12px', color: 'var(--texto)', fontSize: '0.95rem', fontFamily: 'var(--fonte-corpo)' },
+  btnConcluir: { background: 'var(--verde-glow)', color: 'var(--verde)', border: '1px solid rgba(0,177,65,0.25)', borderRadius: '8px', padding: '6px 14px', fontSize: '0.8rem', cursor: 'pointer', fontFamily: 'var(--fonte-corpo)', whiteSpace: 'nowrap', fontWeight: '600' },
   btnMenu: { background: 'var(--input)', border: '1px solid var(--borda)', borderRadius: '8px', padding: '6px 10px', color: 'var(--texto-apagado)', fontSize: '1rem', cursor: 'pointer', letterSpacing: '2px', lineHeight: 1 },
-  btnNeutro: { background: 'none', border: '1px solid var(--borda)', borderRadius: '8px', padding: '6px 12px', color: 'var(--texto-apagado)', fontSize: '0.8rem', cursor: 'pointer', fontFamily: 'Inter, sans-serif' },
+  btnNeutro: { background: 'none', border: '1px solid var(--borda)', borderRadius: '8px', padding: '6px 12px', color: 'var(--texto-apagado)', fontSize: '0.8rem', cursor: 'pointer', fontFamily: 'var(--fonte-corpo)' },
   dropdownMenu: { position: 'absolute', right: 0, top: '36px', background: 'var(--card)', border: '1px solid var(--borda)', borderRadius: '10px', overflow: 'hidden', zIndex: 10, minWidth: '130px', boxShadow: 'var(--sombra-elevada)' },
-  dropdownItem: { display: 'block', width: '100%', padding: '10px 16px', background: 'none', border: 'none', color: 'var(--texto)', fontSize: '0.85rem', cursor: 'pointer', textAlign: 'left', fontFamily: 'Inter, sans-serif', transition: 'background 0.1s' },
+  dropdownItem: { display: 'block', width: '100%', padding: '10px 16px', background: 'none', border: 'none', color: 'var(--texto)', fontSize: '0.85rem', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--fonte-corpo)', transition: 'background 0.1s' },
 }

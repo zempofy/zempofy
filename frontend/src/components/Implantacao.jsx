@@ -31,7 +31,7 @@ function Balao({ alvo, titulo, texto, passo, total, onProximo, onFechar, posicao
       </svg>
       <div style={{position:'absolute',left:coords.left-8,top:coords.top-8,width:coords.width+16,height:coords.height+16,borderRadius:'10px',animation:'zp 2s ease-in-out infinite'}}/>
     </div>
-    <div style={{position:'fixed',top,left,width:'320px',background:'var(--input)',border:'1px solid rgba(0,177,65,0.35)',borderRadius:'14px',padding:'18px 20px',boxShadow:'0 12px 40px rgba(0,0,0,0.6)',zIndex:9999,fontFamily:'Inter,sans-serif'}}>
+    <div style={{position:'fixed',top,left,width:'320px',background:'var(--input)',border:'1px solid rgba(0,177,65,0.35)',borderRadius:'14px',padding:'18px 20px',boxShadow:'0 12px 40px rgba(0,0,0,0.6)',zIndex:9999,fontFamily:'var(--fonte-corpo)'}}>
       <div style={{position:'absolute',width:0,height:0,...arrowStyle}}/>
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'10px'}}>
         <div style={{display:'flex',alignItems:'center',gap:'8px'}}><span style={{fontSize:'14px'}}>💡</span><span style={{fontSize:'0.7rem',fontWeight:'700',color:'var(--verde)',textTransform:'uppercase',letterSpacing:'1px'}}>Passo {passo+1} de {total}</span></div>
@@ -41,7 +41,7 @@ function Balao({ alvo, titulo, texto, passo, total, onProximo, onFechar, posicao
       <p style={{fontSize:'0.82rem',color:'rgba(255,255,255,0.55)',margin:0,lineHeight:'1.5'}}>{texto}</p>
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginTop:'16px'}}>
         <div style={{display:'flex',gap:'5px'}}>{Array.from({length:total}).map((_,i)=><div key={i} style={{width:i===passo?'16px':'6px',height:'6px',borderRadius:'99px',background:i===passo?'var(--verde)':'rgba(255,255,255,0.15)',transition:'all 0.2s'}}/>)}</div>
-        <button onClick={onProximo} style={{background:'var(--gradiente-verde)',color:'#fff',border:'none',borderRadius:'8px',padding:'7px 16px',fontSize:'0.82rem',fontWeight:'600',cursor:'pointer',fontFamily:'Inter,sans-serif'}}>{passo===total-1?'Concluir ✓':'Próximo →'}</button>
+        <button onClick={onProximo} style={{background:'var(--gradiente-verde)',color:'#fff',border:'none',borderRadius:'8px',padding:'7px 16px',fontSize:'0.82rem',fontWeight:'600',cursor:'pointer',fontFamily:'var(--fonte-corpo)'}}>{passo===total-1?'Concluir ✓':'Próximo →'}</button>
       </div>
     </div>
   </>, document.body)
@@ -118,15 +118,15 @@ function DetalheImplantacao({ implantacao: inicial, voltar, onAtualizado, setPag
           <div style={{ background: 'var(--card)', border: '1px solid var(--borda)', borderRadius: '18px', width: '100%', maxWidth: '400px', margin: '0 16px', boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }}
             onClick={e => e.stopPropagation()}>
             <div style={{ padding: '24px' }}>
-              <p style={{ fontWeight: '700', fontSize: '1rem', color: 'var(--texto)', marginBottom: '10px', fontFamily: 'Inter, sans-serif' }}>Excluir onboarding</p>
+              <p style={{ fontWeight: '700', fontSize: '1rem', color: 'var(--texto)', marginBottom: '10px', fontFamily: 'var(--fonte-corpo)' }}>Excluir onboarding</p>
               <p style={{ fontSize: '0.875rem', color: 'var(--texto-apagado)', lineHeight: '1.6', margin: 0 }}>
                 Tem certeza que deseja excluir o onboarding de <strong style={{ color: 'var(--texto)' }}>{implantacao.nomeCliente}</strong>? Todas as tarefas geradas também serão removidas. Essa ação não pode ser desfeita.
               </p>
             </div>
             <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', padding: '14px 24px', borderTop: '1px solid var(--borda)' }}>
-              <button style={{ background: 'none', border: '1px solid var(--borda)', borderRadius: '8px', color: 'var(--texto-apagado)', padding: '9px 18px', fontFamily: 'Inter, sans-serif', fontSize: '0.875rem', cursor: 'pointer' }}
+              <button style={{ background: 'none', border: '1px solid var(--borda)', borderRadius: '8px', color: 'var(--texto-apagado)', padding: '9px 18px', fontFamily: 'var(--fonte-corpo)', fontSize: '0.875rem', cursor: 'pointer' }}
                 onClick={() => setConfirmandoExcluir(false)}>Cancelar</button>
-              <button style={{ background: 'rgba(248,113,113,0.15)', border: '1px solid rgba(248,113,113,0.3)', borderRadius: '8px', color: '#f87171', padding: '9px 18px', fontFamily: 'Inter, sans-serif', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer' }}
+              <button style={{ background: 'rgba(248,113,113,0.15)', border: '1px solid rgba(248,113,113,0.3)', borderRadius: '8px', color: '#f87171', padding: '9px 18px', fontFamily: 'var(--fonte-corpo)', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer' }}
                 onClick={excluir}>Sim, excluir</button>
             </div>
           </div>
@@ -150,7 +150,7 @@ function DetalheImplantacao({ implantacao: inicial, voltar, onAtualizado, setPag
         <div style={{ display:'flex', gap:'8px' }}>
           {implantacao.cnpj && setPagina && (
             <button
-              style={{ background:'none', border:'1px solid var(--borda)', borderRadius:'10px', color:'var(--texto-apagado)', padding:'9px 18px', fontFamily:'Inter, sans-serif', fontWeight:'500', fontSize:'0.85rem', cursor:'pointer', display:'flex', alignItems:'center', gap:'6px' }}
+              style={{ background:'none', border:'1px solid var(--borda)', borderRadius:'10px', color:'var(--texto-apagado)', padding:'9px 18px', fontFamily:'var(--fonte-corpo)', fontWeight:'500', fontSize:'0.85rem', cursor:'pointer', display:'flex', alignItems:'center', gap:'6px' }}
               onClick={async () => {
                 try {
                   const cnpjLimpo = implantacao.cnpj.replace(/[^0-9]/g,'')
@@ -169,7 +169,7 @@ function DetalheImplantacao({ implantacao: inicial, voltar, onAtualizado, setPag
             </button>
           )}
           <button
-            style={{ background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.25)', borderRadius: '10px', color: '#f87171', padding: '9px 18px', fontFamily: 'Inter, sans-serif', fontWeight: '600', fontSize: '0.85rem', cursor: 'pointer' }}
+            style={{ background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.25)', borderRadius: '10px', color: '#f87171', padding: '9px 18px', fontFamily: 'var(--fonte-corpo)', fontWeight: '600', fontSize: '0.85rem', cursor: 'pointer' }}
             onClick={() => setConfirmandoExcluir(true)}
           >
             Excluir onboarding
@@ -230,7 +230,7 @@ function DetalheImplantacao({ implantacao: inicial, voltar, onAtualizado, setPag
                     }}>
                       {concluida
                         ? <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="1.5 6 4.5 9 10.5 3"/></svg>
-                        : <span style={{ fontSize: '11px', fontWeight: '700', fontFamily: 'Inter, sans-serif' }}>{idx + 1}</span>
+                        : <span style={{ fontSize: '11px', fontWeight: '700', fontFamily: 'var(--fonte-corpo)' }}>{idx + 1}</span>
                       }
                     </div>
 
@@ -287,11 +287,11 @@ function DetalheImplantacao({ implantacao: inicial, voltar, onAtualizado, setPag
             </div>
 
             {etapaExibida.status === 'bloqueada' ? (
-              <p style={{ color: 'var(--texto-apagado)', fontSize: '0.85rem', fontFamily: 'Inter, sans-serif' }}>
+              <p style={{ color: 'var(--texto-apagado)', fontSize: '0.85rem', fontFamily: 'var(--fonte-corpo)' }}>
                 Esta etapa será liberada quando a anterior for concluída.
               </p>
             ) : etapaExibida.tarefas.length === 0 ? (
-              <p style={{ color: 'var(--texto-apagado)', fontSize: '0.85rem', fontFamily: 'Inter, sans-serif' }}>Nenhuma atividade nesta etapa.</p>
+              <p style={{ color: 'var(--texto-apagado)', fontSize: '0.85rem', fontFamily: 'var(--fonte-corpo)' }}>Nenhuma atividade nesta etapa.</p>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 {etapaExibida.tarefas.map(tarefaEtapa => {
@@ -541,7 +541,7 @@ export default function Implantacao({ setPagina, setClienteDetalheId, nomeNovoOn
       <div style={s.header}>
         <h1 style={s.titulo}>Onboarding</h1>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-          <button style={{ background: 'none', border: '1px solid var(--borda)', borderRadius: '10px', padding: '10px 16px', fontFamily: 'Inter, sans-serif', fontWeight: '500', fontSize: '0.82rem', cursor: 'pointer', color: 'var(--texto-apagado)', whiteSpace: 'nowrap' }} onClick={iniciarTour}>
+          <button style={{ background: 'none', border: '1px solid var(--borda)', borderRadius: '10px', padding: '10px 16px', fontFamily: 'var(--fonte-corpo)', fontWeight: '500', fontSize: '0.82rem', cursor: 'pointer', color: 'var(--texto-apagado)', whiteSpace: 'nowrap' }} onClick={iniciarTour}>
             💡 Tutorial
           </button>
           <button ref={refBtnNovo} style={s.btnNovo} onClick={() => setModalAberto(true)}>+ Iniciar onboarding</button>
@@ -609,7 +609,7 @@ export default function Implantacao({ setPagina, setClienteDetalheId, nomeNovoOn
                 )}
                 <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginTop:'10px', marginBottom:'4px' }}>
                   <p style={{ ...s.labelMini, margin:0 }}>Progresso</p>
-                  <span style={{ fontSize:'0.75rem', fontWeight:'700', color: pct >= 70 ? 'var(--verde)' : pct >= 30 ? '#f59e0b' : '#f87171', fontFamily:'Inter,sans-serif' }}>{pct}%</span>
+                  <span style={{ fontSize:'0.75rem', fontWeight:'700', color: pct >= 70 ? 'var(--verde)' : pct >= 30 ? '#f59e0b' : '#f87171', fontFamily:'var(--fonte-corpo)' }}>{pct}%</span>
                 </div>
                 <div style={s.baraBg}>
                   <div style={{ ...s.baraFill, width: `${pct}%` }} />
@@ -634,7 +634,7 @@ export default function Implantacao({ setPagina, setClienteDetalheId, nomeNovoOn
               style={{ display:'flex', alignItems:'center', gap:'10px', width:'100%', background:'none', border:'none', cursor:'pointer', padding:'0 0 12px' }}
             >
               <div style={{ flex:1, height:'1px', background:'var(--borda)' }}/>
-              <span style={{ display:'flex', alignItems:'center', gap:'6px', fontSize:'0.75rem', fontWeight:'600', color:'var(--texto-apagado)', fontFamily:'Inter,sans-serif', whiteSpace:'nowrap', padding:'0 4px' }}>
+              <span style={{ display:'flex', alignItems:'center', gap:'6px', fontSize:'0.75rem', fontWeight:'600', color:'var(--texto-apagado)', fontFamily:'var(--fonte-corpo)', whiteSpace:'nowrap', padding:'0 4px' }}>
                 <Icone.CheckCircle size={13} style={{ color:'var(--verde)' }}/>
                 Concluídos ({concluidas.length})
                 <span style={{ fontSize:'10px', transition:'transform 0.2s', display:'inline-block', transform: concluídosAbertos ? 'rotate(90deg)' : 'rotate(0deg)' }}>▶</span>
@@ -660,7 +660,7 @@ export default function Implantacao({ setPagina, setClienteDetalheId, nomeNovoOn
                       </span>
                       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginTop:'10px', marginBottom:'4px' }}>
                         <p style={{ ...s.labelMini, margin:0 }}>Progresso</p>
-                        <span style={{ fontSize:'0.75rem', fontWeight:'700', color:'var(--verde)', fontFamily:'Inter,sans-serif' }}>100%</span>
+                        <span style={{ fontSize:'0.75rem', fontWeight:'700', color:'var(--verde)', fontFamily:'var(--fonte-corpo)' }}>100%</span>
                       </div>
                       <div style={s.baraBg}><div style={{ ...s.baraFill, width:'100%' }} /></div>
                     </div>
@@ -686,18 +686,18 @@ export default function Implantacao({ setPagina, setClienteDetalheId, nomeNovoOn
 
 const s = {
   header: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' },
-  titulo: { fontSize: '1.4rem', fontWeight: '700', color: 'var(--texto)', margin: 0, fontFamily: 'Inter, sans-serif' },
-  subtitulo: { fontSize: '0.82rem', color: 'var(--texto-apagado)', marginTop: '4px', fontFamily: 'Inter, sans-serif' },
+  titulo: { fontSize: '1.4rem', fontWeight: '700', color: 'var(--texto)', margin: 0, fontFamily: 'var(--fonte-corpo)' },
+  subtitulo: { fontSize: '0.82rem', color: 'var(--texto-apagado)', marginTop: '4px', fontFamily: 'var(--fonte-corpo)' },
   btnNovo: {
     background: 'linear-gradient(135deg, var(--verde), var(--verde-escuro))',
     color: '#fff', border: 'none', borderRadius: '10px',
-    padding: '10px 20px', fontFamily: 'Inter, sans-serif',
+    padding: '10px 20px', fontFamily: 'var(--fonte-corpo)',
     fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer'
   },
   input: {
     background: 'var(--input)', border: '1px solid var(--borda)', borderRadius: '10px',
     padding: '10px 14px', color: 'var(--texto)', fontSize: '0.9rem',
-    fontFamily: 'Inter, sans-serif', width: '100%', boxSizing: 'border-box'
+    fontFamily: 'var(--fonte-corpo)', width: '100%', boxSizing: 'border-box'
   },
   grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '12px' },
   card: {
@@ -718,19 +718,19 @@ const s = {
     width: '36px', height: '36px', borderRadius: '50%',
     background: 'rgba(34,197,94,0.15)', color: 'var(--verde)',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
-    fontSize: '13px', fontWeight: '700', flexShrink: 0, fontFamily: 'Inter, sans-serif'
+    fontSize: '13px', fontWeight: '700', flexShrink: 0, fontFamily: 'var(--fonte-corpo)'
   },
-  cardNome: { fontSize: '0.875rem', fontWeight: '600', color: 'var(--texto)', margin: 0, fontFamily: 'Inter, sans-serif' },
-  cardCnpj: { fontSize: '0.75rem', color: 'var(--texto-apagado)', margin: '2px 0 0', fontFamily: 'Inter, sans-serif' },
+  cardNome: { fontSize: '0.875rem', fontWeight: '600', color: 'var(--texto)', margin: 0, fontFamily: 'var(--fonte-corpo)' },
+  cardCnpj: { fontSize: '0.75rem', color: 'var(--texto-apagado)', margin: '2px 0 0', fontFamily: 'var(--fonte-corpo)' },
   divisor: { border: 'none', borderTop: '1px solid var(--borda)', margin: '10px 0' },
-  labelMini: { fontSize: '0.7rem', color: 'var(--texto-apagado)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 5px', fontFamily: 'Inter, sans-serif' },
-  etapaBadge: { display: 'inline-block', fontSize: '0.78rem', fontWeight: '500', padding: '3px 10px', borderRadius: '99px', fontFamily: 'Inter, sans-serif' },
+  labelMini: { fontSize: '0.7rem', color: 'var(--texto-apagado)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 5px', fontFamily: 'var(--fonte-corpo)' },
+  etapaBadge: { display: 'inline-block', fontSize: '0.78rem', fontWeight: '500', padding: '3px 10px', borderRadius: '99px', fontFamily: 'var(--fonte-corpo)' },
   baraBg: { height: '5px', background: 'var(--borda)', borderRadius: '99px', overflow: 'hidden' },
   baraFill: { height: '100%', background: '#2DAA59', borderRadius: '99px', transition: 'width 0.3s' },
   // Detalhe — mapa mental
   btnVoltar: {
     background: 'none', border: 'none', color: 'var(--texto-apagado)',
-    cursor: 'pointer', fontSize: '0.875rem', fontFamily: 'Inter, sans-serif',
+    cursor: 'pointer', fontSize: '0.875rem', fontFamily: 'var(--fonte-corpo)',
     marginBottom: '20px', padding: 0
   },
   mapaCard: {
@@ -741,10 +741,10 @@ const s = {
     display: 'flex', alignItems: 'center', gap: '12px',
     padding: '14px 20px', borderBottom: '1px solid var(--borda)'
   },
-  mapaProgLabel: { fontSize: '0.78rem', color: 'var(--texto-apagado)', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' },
+  mapaProgLabel: { fontSize: '0.78rem', color: 'var(--texto-apagado)', fontFamily: 'var(--fonte-corpo)', whiteSpace: 'nowrap' },
   mapaBaraBg: { flex: 1, height: '4px', background: 'var(--borda)', borderRadius: '99px', overflow: 'hidden' },
   mapaBaraFill: { height: '100%', background: '#2DAA59', borderRadius: '99px', transition: 'width 0.4s' },
-  mapaProgPct: { fontSize: '0.78rem', color: 'var(--verde)', fontFamily: 'Inter, sans-serif', fontWeight: '600', whiteSpace: 'nowrap' },
+  mapaProgPct: { fontSize: '0.78rem', color: 'var(--verde)', fontFamily: 'var(--fonte-corpo)', fontWeight: '600', whiteSpace: 'nowrap' },
   mapaScroll: {
     overflowX: 'auto', cursor: 'grab',
     padding: '28px 32px 8px',
@@ -764,25 +764,25 @@ const s = {
   },
   setorNome: {
     fontSize: '0.78rem', textAlign: 'center', lineHeight: '1.3',
-    fontFamily: 'Inter, sans-serif', transition: 'color 0.2s'
+    fontFamily: 'var(--fonte-corpo)', transition: 'color 0.2s'
   },
   setorCount: {
     fontSize: '0.65rem', padding: '2px 8px', borderRadius: '99px',
-    fontFamily: 'Inter, sans-serif', fontWeight: '500'
+    fontFamily: 'var(--fonte-corpo)', fontWeight: '500'
   },
   conector: { width: '48px', height: '2px', flexShrink: 0, transition: 'background 0.3s' },
   mapaHint: {
     fontSize: '0.7rem', color: 'var(--texto-apagado)',
     textAlign: 'center', padding: '8px 0 16px',
-    fontFamily: 'Inter, sans-serif'
+    fontFamily: 'var(--fonte-corpo)'
   },
   painel: {
     borderTop: '1px solid var(--borda)',
     padding: '20px 24px',
   },
   painelHeader: { display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' },
-  painelTitulo: { fontSize: '0.95rem', fontWeight: '600', color: 'var(--texto)', fontFamily: 'Inter, sans-serif' },
-  badgeBloqueado: { fontSize: '0.72rem', color: 'var(--texto-apagado)', background: 'var(--input)', padding: '3px 10px', borderRadius: '99px', border: '1px solid var(--borda)', marginLeft: 'auto', fontFamily: 'Inter, sans-serif' },
+  painelTitulo: { fontSize: '0.95rem', fontWeight: '600', color: 'var(--texto)', fontFamily: 'var(--fonte-corpo)' },
+  badgeBloqueado: { fontSize: '0.72rem', color: 'var(--texto-apagado)', background: 'var(--input)', padding: '3px 10px', borderRadius: '99px', border: '1px solid var(--borda)', marginLeft: 'auto', fontFamily: 'var(--fonte-corpo)' },
   tarefaItem: {
     display: 'flex', alignItems: 'center', gap: '10px',
     background: 'var(--input)', border: '1px solid var(--borda)',
@@ -794,21 +794,21 @@ const s = {
     display: 'flex', alignItems: 'center', justifyContent: 'center',
     transition: 'all 0.15s'
   },
-  tarefaTexto: { fontSize: '0.875rem', flex: 1, fontFamily: 'Inter, sans-serif', transition: 'all 0.15s' },
-  tarefaResp: { fontSize: '0.72rem', color: 'var(--texto-apagado)', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' },
+  tarefaTexto: { fontSize: '0.875rem', flex: 1, fontFamily: 'var(--fonte-corpo)', transition: 'all 0.15s' },
+  tarefaResp: { fontSize: '0.72rem', color: 'var(--texto-apagado)', fontFamily: 'var(--fonte-corpo)', whiteSpace: 'nowrap' },
   vazio: { color: 'var(--texto-apagado)', fontSize: '0.9rem', textAlign: 'center', marginTop: '40px' },
   vazioBox: { textAlign: 'center', marginTop: '60px' },
   // Modal
   overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' },
   modal: { background: 'var(--sidebar)', border: '1px solid var(--borda)', borderRadius: '20px', width: '100%', maxWidth: '440px', boxShadow: '0 24px 64px rgba(0,0,0,0.6)' },
   modalTopo: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px', borderBottom: '1px solid var(--borda)' },
-  modalTitulo: { fontWeight: '700', fontSize: '1rem', color: 'var(--texto)', fontFamily: 'Inter, sans-serif' },
+  modalTitulo: { fontWeight: '700', fontSize: '1rem', color: 'var(--texto)', fontFamily: 'var(--fonte-corpo)' },
   btnX: { background: 'none', border: '1px solid var(--borda)', borderRadius: '6px', color: 'var(--texto-apagado)', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', cursor: 'pointer' },
   modalCorpo: { padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' },
   modalRodape: { display: 'flex', gap: '12px', justifyContent: 'flex-end', padding: '16px 24px', borderTop: '1px solid var(--borda)' },
   campo: { display: 'flex', flexDirection: 'column', gap: '8px' },
-  label: { fontSize: '0.7rem', fontWeight: '600', color: 'var(--texto-apagado)', textTransform: 'uppercase', letterSpacing: '1px', fontFamily: 'Inter, sans-serif' },
-  btnCancelar: { background: 'none', border: '1px solid var(--borda)', borderRadius: '10px', color: 'var(--texto-apagado)', padding: '10px 20px', fontFamily: 'Inter, sans-serif', fontWeight: '500', fontSize: '0.875rem', cursor: 'pointer' },
-  btnSalvar: { background: 'linear-gradient(135deg, var(--verde), var(--verde-escuro))', color: '#fff', border: 'none', borderRadius: '10px', padding: '10px 20px', fontFamily: 'Inter, sans-serif', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer' },
+  label: { fontSize: '0.7rem', fontWeight: '600', color: 'var(--texto-apagado)', textTransform: 'uppercase', letterSpacing: '1px', fontFamily: 'var(--fonte-corpo)' },
+  btnCancelar: { background: 'none', border: '1px solid var(--borda)', borderRadius: '10px', color: 'var(--texto-apagado)', padding: '10px 20px', fontFamily: 'var(--fonte-corpo)', fontWeight: '500', fontSize: '0.875rem', cursor: 'pointer' },
+  btnSalvar: { background: 'linear-gradient(135deg, var(--verde), var(--verde-escuro))', color: '#fff', border: 'none', borderRadius: '10px', padding: '10px 20px', fontFamily: 'var(--fonte-corpo)', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer' },
   erro: { color: '#FCA5A5', fontSize: '0.8rem', background: 'rgba(239,68,68,0.1)', padding: '8px 12px', borderRadius: '8px' },
 }

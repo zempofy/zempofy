@@ -60,7 +60,7 @@ function BannerVerificacao() {
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
         <span style={{ fontSize: '15px' }}>⚠️</span>
-        <span style={{ fontSize: '0.82rem', color: '#FCD34D', fontFamily: 'Inter, sans-serif' }}>
+        <span style={{ fontSize: '0.82rem', color: '#FCD34D', fontFamily: 'var(--fonte-corpo)' }}>
           Seu e-mail ainda não foi verificado. Verifique sua caixa de entrada.
         </span>
       </div>
@@ -68,7 +68,7 @@ function BannerVerificacao() {
         <button
           onClick={reenviar}
           disabled={enviando}
-          style={{ background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '8px', color: '#FCD34D', padding: '5px 14px', fontSize: '0.75rem', cursor: 'pointer', fontFamily: 'Inter, sans-serif', fontWeight: '600', whiteSpace: 'nowrap' }}
+          style={{ background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '8px', color: '#FCD34D', padding: '5px 14px', fontSize: '0.75rem', cursor: 'pointer', fontFamily: 'var(--fonte-corpo)', fontWeight: '600', whiteSpace: 'nowrap' }}
         >
           {enviando ? 'Enviando...' : 'Reenviar e-mail'}
         </button>
@@ -103,7 +103,7 @@ function BannerAmbienteTeste() {
       marginBottom: '8px',
     }}>
       <Icone.AlertTriangle size={15} style={{ color: '#D97706', flexShrink: 0 }} />
-      <span style={{ fontSize: '0.82rem', color: '#D97706', fontFamily: 'Inter, sans-serif', fontWeight: '600' }}>
+      <span style={{ fontSize: '0.82rem', color: '#D97706', fontFamily: 'var(--fonte-corpo)', fontWeight: '600' }}>
         Ambiente de teste — conectado ao banco de desenvolvimento
       </span>
     </div>
@@ -210,7 +210,7 @@ function NavItens({ menuItens, paginaAtual, setPagina, sidebarAberta, onItemClic
             onClick={() => { setPagina(item.id); if (onItemClick) onItemClick() }}
             title={!sidebarAberta ? item.label : ''}
           >
-            <span style={{ ...styles.navIcone, position: 'relative' }}>
+            <span style={{ ...styles.navIcone, position: 'relative', opacity: paginaAtual === item.id ? 1 : 0.75 }}>
               {item.icone}
               {item.badgeCount > 0 && <span style={styles.navIconeBadge}>{item.badgeCount > 9 ? '9+' : item.badgeCount}</span>}
             </span>
@@ -317,6 +317,11 @@ export default function Layout({ children, menuItens, paginaAtual, setPagina }) 
         .topbar-btn:hover {
           background: rgba(var(--sobreposicao-rgb),0.08) !important;
         }
+        .btn-toggle-flutuante:hover {
+          background: var(--card) !important;
+          color: rgba(var(--sobreposicao-rgb),0.9) !important;
+          border-color: rgba(var(--sobreposicao-rgb),0.2) !important;
+        }
         .painel-item:hover {
           background: rgba(var(--sobreposicao-rgb),0.05) !important;
         }
@@ -327,14 +332,6 @@ export default function Layout({ children, menuItens, paginaAtual, setPagina }) 
       <header style={styles.topbar} data-tema="escuro">
         {/* Logo + toggle */}
         <div style={styles.topbarEsquerda}>
-          <button
-            className="topbar-btn"
-            style={{ ...styles.btnTopbar, marginRight: '4px', flexShrink: 0 }}
-            onClick={() => setSidebarAberta(!sidebarAberta)}
-            title={sidebarAberta ? 'Recolher menu' : 'Expandir menu'}
-          >
-            <IconeRecolher aberta={sidebarAberta} />
-          </button>
           <button style={styles.logoBtn} onClick={() => setPagina('inicio')} title="Ir para início">
             {/* Topbar é travada no tema escuro (ver data-tema no <header>), então a logo é sempre a versão clara */}
             <img src="/logo.svg" alt="Zempofy" style={{ height: '36px', width: 'auto' }} />
@@ -346,7 +343,7 @@ export default function Layout({ children, menuItens, paginaAtual, setPagina }) 
           <div style={{ display:'flex', alignItems:'center', gap:'8px', background:'rgba(var(--sobreposicao-rgb),0.06)', border:'1px solid rgba(var(--sobreposicao-rgb),0.1)', borderRadius:'8px', padding:'6px 12px' }}>
             <Icone.Search size={13} style={{ color:'rgba(var(--sobreposicao-rgb),0.4)', flexShrink:0 }}/>
             <input
-              style={{ background:'none', border:'none', outline:'none', color:'rgba(var(--sobreposicao-rgb),0.8)', fontSize:'0.82rem', fontFamily:'Inter,sans-serif', width:'100%' }}
+              style={{ background:'none', border:'none', outline:'none', color:'rgba(var(--sobreposicao-rgb),0.8)', fontSize:'0.82rem', fontFamily:'var(--fonte-corpo)', width:'100%' }}
               placeholder="Buscar clientes, onboardings..."
               value={buscaGlobal}
               onChange={e=>{ setBuscaGlobal(e.target.value); buscarGlobal(e.target.value) }}
@@ -366,8 +363,8 @@ export default function Layout({ children, menuItens, paginaAtual, setPagina }) 
                     {r.tipo==='cliente' ? <Icone.Users size={13}/> : <Icone.ClipboardList size={13}/>}
                   </span>
                   <div>
-                    <p style={{ fontSize:'0.82rem', fontWeight:'600', color:'var(--texto)', margin:0, fontFamily:'Inter,sans-serif' }}>{r.label}</p>
-                    <p style={{ fontSize:'0.68rem', color:'rgba(var(--sobreposicao-rgb),0.4)', margin:0, fontFamily:'Inter,sans-serif' }}>{r.sub}</p>
+                    <p style={{ fontSize:'0.82rem', fontWeight:'600', color:'var(--texto)', margin:0, fontFamily:'var(--fonte-corpo)' }}>{r.label}</p>
+                    <p style={{ fontSize:'0.68rem', color:'rgba(var(--sobreposicao-rgb),0.4)', margin:0, fontFamily:'var(--fonte-corpo)' }}>{r.sub}</p>
                   </div>
                 </button>
               ))}
@@ -386,7 +383,7 @@ export default function Layout({ children, menuItens, paginaAtual, setPagina }) 
           >
             <IconeFeed />
             {novasNotifs > 0 && (
-              <span style={{ position:'absolute', top:'-2px', right:'-2px', background:'#f87171', color:'#fff', fontSize:'9px', fontWeight:'700', borderRadius:'99px', minWidth:'16px', height:'16px', display:'flex', alignItems:'center', justifyContent:'center', padding:'0 3px', fontFamily:'Inter,sans-serif' }}>
+              <span style={{ position:'absolute', top:'-2px', right:'-2px', background:'#f87171', color:'#fff', fontSize:'9px', fontWeight:'700', borderRadius:'99px', minWidth:'16px', height:'16px', display:'flex', alignItems:'center', justifyContent:'center', padding:'0 3px', fontFamily:'var(--fonte-corpo)' }}>
                 {novasNotifs > 9 ? '9+' : novasNotifs}
               </span>
             )}
@@ -405,40 +402,85 @@ export default function Layout({ children, menuItens, paginaAtual, setPagina }) 
             )}
           </button>
 
-          <div style={styles.topbarSep} />
+        </div>
+      </header>
 
-          {/* Avatar compacto com dropdown */}
+      {/* ===== SIDEBAR ===== */}
+      <aside style={{
+        ...styles.sidebar,
+        width: sidebarAberta ? SIDEBAR_LARGURA : SIDEBAR_FECHADA,
+        top: TOPBAR_ALTURA,
+      }}>
+
+        {/* Setinha flutuante — metade dentro, metade fora, na altura do primeiro item (Início) */}
+        <button
+          className="btn-toggle-flutuante"
+          style={styles.btnToggleFlutuante}
+          onClick={() => setSidebarAberta(!sidebarAberta)}
+          title={sidebarAberta ? 'Recolher menu' : 'Expandir menu'}
+        >
+          <IconeRecolher aberta={sidebarAberta} />
+        </button>
+
+        <nav style={styles.nav}>
+          <NavItens
+            menuItens={menuItens}
+            paginaAtual={paginaAtual}
+            setPagina={setPagina}
+            sidebarAberta={sidebarAberta}
+          />
+        </nav>
+
+        {/* Rodapé fixo da sidebar — Configurações + perfil, sempre embaixo independente do tamanho do menu */}
+        <div style={styles.rodapeSidebar}>
+          <button
+            className="nav-btn"
+            style={{
+              ...styles.navBtn,
+              justifyContent: sidebarAberta ? 'flex-start' : 'center',
+            }}
+            onClick={() => { setCategoriaConfigInicial(null); setModalConfig(true) }}
+            title="Configurações"
+          >
+            <span style={styles.navIcone}><Icone.Settings size={18} /></span>
+            {sidebarAberta && <span style={styles.navLabel}>Configurações</span>}
+          </button>
+
+          {/* Perfil compacto com dropdown — substitui o antigo avatar da topbar */}
           <div style={{ position: 'relative' }} ref={avatarMenuRef}>
-            <button style={styles.avatarBtn} onClick={() => setPainelAberto(v => !v)} title="Minha conta">
-              <Avatar nome={usuario?.nome} foto={usuario?.avatar} size={30} fontSize={13} />
-              <div style={styles.avatarInfo}>
-                <span style={styles.avatarNome}>{usuario?.nome}</span>
-                <span style={styles.avatarCargo}>{usuario?.cargo === 'admin' ? 'Titular' : 'Colaborador'}</span>
-              </div>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(var(--sobreposicao-rgb),0.5)" strokeWidth="2" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+            <button
+              className="nav-btn"
+              style={{ ...styles.rodapePerfilBtn, justifyContent: sidebarAberta ? 'flex-start' : 'center' }}
+              onClick={() => setPainelAberto(v => !v)}
+              title="Minha conta"
+            >
+              <Avatar nome={usuario?.nome} foto={usuario?.avatar} size={28} fontSize={11} />
+              {sidebarAberta && (
+                <>
+                  <div style={styles.rodapePerfilInfo}>
+                    <span style={styles.rodapePerfilNome}>{usuario?.nome}</span>
+                    <span style={styles.rodapePerfilCargo}>{usuario?.cargo === 'admin' ? 'Titular' : 'Colaborador'}</span>
+                  </div>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(var(--sobreposicao-rgb),0.4)" strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0 }}><polyline points="9 18 15 12 9 6"/></svg>
+                </>
+              )}
             </button>
 
-            {/* Dropdown simples — só nome e sair. Fecha via listener de clique fora (avatarMenuRef),
-                não por overlay: um overlay portado pro body ficava acima da topbar inteira (zIndex 199 >
-                zIndex:100 da topbar) e interceptava clique nos próprios botões do dropdown, inclusive o Sair. */}
+            {/* Mesmo dropdown de antes (nome, empresa, setores, sair) — só que agora abre pra cima,
+                já que o gatilho ficou no rodapé da tela. Fecha via clique fora (avatarMenuRef). */}
             {painelAberto && (
-                <div style={{
-                  position: 'absolute', top: 'calc(100% + 8px)', right: 0,
-                  background: 'var(--card)', border: '1px solid var(--borda)', borderRadius: '12px',
-                  minWidth: '200px', boxShadow: '0 12px 32px rgba(0,0,0,0.5)', zIndex: 200,
-                  overflow: 'hidden',
-                }}>
+                <div style={styles.rodapeDropdown}>
                   <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--borda)' }}>
                     {usuario?.empresa?.nome && (
-                      <p style={{ fontSize: '0.65rem', fontWeight: '700', color: 'rgba(var(--sobreposicao-rgb),0.35)', margin: '0 0 6px', fontFamily: 'Inter, sans-serif', textTransform: 'uppercase', letterSpacing: '0.8px' }}>{usuario.empresa.nome}</p>
+                      <p style={{ fontSize: '0.65rem', fontWeight: '700', color: 'rgba(var(--sobreposicao-rgb),0.35)', margin: '0 0 6px', fontFamily: 'var(--fonte-corpo)', textTransform: 'uppercase', letterSpacing: '0.8px' }}>{usuario.empresa.nome}</p>
                     )}
-                    <p style={{ fontSize: '0.9rem', fontWeight: '600', color: 'var(--texto)', margin: 0, fontFamily: 'Inter, sans-serif' }}>{usuario?.nome}</p>
-                    <p style={{ fontSize: '0.72rem', color: 'rgba(var(--sobreposicao-rgb),0.4)', margin: '2px 0 0', fontFamily: 'Inter, sans-serif' }}>{usuario?.cargo === 'admin' ? 'Titular' : 'Colaborador'}</p>
-                    <p style={{ fontSize: '0.65rem', color: 'rgba(var(--sobreposicao-rgb),0.2)', margin: '6px 0 0', fontFamily: 'Inter, sans-serif', letterSpacing: '0.3px' }}>ID #{usuario?.id?.slice(-8).toUpperCase() || '--------'}</p>
+                    <p style={{ fontSize: '0.9rem', fontWeight: '600', color: 'var(--texto)', margin: 0, fontFamily: 'var(--fonte-corpo)' }}>{usuario?.nome}</p>
+                    <p style={{ fontSize: '0.72rem', color: 'rgba(var(--sobreposicao-rgb),0.4)', margin: '2px 0 0', fontFamily: 'var(--fonte-corpo)' }}>{usuario?.cargo === 'admin' ? 'Titular' : 'Colaborador'}</p>
+                    <p style={{ fontSize: '0.65rem', color: 'rgba(var(--sobreposicao-rgb),0.2)', margin: '6px 0 0', fontFamily: 'var(--fonte-corpo)', letterSpacing: '0.3px' }}>ID #{usuario?.id?.slice(-8).toUpperCase() || '--------'}</p>
                   </div>
                   {usuario?.setores?.length > 0 && (
                     <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--borda)' }}>
-                      <p style={{ fontSize: '0.62rem', fontWeight: '700', color: 'rgba(var(--sobreposicao-rgb),0.35)', margin: '0 0 8px', fontFamily: 'Inter, sans-serif', textTransform: 'uppercase', letterSpacing: '0.8px' }}>Meus setores</p>
+                      <p style={{ fontSize: '0.62rem', fontWeight: '700', color: 'rgba(var(--sobreposicao-rgb),0.35)', margin: '0 0 8px', fontFamily: 'var(--fonte-corpo)', textTransform: 'uppercase', letterSpacing: '0.8px' }}>Meus setores</p>
                       <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
                         {usuario.setores.map(setor => (
                           <span key={setor._id || setor} style={{ fontSize: '0.6rem', fontWeight: '600', padding: '1px 7px', borderRadius: '4px', background: 'rgba(var(--sobreposicao-rgb),0.06)', color: 'rgba(var(--sobreposicao-rgb),0.7)', border: '1px solid var(--borda)', display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -455,7 +497,7 @@ export default function Layout({ children, menuItens, paginaAtual, setPagina }) 
                       display: 'flex', alignItems: 'center', gap: '8px', width: '100%',
                       padding: '11px 16px', background: 'none', border: 'none',
                       color: '#f87171', fontSize: '0.82rem', cursor: 'pointer',
-                      fontFamily: 'Inter, sans-serif', fontWeight: '500',
+                      fontFamily: 'var(--fonte-corpo)', fontWeight: '500',
                     }}
                     onMouseEnter={e => e.currentTarget.style.background = 'rgba(248,113,113,0.08)'}
                     onMouseLeave={e => e.currentTarget.style.background = 'none'}
@@ -465,39 +507,6 @@ export default function Layout({ children, menuItens, paginaAtual, setPagina }) 
                 </div>
             )}
           </div>
-        </div>
-      </header>
-
-      {/* ===== SIDEBAR ===== */}
-      <aside style={{
-        ...styles.sidebar,
-        width: sidebarAberta ? SIDEBAR_LARGURA : SIDEBAR_FECHADA,
-        top: TOPBAR_ALTURA,
-      }}>
-
-        <nav style={styles.nav}>
-          <NavItens
-            menuItens={menuItens}
-            paginaAtual={paginaAtual}
-            setPagina={setPagina}
-            sidebarAberta={sidebarAberta}
-          />
-        </nav>
-
-        {/* Rodapé da sidebar */}
-        <div style={{ padding: '8px 6px', borderTop: '1px solid rgba(var(--sobreposicao-rgb),0.05)', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '2px' }}>
-          <button
-            className="nav-btn"
-            style={{
-              ...styles.navBtn,
-              justifyContent: sidebarAberta ? 'flex-start' : 'center',
-            }}
-            onClick={() => { setCategoriaConfigInicial(null); setModalConfig(true) }}
-            title="Configurações"
-          >
-            <span style={styles.navIcone}><Icone.Settings size={18} /></span>
-            {sidebarAberta && <span style={styles.navLabel}>Configurações</span>}
-          </button>
         </div>
       </aside>
 
@@ -586,31 +595,34 @@ const styles = {
     fontSize: '0.55rem', fontWeight: '800',
     borderRadius: '99px', minWidth: '14px', height: '14px', padding: '0 3px',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
-    fontFamily: 'Inter, sans-serif', lineHeight: 1,
+    fontFamily: 'var(--fonte-corpo)', lineHeight: 1,
   },
-  topbarSep: {
-    width: '1px', height: '18px',
-    background: 'rgba(var(--sobreposicao-rgb),0.1)',
-    margin: '0 6px',
-  },
-  avatarBtn: {
-    display: 'flex', alignItems: 'center', gap: '8px',
-    background: 'rgba(var(--sobreposicao-rgb),0.06)',
-    border: '1px solid rgba(var(--sobreposicao-rgb),0.1)',
+  rodapePerfilBtn: {
+    display: 'flex', alignItems: 'center', gap: '9px',
+    background: 'none',
+    border: 'none',
     cursor: 'pointer',
-    padding: '5px 10px 5px 6px',
-    borderRadius: '10px',
-    transition: 'all 0.15s',
+    padding: '8px 10px',
+    borderRadius: '9px',
+    width: '100%',
+    transition: 'background 0.12s',
   },
-  avatarInfo: { display: 'flex', flexDirection: 'column', textAlign: 'left' },
-  avatarNome: {
-    fontSize: '0.78rem', fontWeight: '600',
+  rodapePerfilInfo: { display: 'flex', flexDirection: 'column', textAlign: 'left', minWidth: 0, flex: 1 },
+  rodapePerfilNome: {
+    fontSize: '0.78rem', fontWeight: '500',
     color: 'rgba(var(--sobreposicao-rgb),0.9)', whiteSpace: 'nowrap',
-    letterSpacing: '-0.01em', lineHeight: '1.2',
+    overflow: 'hidden', textOverflow: 'ellipsis',
+    letterSpacing: '-0.01em', lineHeight: '1.3',
   },
-  avatarCargo: {
-    fontSize: '0.62rem', color: 'rgba(var(--sobreposicao-rgb),0.45)',
-    lineHeight: '1.2',
+  rodapePerfilCargo: {
+    fontSize: '0.65rem', color: 'rgba(var(--sobreposicao-rgb),0.4)',
+    lineHeight: '1.3',
+  },
+  rodapeDropdown: {
+    position: 'absolute', bottom: 'calc(100% + 8px)', left: 0,
+    background: 'var(--card)', border: '1px solid var(--borda)', borderRadius: '12px',
+    minWidth: '220px', boxShadow: '0 12px 32px rgba(0,0,0,0.5)', zIndex: 200,
+    overflow: 'hidden',
   },
 
   // ── Sidebar ──
@@ -623,24 +635,27 @@ const styles = {
     position: 'fixed',
     left: 0, bottom: 0,
     zIndex: 50,
-    overflow: 'hidden',
+    overflow: 'visible',
   },
-  sidebarToggleRow: {
-    display: 'flex',
-    alignItems: 'center',
-    padding: '10px 10px',
-    borderBottom: '1px solid rgba(var(--sobreposicao-rgb),0.05)',
-    flexShrink: 0,
-  },
-  btnToggle: {
-    background: 'none',
-    border: '1px solid rgba(var(--sobreposicao-rgb),0.08)',
-    borderRadius: '6px',
-    color: 'rgba(var(--sobreposicao-rgb),0.3)',
-    width: '26px', height: '26px',
+  btnToggleFlutuante: {
+    position: 'absolute',
+    top: '24px',
+    right: '-11px',
+    width: '22px', height: '22px',
+    borderRadius: '50%',
+    background: 'var(--fundo-sidebar)',
+    border: '1px solid rgba(var(--sobreposicao-rgb),0.12)',
+    color: 'rgba(var(--sobreposicao-rgb),0.5)',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
-    cursor: 'pointer', flexShrink: 0,
+    cursor: 'pointer', padding: 0,
+    zIndex: 51,
     transition: 'all 0.15s',
+  },
+  rodapeSidebar: {
+    padding: '8px 6px',
+    borderTop: '1px solid rgba(var(--sobreposicao-rgb),0.05)',
+    flexShrink: 0,
+    display: 'flex', flexDirection: 'column', gap: '2px',
   },
   nav: {
     flex: 1,
@@ -658,7 +673,7 @@ const styles = {
     textTransform: 'uppercase',
     letterSpacing: '1.5px',
     padding: '20px 10px 6px',
-    fontFamily: 'Inter, sans-serif',
+    fontFamily: 'var(--fonte-corpo)',
     whiteSpace: 'nowrap',
   },
   navSeparadorFechado: {
@@ -670,15 +685,14 @@ const styles = {
   // Item de navegação
   navBtn: {
     display: 'flex', alignItems: 'center', gap: '10px',
-    padding: '9px 12px',
-    borderRadius: '8px',
+    padding: '9px 10px',
+    borderRadius: '9px',
     background: 'none',
     border: 'none',
-    borderLeft: '3px solid transparent',
     color: 'rgba(var(--sobreposicao-rgb),0.55)',
     cursor: 'pointer',
     fontSize: '0.875rem',
-    fontFamily: 'Inter, sans-serif',
+    fontFamily: 'var(--fonte-corpo)',
     transition: 'all 0.12s',
     width: '100%',
     whiteSpace: 'nowrap',
@@ -686,18 +700,14 @@ const styles = {
     textAlign: 'left',
   },
   navBtnAtivo: {
-    borderLeft: '3px solid var(--verde)',
-    background: 'rgba(0,177,65,0.08)',
-    color: 'var(--texto)',
+    background: 'rgba(0,177,65,0.12)',
+    color: 'var(--verde)',
     fontWeight: '600',
-    borderRadius: '0 8px 8px 0',
   },
   navBtnGrupoAtivo: {
-    borderLeft: '3px solid rgba(0,177,65,0.4)',
-    background: 'rgba(0,177,65,0.04)',
+    background: 'rgba(0,177,65,0.06)',
     color: 'rgba(var(--sobreposicao-rgb),0.9)',
     fontWeight: '600',
-    borderRadius: '0 8px 8px 0',
   },
   navBtnSub: {
     padding: '7px 12px 7px 10px',

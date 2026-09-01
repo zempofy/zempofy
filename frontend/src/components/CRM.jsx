@@ -23,15 +23,15 @@ const s = {
   overlay: { position:'fixed', inset:0, background:'rgba(0,0,0,0.6)', zIndex:9999, display:'flex', alignItems:'center', justifyContent:'center', padding:'20px' },
   modal: { background:'var(--card)', border:'1px solid var(--borda)', borderRadius:'16px', width:'100%', maxWidth:'440px', maxHeight:'90vh', display:'flex', flexDirection:'column', boxShadow:'0 24px 64px rgba(0,0,0,0.6)' },
   modalTopo: { display:'flex', alignItems:'center', justifyContent:'space-between', padding:'18px 22px', borderBottom:'1px solid var(--borda)' },
-  modalTitulo: { fontSize:'1rem', fontWeight:'700', color:'var(--texto)', fontFamily:'Inter,sans-serif' },
+  modalTitulo: { fontSize:'1rem', fontWeight:'700', color:'var(--texto)', fontFamily:'var(--fonte-corpo)' },
   modalCorpo: { padding:'20px 22px', display:'flex', flexDirection:'column', gap:'14px', overflowY:'auto' },
   modalRodape: { display:'flex', gap:'10px', justifyContent:'flex-end', padding:'16px 22px', borderTop:'1px solid var(--borda)' },
   btnX: { background:'none', border:'1px solid var(--borda)', borderRadius:'6px', width:'28px', height:'28px', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:'var(--texto-apagado)' },
-  label: { fontSize:'0.65rem', fontWeight:'700', color:'var(--texto-apagado)', textTransform:'uppercase', letterSpacing:'0.8px', margin:'0 0 6px', fontFamily:'Inter,sans-serif', display:'block' },
-  input: { width:'100%', background:'var(--input)', border:'1px solid var(--borda)', borderRadius:'8px', padding:'9px 12px', color:'var(--texto)', fontSize:'0.85rem', fontFamily:'Inter,sans-serif', boxSizing:'border-box', colorScheme:'dark' },
-  erro: { color:'#FCA5A5', fontSize:'0.8rem', background:'rgba(239,68,68,0.1)', padding:'8px 12px', borderRadius:'8px', fontFamily:'Inter,sans-serif', margin:0 },
-  btnCancelar: { background:'none', border:'1px solid var(--borda)', borderRadius:'8px', color:'var(--texto-apagado)', padding:'9px 18px', fontFamily:'Inter,sans-serif', fontSize:'0.85rem', cursor:'pointer' },
-  btnSalvar: { background:'var(--gradiente-verde)', color:'#fff', border:'none', borderRadius:'8px', padding:'9px 18px', fontFamily:'Inter,sans-serif', fontWeight:'600', fontSize:'0.85rem', cursor:'pointer' },
+  label: { fontSize:'0.65rem', fontWeight:'700', color:'var(--texto-apagado)', textTransform:'uppercase', letterSpacing:'0.8px', margin:'0 0 6px', fontFamily:'var(--fonte-corpo)', display:'block' },
+  input: { width:'100%', background:'var(--input)', border:'1px solid var(--borda)', borderRadius:'8px', padding:'9px 12px', color:'var(--texto)', fontSize:'0.85rem', fontFamily:'var(--fonte-corpo)', boxSizing:'border-box', colorScheme:'dark' },
+  erro: { color:'#FCA5A5', fontSize:'0.8rem', background:'rgba(239,68,68,0.1)', padding:'8px 12px', borderRadius:'8px', fontFamily:'var(--fonte-corpo)', margin:0 },
+  btnCancelar: { background:'none', border:'1px solid var(--borda)', borderRadius:'8px', color:'var(--texto-apagado)', padding:'9px 18px', fontFamily:'var(--fonte-corpo)', fontSize:'0.85rem', cursor:'pointer' },
+  btnSalvar: { background:'var(--gradiente-verde)', color:'#fff', border:'none', borderRadius:'8px', padding:'9px 18px', fontFamily:'var(--fonte-corpo)', fontWeight:'600', fontSize:'0.85rem', cursor:'pointer' },
 }
 
 function Campo({ label, children }) {
@@ -65,15 +65,15 @@ function CardLead({ lead, onClick, onDragStart, onDragEnd, isTitular, mobile }) 
       )}
 
       <div style={{ marginBottom:'8px', paddingRight: mobile ? '0' : '16px' }}>
-        <p style={{ fontSize:'0.85rem', fontWeight:'600', color:'var(--texto)', margin:0, fontFamily:'Inter,sans-serif' }}>{lead.nomeEmpresa || lead.nome}</p>
-        <p style={{ fontSize:'0.75rem', color:'var(--texto-apagado)', margin:'2px 0 0', fontFamily:'Inter,sans-serif' }}>{lead.nome}</p>
+        <p style={{ fontSize:'0.85rem', fontWeight:'600', color:'var(--texto)', margin:0, fontFamily:'var(--fonte-corpo)' }}>{lead.nomeEmpresa || lead.nome}</p>
+        <p style={{ fontSize:'0.75rem', color:'var(--texto-apagado)', margin:'2px 0 0', fontFamily:'var(--fonte-corpo)' }}>{lead.nome}</p>
       </div>
       <div style={{ display:'flex', alignItems:'center', gap:'6px', flexWrap:'wrap' }}>
         <span style={{ fontSize:'0.72rem', fontWeight:'600', color:'var(--verde)' }}>{formatMoeda(lead.valor)}</span>
         {lead.origem && <span style={{ fontSize:'0.65rem', color:'var(--texto-apagado)', background:'var(--input)', padding:'1px 7px', borderRadius:'4px', border:'1px solid var(--borda)' }}>{lead.origem}</span>}
       </div>
       {isTitular && (
-        <p style={{ fontSize:'0.65rem', color:'var(--texto-apagado)', margin:'6px 0 0', fontFamily:'Inter,sans-serif', opacity:0.7 }}>
+        <p style={{ fontSize:'0.65rem', color:'var(--texto-apagado)', margin:'6px 0 0', fontFamily:'var(--fonte-corpo)', opacity:0.7 }}>
           por {lead.criadoPor?.nome || '—'}
         </p>
       )}
@@ -89,8 +89,8 @@ function DetalheDrawer({ lead, fechar, onMoverEtapa, isTitular, podeGerenciar, o
       <div style={{ width:'380px', background:'var(--fundo)', borderLeft:'1px solid var(--borda)', display:'flex', flexDirection:'column', overflowY:'auto' }} onClick={e=>e.stopPropagation()}>
         <div style={{ padding:'20px 24px', borderBottom:'1px solid var(--borda)', display:'flex', alignItems:'flex-start', justifyContent:'space-between' }}>
           <div>
-            <p style={{ fontSize:'1rem', fontWeight:'700', color:'var(--texto)', margin:0, fontFamily:'Inter,sans-serif' }}>{lead.nomeEmpresa || lead.nome}</p>
-            <p style={{ fontSize:'0.8rem', color:'var(--texto-apagado)', margin:'3px 0 0', fontFamily:'Inter,sans-serif' }}>{lead.nome}</p>
+            <p style={{ fontSize:'1rem', fontWeight:'700', color:'var(--texto)', margin:0, fontFamily:'var(--fonte-corpo)' }}>{lead.nomeEmpresa || lead.nome}</p>
+            <p style={{ fontSize:'0.8rem', color:'var(--texto-apagado)', margin:'3px 0 0', fontFamily:'var(--fonte-corpo)' }}>{lead.nome}</p>
             <span style={{ fontSize:'0.68rem', fontWeight:'600', padding:'2px 8px', borderRadius:'5px', background:etapa?.bg, color:etapa?.cor, display:'inline-block', marginTop:'6px' }}>{etapa?.label}</span>
           </div>
           <div style={{ display:'flex', gap:'6px', flexShrink:0 }}>
@@ -106,8 +106,8 @@ function DetalheDrawer({ lead, fechar, onMoverEtapa, isTitular, podeGerenciar, o
 
         <div style={{ padding:'20px 24px', display:'flex', flexDirection:'column', gap:'20px', flex:1 }}>
           <div style={{ background:'rgba(0,177,65,0.06)', border:'1px solid rgba(0,177,65,0.15)', borderRadius:'10px', padding:'12px 16px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-            <span style={{ fontSize:'0.78rem', color:'var(--texto-apagado)', fontFamily:'Inter,sans-serif' }}>Valor do serviço</span>
-            <span style={{ fontSize:'1rem', fontWeight:'700', color:'var(--verde)', fontFamily:'Inter,sans-serif' }}>{formatMoeda(lead.valor)}</span>
+            <span style={{ fontSize:'0.78rem', color:'var(--texto-apagado)', fontFamily:'var(--fonte-corpo)' }}>Valor do serviço</span>
+            <span style={{ fontSize:'1rem', fontWeight:'700', color:'var(--verde)', fontFamily:'var(--fonte-corpo)' }}>{formatMoeda(lead.valor)}</span>
           </div>
 
           <div style={{ display:'flex', flexDirection:'column', gap:'10px' }}>
@@ -121,25 +121,25 @@ function DetalheDrawer({ lead, fechar, onMoverEtapa, isTitular, podeGerenciar, o
             ].map((item,i) => (
               <div key={i} style={{ display:'flex', alignItems:'center', gap:'10px' }}>
                 <span style={{ color:'var(--texto-apagado)', flexShrink:0 }}>{item.icone}</span>
-                <span style={{ fontSize:'0.78rem', color:'var(--texto-apagado)', fontFamily:'Inter,sans-serif', minWidth:'80px' }}>{item.label}</span>
-                <span style={{ fontSize:'0.82rem', color:'var(--texto)', fontFamily:'Inter,sans-serif' }}>{item.valor}</span>
+                <span style={{ fontSize:'0.78rem', color:'var(--texto-apagado)', fontFamily:'var(--fonte-corpo)', minWidth:'80px' }}>{item.label}</span>
+                <span style={{ fontSize:'0.82rem', color:'var(--texto)', fontFamily:'var(--fonte-corpo)' }}>{item.valor}</span>
               </div>
             ))}
           </div>
 
           {lead.obs && (
             <div style={{ background:'var(--card)', border:'1px solid var(--borda)', borderRadius:'8px', padding:'12px 14px' }}>
-              <p style={{ fontSize:'0.65rem', fontWeight:'700', color:'var(--texto-apagado)', textTransform:'uppercase', letterSpacing:'0.8px', margin:'0 0 6px', fontFamily:'Inter,sans-serif' }}>Observações</p>
-              <p style={{ fontSize:'0.82rem', color:'var(--texto)', margin:0, fontFamily:'Inter,sans-serif', lineHeight:'1.5' }}>{lead.obs}</p>
+              <p style={{ fontSize:'0.65rem', fontWeight:'700', color:'var(--texto-apagado)', textTransform:'uppercase', letterSpacing:'0.8px', margin:'0 0 6px', fontFamily:'var(--fonte-corpo)' }}>Observações</p>
+              <p style={{ fontSize:'0.82rem', color:'var(--texto)', margin:0, fontFamily:'var(--fonte-corpo)', lineHeight:'1.5' }}>{lead.obs}</p>
             </div>
           )}
 
           {podeGerenciar && lead.etapa !== 'fechado' && (
             <div>
-              <p style={{ fontSize:'0.65rem', fontWeight:'700', color:'var(--texto-apagado)', textTransform:'uppercase', letterSpacing:'0.8px', margin:'0 0 10px', fontFamily:'Inter,sans-serif' }}>Mover para etapa</p>
+              <p style={{ fontSize:'0.65rem', fontWeight:'700', color:'var(--texto-apagado)', textTransform:'uppercase', letterSpacing:'0.8px', margin:'0 0 10px', fontFamily:'var(--fonte-corpo)' }}>Mover para etapa</p>
               <div style={{ display:'flex', flexDirection:'column', gap:'6px' }}>
                 {ETAPAS.filter(e=>e.id!==lead.etapa).map(e=>(
-                  <button key={e.id} onClick={()=>onMoverEtapa(e.id)} style={{ display:'flex', alignItems:'center', gap:'8px', padding:'8px 12px', background:'var(--input)', border:'1px solid var(--borda)', borderRadius:'8px', cursor:'pointer', fontFamily:'Inter,sans-serif', fontSize:'0.82rem', color:'var(--texto)', textAlign:'left' }}
+                  <button key={e.id} onClick={()=>onMoverEtapa(e.id)} style={{ display:'flex', alignItems:'center', gap:'8px', padding:'8px 12px', background:'var(--input)', border:'1px solid var(--borda)', borderRadius:'8px', cursor:'pointer', fontFamily:'var(--fonte-corpo)', fontSize:'0.82rem', color:'var(--texto)', textAlign:'left' }}
                     onMouseEnter={el=>el.currentTarget.style.borderColor=e.cor}
                     onMouseLeave={el=>el.currentTarget.style.borderColor='var(--borda)'}
                   >
@@ -153,9 +153,9 @@ function DetalheDrawer({ lead, fechar, onMoverEtapa, isTitular, podeGerenciar, o
 
           {lead.etapa === 'fechado' && (
             <div style={{ background:'rgba(0,177,65,0.06)', border:'1px solid rgba(0,177,65,0.2)', borderRadius:'10px', padding:'14px 16px' }}>
-              <p style={{ fontSize:'0.78rem', color:'var(--verde)', fontWeight:'600', margin:'0 0 8px', fontFamily:'Inter,sans-serif' }}>Lead fechado!</p>
-              <p style={{ fontSize:'0.75rem', color:'var(--texto-apagado)', margin:'0 0 12px', fontFamily:'Inter,sans-serif' }}>Este lead está pronto para iniciar o onboarding.</p>
-              <button onClick={()=>onIniciarOnboarding(lead)} style={{ background:'var(--gradiente-verde)', color:'#fff', border:'none', borderRadius:'8px', padding:'8px 16px', fontFamily:'Inter,sans-serif', fontWeight:'600', fontSize:'0.82rem', cursor:'pointer', display:'flex', alignItems:'center', gap:'6px', width:'100%', justifyContent:'center' }}>
+              <p style={{ fontSize:'0.78rem', color:'var(--verde)', fontWeight:'600', margin:'0 0 8px', fontFamily:'var(--fonte-corpo)' }}>Lead fechado!</p>
+              <p style={{ fontSize:'0.75rem', color:'var(--texto-apagado)', margin:'0 0 12px', fontFamily:'var(--fonte-corpo)' }}>Este lead está pronto para iniciar o onboarding.</p>
+              <button onClick={()=>onIniciarOnboarding(lead)} style={{ background:'var(--gradiente-verde)', color:'#fff', border:'none', borderRadius:'8px', padding:'8px 16px', fontFamily:'var(--fonte-corpo)', fontWeight:'600', fontSize:'0.82rem', cursor:'pointer', display:'flex', alignItems:'center', gap:'6px', width:'100%', justifyContent:'center' }}>
                 <Icone.ClipboardList size={14}/> Iniciar onboarding
               </button>
             </div>
@@ -323,12 +323,12 @@ export default function CRM({ onIniciarOnboarding }) {
     <div>
       <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:'20px', flexWrap:'wrap', gap:'12px' }}>
         <div>
-          <h1 style={{ fontSize:'1.5rem', fontWeight:'700', color:'var(--texto)', margin:'0 0 4px', letterSpacing:'-0.03em', fontFamily:'Inter,sans-serif' }}>CRM</h1>
-          <p style={{ fontSize:'0.82rem', color:'var(--texto-apagado)', margin:0, fontFamily:'Inter,sans-serif' }}>
+          <h1 style={{ fontSize:'1.5rem', fontWeight:'700', color:'var(--texto)', margin:'0 0 4px', letterSpacing:'-0.03em', fontFamily:'var(--fonte-corpo)' }}>CRM</h1>
+          <p style={{ fontSize:'0.82rem', color:'var(--texto-apagado)', margin:0, fontFamily:'var(--fonte-corpo)' }}>
             {isTitular ? 'Visualizando todos os leads da equipe' : 'Visualizando seus leads'}
           </p>
         </div>
-        <button onClick={()=>{ setEditandoLead(null); setFormAberto(true) }} style={{ background:'var(--gradiente-verde)', color:'#fff', border:'none', borderRadius:'10px', padding:'10px 20px', fontFamily:'Inter,sans-serif', fontWeight:'600', fontSize:'0.875rem', cursor:'pointer', display:'flex', alignItems:'center', gap:'6px' }}>
+        <button onClick={()=>{ setEditandoLead(null); setFormAberto(true) }} style={{ background:'var(--gradiente-verde)', color:'#fff', border:'none', borderRadius:'10px', padding:'10px 20px', fontFamily:'var(--fonte-corpo)', fontWeight:'600', fontSize:'0.875rem', cursor:'pointer', display:'flex', alignItems:'center', gap:'6px' }}>
           <Icone.Plus size={14}/> Novo lead
         </button>
       </div>
@@ -342,19 +342,19 @@ export default function CRM({ onIniciarOnboarding }) {
           { label:'Perdidos', valor: leads.filter(l=>l.etapa==='perdido').length, cor:'#f87171' },
         ].map((item,i) => (
           <div key={i} style={{ background:'var(--card)', border:'1px solid var(--borda)', borderRadius:'12px', padding:'14px 18px' }}>
-            <p style={{ fontSize:'0.72rem', color:'var(--texto-apagado)', margin:'0 0 6px', textTransform:'uppercase', letterSpacing:'0.8px', fontFamily:'Inter,sans-serif', fontWeight:'600' }}>{item.label}</p>
-            <p style={{ fontSize:'1.6rem', fontWeight:'700', color:item.cor, margin:0, fontFamily:'Inter,sans-serif', letterSpacing:'-0.02em' }}>{item.valor}</p>
+            <p style={{ fontSize:'0.72rem', color:'var(--texto-apagado)', margin:'0 0 6px', textTransform:'uppercase', letterSpacing:'0.8px', fontFamily:'var(--fonte-corpo)', fontWeight:'600' }}>{item.label}</p>
+            <p style={{ fontSize:'1.6rem', fontWeight:'700', color:item.cor, margin:0, fontFamily:'var(--fonte-corpo)', letterSpacing:'-0.02em' }}>{item.valor}</p>
           </div>
         ))}
       </div>
 
       {/* Busca + filtro */}
       <div style={{ display:'flex', gap:'10px', marginBottom:'20px', flexWrap:'wrap', alignItems:'center' }}>
-        <input style={{ background:'var(--input)', border:'1px solid var(--borda)', borderRadius:'8px', padding:'8px 12px', color:'var(--texto)', fontSize:'0.85rem', fontFamily:'Inter,sans-serif', flex:1, minWidth:'200px', boxSizing:'border-box' }} value={busca} onChange={e=>setBusca(e.target.value)} placeholder="Buscar lead..." />
+        <input style={{ background:'var(--input)', border:'1px solid var(--borda)', borderRadius:'8px', padding:'8px 12px', color:'var(--texto)', fontSize:'0.85rem', fontFamily:'var(--fonte-corpo)', flex:1, minWidth:'200px', boxSizing:'border-box' }} value={busca} onChange={e=>setBusca(e.target.value)} placeholder="Buscar lead..." />
         <div style={{ display:'flex', gap:'6px', flexWrap:'wrap' }}>
-          <button onClick={()=>setEtapaFiltro(null)} style={{ padding:'7px 12px', borderRadius:'7px', fontSize:'0.75rem', fontWeight:'600', cursor:'pointer', fontFamily:'Inter,sans-serif', border:`1px solid ${!etapaFiltro?'rgba(0,177,65,0.3)':'var(--borda)'}`, background:!etapaFiltro?'rgba(0,177,65,0.08)':'var(--input)', color:!etapaFiltro?'var(--verde)':'var(--texto-apagado)' }}>Todos</button>
+          <button onClick={()=>setEtapaFiltro(null)} style={{ padding:'7px 12px', borderRadius:'7px', fontSize:'0.75rem', fontWeight:'600', cursor:'pointer', fontFamily:'var(--fonte-corpo)', border:`1px solid ${!etapaFiltro?'rgba(0,177,65,0.3)':'var(--borda)'}`, background:!etapaFiltro?'rgba(0,177,65,0.08)':'var(--input)', color:!etapaFiltro?'var(--verde)':'var(--texto-apagado)' }}>Todos</button>
           {ETAPAS.map(e=>(
-            <button key={e.id} onClick={()=>setEtapaFiltro(etapaFiltro===e.id?null:e.id)} style={{ padding:'7px 12px', borderRadius:'7px', fontSize:'0.75rem', fontWeight:'600', cursor:'pointer', fontFamily:'Inter,sans-serif', border:`1px solid ${etapaFiltro===e.id?e.cor+'50':'var(--borda)'}`, background:etapaFiltro===e.id?e.bg:'var(--input)', color:etapaFiltro===e.id?e.cor:'var(--texto-apagado)' }}>
+            <button key={e.id} onClick={()=>setEtapaFiltro(etapaFiltro===e.id?null:e.id)} style={{ padding:'7px 12px', borderRadius:'7px', fontSize:'0.75rem', fontWeight:'600', cursor:'pointer', fontFamily:'var(--fonte-corpo)', border:`1px solid ${etapaFiltro===e.id?e.cor+'50':'var(--borda)'}`, background:etapaFiltro===e.id?e.bg:'var(--input)', color:etapaFiltro===e.id?e.cor:'var(--texto-apagado)' }}>
               {e.label}
             </button>
           ))}
@@ -363,7 +363,7 @@ export default function CRM({ onIniciarOnboarding }) {
 
       {/* Dica drag — só desktop */}
       {!mobile && (
-        <p style={{ fontSize:'0.72rem', color:'var(--texto-apagado)', margin:'0 0 12px', fontFamily:'Inter,sans-serif', display:'flex', alignItems:'center', gap:'5px' }}>
+        <p style={{ fontSize:'0.72rem', color:'var(--texto-apagado)', margin:'0 0 12px', fontFamily:'var(--fonte-corpo)', display:'flex', alignItems:'center', gap:'5px' }}>
           <Icone.Edit size={12}/> Arraste os cards pelos pontinhos para mover entre etapas
         </p>
       )}
@@ -387,13 +387,13 @@ export default function CRM({ onIniciarOnboarding }) {
                 <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'8px 12px', borderRadius:'8px', background: sobreDrop ? etapa.bg : 'var(--card)', border:`1px solid ${sobreDrop ? etapa.cor+'50' : 'var(--borda)'}`, transition:'all 0.15s' }}>
                   <div style={{ display:'flex', alignItems:'center', gap:'7px' }}>
                     <div style={{ width:'8px', height:'8px', borderRadius:'50%', background:etapa.cor, flexShrink:0 }}/>
-                    <span style={{ fontSize:'0.8rem', fontWeight:'600', color:'var(--texto)', fontFamily:'Inter,sans-serif' }}>{etapa.label}</span>
+                    <span style={{ fontSize:'0.8rem', fontWeight:'600', color:'var(--texto)', fontFamily:'var(--fonte-corpo)' }}>{etapa.label}</span>
                   </div>
                   <span style={{ fontSize:'0.72rem', fontWeight:'600', padding:'2px 7px', borderRadius:'99px', background:etapa.bg, color:etapa.cor }}>{leadsEtapa.length}</span>
                 </div>
                 <div style={{ minHeight: sobreDrop ? '60px' : 'auto', borderRadius:'8px', border: sobreDrop ? `2px dashed ${etapa.cor}50` : '2px solid transparent', transition:'all 0.15s', display:'flex', flexDirection:'column', gap:'8px', padding: sobreDrop ? '4px' : '0' }}>
                   {leadsEtapa.length === 0 && !sobreDrop ? (
-                    <div style={{ padding:'20px 12px', textAlign:'center', color:'var(--texto-apagado)', fontSize:'0.75rem', fontFamily:'Inter,sans-serif', border:'1px dashed var(--borda)', borderRadius:'8px' }}>Nenhum lead</div>
+                    <div style={{ padding:'20px 12px', textAlign:'center', color:'var(--texto-apagado)', fontSize:'0.75rem', fontFamily:'var(--fonte-corpo)', border:'1px dashed var(--borda)', borderRadius:'8px' }}>Nenhum lead</div>
                   ) : (
                     leadsEtapa.map(lead => (
                       <CardLead

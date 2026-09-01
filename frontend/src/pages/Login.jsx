@@ -232,11 +232,11 @@ export default function Login() {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
           <div style={{ background: 'var(--card)', border: '1px solid var(--borda)', borderRadius: '16px', padding: '28px', width: '100%', maxWidth: '380px' }}>
             {!esqueciEnviado ? (<>
-              <h2 style={{ fontSize: '1.1rem', fontWeight: '700', color: 'var(--texto)', margin: '0 0 8px', fontFamily: 'Inter,sans-serif' }}>Esqueci minha senha</h2>
-              <p style={{ fontSize: '0.82rem', color: 'rgba(var(--sobreposicao-rgb),0.5)', margin: '0 0 20px', fontFamily: 'Inter,sans-serif' }}>Digite seu e-mail e enviaremos as instruções para redefinir sua senha.</p>
-              {erroEsqueci && <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '8px', padding: '10px 14px', color: '#FCA5A5', fontSize: '0.8rem', marginBottom: '12px', fontFamily: 'Inter,sans-serif' }}>{erroEsqueci}</div>}
+              <h2 style={{ fontSize: '1.1rem', fontWeight: '700', color: 'var(--texto)', margin: '0 0 8px', fontFamily: 'var(--fonte-corpo)' }}>Esqueci minha senha</h2>
+              <p style={{ fontSize: '0.82rem', color: 'rgba(var(--sobreposicao-rgb),0.5)', margin: '0 0 20px', fontFamily: 'var(--fonte-corpo)' }}>Digite seu e-mail e enviaremos as instruções para redefinir sua senha.</p>
+              {erroEsqueci && <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '8px', padding: '10px 14px', color: '#FCA5A5', fontSize: '0.8rem', marginBottom: '12px', fontFamily: 'var(--fonte-corpo)' }}>{erroEsqueci}</div>}
               <input
-                style={{ width: '100%', padding: '10px 14px', background: 'var(--input)', border: '1px solid var(--borda)', borderRadius: '8px', color: 'var(--texto)', fontSize: '0.875rem', fontFamily: 'Inter,sans-serif', boxSizing: 'border-box', marginBottom: '12px' }}
+                style={{ width: '100%', padding: '10px 14px', background: 'var(--input)', border: '1px solid var(--borda)', borderRadius: '8px', color: 'var(--texto)', fontSize: '0.875rem', fontFamily: 'var(--fonte-corpo)', boxSizing: 'border-box', marginBottom: '12px' }}
                 type="email" placeholder="seu@email.com"
                 value={emailEsqueci} onChange={e => setEmailEsqueci(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && enviarEsqueci()}
@@ -244,19 +244,19 @@ export default function Login() {
               />
               <Turnstile ref={turnstileEsqueciRef} onVerify={setTokenTurnstileEsqueci} onExpire={() => setTokenTurnstileEsqueci('')} />
               <div style={{ display: 'flex', gap: '8px' }}>
-                <button onClick={enviarEsqueci} disabled={esqueciCarregando || (turnstileObrigatorio && !tokenTurnstileEsqueci)} style={{ flex: 1, background: 'linear-gradient(135deg,#00b141,#008f34)', color: '#fff', border: 'none', borderRadius: '8px', padding: '10px', fontFamily: 'Inter,sans-serif', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer' }}>
+                <button onClick={enviarEsqueci} disabled={esqueciCarregando || (turnstileObrigatorio && !tokenTurnstileEsqueci)} style={{ flex: 1, background: 'linear-gradient(135deg,#00b141,#008f34)', color: '#fff', border: 'none', borderRadius: '8px', padding: '10px', fontFamily: 'var(--fonte-corpo)', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer' }}>
                   {esqueciCarregando ? 'Enviando...' : 'Enviar instruções'}
                 </button>
-                <button onClick={fecharEsqueci} style={{ background: 'none', border: '1px solid var(--borda)', borderRadius: '8px', color: 'rgba(var(--sobreposicao-rgb),0.5)', padding: '10px 14px', cursor: 'pointer', fontFamily: 'Inter,sans-serif', fontSize: '0.875rem' }}>
+                <button onClick={fecharEsqueci} style={{ background: 'none', border: '1px solid var(--borda)', borderRadius: '8px', color: 'rgba(var(--sobreposicao-rgb),0.5)', padding: '10px 14px', cursor: 'pointer', fontFamily: 'var(--fonte-corpo)', fontSize: '0.875rem' }}>
                   Cancelar
                 </button>
               </div>
             </>) : (<>
               <div style={{ textAlign: 'center', padding: '10px 0' }}>
                 <p style={{ fontSize: '2rem', marginBottom: '12px' }}>📧</p>
-                <h2 style={{ fontSize: '1.1rem', fontWeight: '700', color: 'var(--texto)', margin: '0 0 8px', fontFamily: 'Inter,sans-serif' }}>E-mail enviado!</h2>
-                <p style={{ fontSize: '0.82rem', color: 'rgba(var(--sobreposicao-rgb),0.5)', margin: '0 0 20px', fontFamily: 'Inter,sans-serif', lineHeight: '1.5' }}>Se o e-mail estiver cadastrado, você receberá as instruções em breve. Verifique também sua caixa de spam.</p>
-                <button onClick={fecharEsqueci} style={{ background: 'linear-gradient(135deg,#00b141,#008f34)', color: '#fff', border: 'none', borderRadius: '8px', padding: '10px 20px', fontFamily: 'Inter,sans-serif', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer' }}>
+                <h2 style={{ fontSize: '1.1rem', fontWeight: '700', color: 'var(--texto)', margin: '0 0 8px', fontFamily: 'var(--fonte-corpo)' }}>E-mail enviado!</h2>
+                <p style={{ fontSize: '0.82rem', color: 'rgba(var(--sobreposicao-rgb),0.5)', margin: '0 0 20px', fontFamily: 'var(--fonte-corpo)', lineHeight: '1.5' }}>Se o e-mail estiver cadastrado, você receberá as instruções em breve. Verifique também sua caixa de spam.</p>
+                <button onClick={fecharEsqueci} style={{ background: 'linear-gradient(135deg,#00b141,#008f34)', color: '#fff', border: 'none', borderRadius: '8px', padding: '10px 20px', fontFamily: 'var(--fonte-corpo)', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer' }}>
                   Voltar para o login
                 </button>
               </div>
@@ -414,7 +414,7 @@ const styles = {
     color: 'var(--verde)',
     fontSize: '0.82rem',
     cursor: 'pointer',
-    fontFamily: 'Inter,sans-serif',
+    fontFamily: 'var(--fonte-corpo)',
     padding: 0,
   },
   botao: {
@@ -423,7 +423,7 @@ const styles = {
     border: 'none',
     borderRadius: '9px',
     padding: '10px',
-    fontFamily: 'Inter, sans-serif',
+    fontFamily: 'var(--fonte-corpo)',
     fontWeight: '600',
     fontSize: '0.88rem',
     cursor: 'pointer',

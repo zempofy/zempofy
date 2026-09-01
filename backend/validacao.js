@@ -60,7 +60,7 @@ const tarefaCreateSchema = z.object({
   hora: z.string().optional(),
   local: z.string().optional(),
   cor: z.string().optional(),
-  responsavelId: z.string().optional(),
+  responsavelId: z.string().nullable().optional(),
   etiquetas: z.array(z.string()).optional(),
   prioridade: z.enum(['alta', 'media', 'baixa', '']).optional(),
   tarefaMaeId: z.string().optional(),
@@ -117,13 +117,13 @@ const checklistCreateSchema = z.object({
   descricao: z.string().trim().min(1, 'Descrição é obrigatória.'),
   observacoes: z.string().optional(),
   setor: z.string().min(1, 'Setor é obrigatório.'),
-  responsavelId: z.string().optional(),
+  responsavelId: z.string().nullable().optional(),
 }).passthrough();
 
 const checklistUpdateSchema = z.object({
   descricao: z.string().optional(),
   observacoes: z.string().optional(),
-  responsavelId: z.string().optional(),
+  responsavelId: z.string().nullable().optional(),
 }).passthrough();
 
 // ── Empresa ──

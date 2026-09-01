@@ -48,13 +48,13 @@ export default function RedefinirSenha() {
   const s = {
     wrap: { minHeight: '100vh', background: 'var(--fundo)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' },
     card: { background: 'var(--card)', border: '1px solid var(--borda)', borderRadius: '16px', padding: '32px', width: '100%', maxWidth: '380px' },
-    logo: { fontSize: '1.4rem', fontWeight: '800', color: '#00b141', letterSpacing: '-0.03em', marginBottom: '24px', fontFamily: 'Inter,sans-serif', textAlign: 'center' },
-    titulo: { fontSize: '1.1rem', fontWeight: '700', color: 'var(--texto)', margin: '0 0 8px', fontFamily: 'Inter,sans-serif' },
-    sub: { fontSize: '0.82rem', color: 'rgba(var(--sobreposicao-rgb),0.5)', margin: '0 0 24px', fontFamily: 'Inter,sans-serif', lineHeight: '1.5' },
-    label: { fontSize: '0.7rem', fontWeight: '600', color: 'rgba(var(--sobreposicao-rgb),0.5)', textTransform: 'uppercase', letterSpacing: '0.8px', display: 'block', marginBottom: '6px', fontFamily: 'Inter,sans-serif' },
-    inp: { width: '100%', padding: '10px 14px', background: 'var(--input)', border: '1px solid var(--borda)', borderRadius: '8px', color: 'var(--texto)', fontSize: '0.875rem', fontFamily: 'Inter,sans-serif', boxSizing: 'border-box', marginBottom: '14px' },
-    btn: { width: '100%', background: 'linear-gradient(135deg,#00b141,#008f34)', color: '#fff', border: 'none', borderRadius: '8px', padding: '11px', fontFamily: 'Inter,sans-serif', fontWeight: '600', fontSize: '0.9rem', cursor: 'pointer', marginTop: '4px' },
-    erro: { color: '#f87171', fontSize: '0.8rem', background: 'rgba(248,113,113,0.08)', padding: '8px 12px', borderRadius: '8px', marginBottom: '14px', fontFamily: 'Inter,sans-serif' },
+    logo: { fontSize: '1.4rem', fontWeight: '800', color: '#00b141', letterSpacing: '-0.03em', marginBottom: '24px', fontFamily: 'var(--fonte-corpo)', textAlign: 'center' },
+    titulo: { fontSize: '1.1rem', fontWeight: '700', color: 'var(--texto)', margin: '0 0 8px', fontFamily: 'var(--fonte-corpo)' },
+    sub: { fontSize: '0.82rem', color: 'rgba(var(--sobreposicao-rgb),0.5)', margin: '0 0 24px', fontFamily: 'var(--fonte-corpo)', lineHeight: '1.5' },
+    label: { fontSize: '0.7rem', fontWeight: '600', color: 'rgba(var(--sobreposicao-rgb),0.5)', textTransform: 'uppercase', letterSpacing: '0.8px', display: 'block', marginBottom: '6px', fontFamily: 'var(--fonte-corpo)' },
+    inp: { width: '100%', padding: '10px 14px', background: 'var(--input)', border: '1px solid var(--borda)', borderRadius: '8px', color: 'var(--texto)', fontSize: '0.875rem', fontFamily: 'var(--fonte-corpo)', boxSizing: 'border-box', marginBottom: '14px' },
+    btn: { width: '100%', background: 'linear-gradient(135deg,#00b141,#008f34)', color: '#fff', border: 'none', borderRadius: '8px', padding: '11px', fontFamily: 'var(--fonte-corpo)', fontWeight: '600', fontSize: '0.9rem', cursor: 'pointer', marginTop: '4px' },
+    erro: { color: '#f87171', fontSize: '0.8rem', background: 'rgba(248,113,113,0.08)', padding: '8px 12px', borderRadius: '8px', marginBottom: '14px', fontFamily: 'var(--fonte-corpo)' },
   }
 
   return (
@@ -86,7 +86,7 @@ export default function RedefinirSenha() {
             <button style={s.btn} onClick={salvar} disabled={carregando}>
               {carregando ? 'Salvando...' : (ehConvite ? 'Salvar senha' : 'Salvar nova senha')}
             </button>
-            <button onClick={() => navigate('/login')} style={{ width:'100%', background:'none', border:'none', color:'rgba(var(--sobreposicao-rgb),0.4)', fontSize:'0.8rem', cursor:'pointer', marginTop:'12px', fontFamily:'Inter,sans-serif' }}>
+            <button onClick={() => navigate('/login')} style={{ width:'100%', background:'none', border:'none', color:'rgba(var(--sobreposicao-rgb),0.4)', fontSize:'0.8rem', cursor:'pointer', marginTop:'12px', fontFamily:'var(--fonte-corpo)' }}>
               ← Voltar para o login
             </button>
           </>

@@ -253,16 +253,18 @@ router.delete('/:id', autenticar, temPermissao('gerenciarClientes'), async (req,
 
 // Cliente inativo: ninguém edita, nem titular. Mês corrente: quem tem acesso ao setor edita
 // normalmente. Mês passado sem lançamento salvo ainda: dá pra preencher atrasado (útil pra
-// empresa que começou a usar o sistema agora e quer registrar meses anteriores). Mês passado
-// que já tem dado salvo: fecha pra colaborador, só o titular pode reabrir e editar.
-// Exceção: setor Contábil nunca trava, nem por mês nem por dado já salvo.
+// empresa que começou a usar o sistema agora e quer registrar meses anteriores). Mês corrente e
+// mês futuro sempre abertos pra quem tem acesso ao setor — dado de um mês que ainda não chegou
+// não é definitivo, então não trava mesmo já tendo algo salvo ali. Só quando o mês realmente
+// vira passado (o calendário avança) é que a trava passa a valer: fecha pra colaborador se já
+// tem dado salvo, só o titular pode reabrir e editar. Exceção: setor Contábil nunca trava, em
+// nenhuma competência.
 const podeEditarCompetencia = (usuario, setorId, competencia, clienteAtivo, setorNome, temDadosSalvos) => {
   if (!clienteAtivo) return false;
   const temAcesso = usuario.cargo === 'admin' || usuario.setores?.some(s => (s._id || s).toString() === setorId);
   if (!temAcesso) return false;
   if (usuario.cargo === 'admin') return true;
-  if (setorNome === 'contabil' || competencia === competenciaAtual()) return true;
-  if (competencia > competenciaAtual()) return false; // competência futura não é editável por colaborador
+  if (setorNome === 'contabil' || competencia >= competenciaAtual()) return true;
   return !temDadosSalvos;
 };
 
@@ -344,7 +346,6 @@ router.post('/:id/lancamentos/:setorId/:competencia', autenticar, async (req, re
   try {
     const { competencia } = req.params;
     if (!/^\d{4}-\d{2}$/.test(competencia)) return res.status(400).json({ erro: 'Competência inválida.' });
-    if (competencia > competenciaAtual()) return res.status(400).json({ erro: 'Não é possível lançar uma competência futura.' });
 
     const cliente = await Cliente.findOne({ _id: req.params.id, empresa: req.usuario.empresa._id }).lean();
     if (!cliente) return res.status(404).json({ erro: 'Cliente não encontrado.' });

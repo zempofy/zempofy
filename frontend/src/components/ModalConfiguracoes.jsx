@@ -219,7 +219,7 @@ function SetorDetalhe({ setor, funcionarios, souGestor, souResponsavelDeste, vol
           {membrosObjs.map(f => (
             <div key={f._id} style={s.membroLinha}>
               <Avatar nome={f.nome} foto={f.avatar} size={26} fontSize={11} />
-              <span style={{ flex: 1, fontSize: '0.85rem', color: 'var(--texto)', fontFamily: 'Inter,sans-serif' }}>{f.nome}</span>
+              <span style={{ flex: 1, fontSize: '0.85rem', color: 'var(--texto)', fontFamily: 'var(--fonte-corpo)' }}>{f.nome}</span>
               {podeEditarMembros && (
                 <button onClick={() => removerMembro(f._id)} style={s.btnRemoverMembro} title="Remover"><Icone.X size={12} /></button>
               )}
@@ -720,10 +720,10 @@ function CategoriaArmazenamento() {
       <h2 style={s.categoriaTitulo}>Armazenamento</h2>
 
       <div style={{ background: 'var(--input)', border: '1px solid var(--borda)', borderRadius: '11px', padding: '14px 16px', marginBottom: '14px' }}>
-        <p style={{ fontSize: '1.4rem', fontWeight: '700', color: 'var(--texto)', margin: 0, fontFamily: 'Inter, sans-serif', letterSpacing: '-0.02em' }}>
+        <p style={{ fontSize: '1.4rem', fontWeight: '700', color: 'var(--texto)', margin: 0, fontFamily: 'var(--fonte-corpo)', letterSpacing: '-0.02em' }}>
           {formatarTamanho(totalBytes)}
         </p>
-        <p style={{ fontSize: '0.74rem', color: 'var(--texto-apagado)', margin: '2px 0 0', fontFamily: 'Inter, sans-serif' }}>
+        <p style={{ fontSize: '0.74rem', color: 'var(--texto-apagado)', margin: '2px 0 0', fontFamily: 'var(--fonte-corpo)' }}>
           usados por documentos do escritório
         </p>
       </div>
@@ -854,8 +854,8 @@ function CategoriaMeuPlano() {
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '320px', gap: '12px', textAlign: 'center' }}>
       <div style={{ width: '52px', height: '52px', borderRadius: '14px', background: 'var(--input)', border: '1px solid var(--borda)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px' }}>🚧</div>
       <div>
-        <h2 style={{ fontSize: '0.95rem', fontWeight: '700', color: 'var(--texto)', margin: '0 0 6px', fontFamily: 'Inter, sans-serif', letterSpacing: '-0.02em' }}>Meu plano</h2>
-        <p style={{ fontSize: '0.8rem', color: 'var(--texto-apagado)', maxWidth: '340px', lineHeight: '1.55', margin: 0, fontFamily: 'Inter, sans-serif' }}>
+        <h2 style={{ fontSize: '0.95rem', fontWeight: '700', color: 'var(--texto)', margin: '0 0 6px', fontFamily: 'var(--fonte-corpo)', letterSpacing: '-0.02em' }}>Meu plano</h2>
+        <p style={{ fontSize: '0.8rem', color: 'var(--texto-apagado)', maxWidth: '340px', lineHeight: '1.55', margin: 0, fontFamily: 'var(--fonte-corpo)' }}>
           O gerenciamento de planos e assinaturas estará disponível em breve. Por enquanto, entre em contato para mais informações.
         </p>
       </div>
@@ -957,80 +957,80 @@ export default function ModalConfiguracoes({ fechar, categoriaInicial }) {
 
 const s = {
   topo: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: '1px solid var(--borda)' },
-  titulo: { fontFamily: 'Inter, sans-serif', fontWeight: '700', fontSize: '0.92rem', color: 'var(--texto)' },
+  titulo: { fontFamily: 'var(--fonte-corpo)', fontWeight: '700', fontSize: '0.92rem', color: 'var(--texto)' },
   btnX: { background: 'none', border: '1px solid var(--borda)', borderRadius: '6px', color: 'var(--texto-apagado)', width: '26px', height: '26px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', cursor: 'pointer' },
 
   corpoGeral: { display: 'flex', height: '78vh' },
   sidebarCategorias: { width: '175px', flexShrink: 0, borderRight: '1px solid var(--borda)', padding: '10px 6px', display: 'flex', flexDirection: 'column', gap: '1px', overflowY: 'auto' },
-  itemCategoria: { display: 'flex', alignItems: 'center', gap: '9px', padding: '7px 10px', borderRadius: '7px', background: 'none', border: 'none', borderLeft: '3px solid transparent', color: 'var(--texto-apagado)', fontSize: '0.8rem', fontWeight: '500', cursor: 'pointer', textAlign: 'left', fontFamily: 'Inter, sans-serif', width: '100%' },
+  itemCategoria: { display: 'flex', alignItems: 'center', gap: '9px', padding: '7px 10px', borderRadius: '7px', background: 'none', border: 'none', borderLeft: '3px solid transparent', color: 'var(--texto-apagado)', fontSize: '0.8rem', fontWeight: '500', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--fonte-corpo)', width: '100%' },
   itemCategoriaAtivo: { borderLeft: '3px solid var(--verde)', background: 'rgba(0,177,65,0.08)', color: 'var(--texto)', fontWeight: '600', borderRadius: '0 7px 7px 0' },
-  grupoTitulo: { fontSize: '0.6rem', fontWeight: '700', color: 'var(--texto-apagado)', textTransform: 'uppercase', letterSpacing: '1px', padding: '0 10px 4px', fontFamily: 'Inter, sans-serif' },
+  grupoTitulo: { fontSize: '0.6rem', fontWeight: '700', color: 'var(--texto-apagado)', textTransform: 'uppercase', letterSpacing: '1px', padding: '0 10px 4px', fontFamily: 'var(--fonte-corpo)' },
   conteudoCategoria: { flex: 1, padding: '18px', overflowY: 'auto', minWidth: 0 },
 
   categoriaHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', gap: '10px', flexWrap: 'wrap' },
-  categoriaTitulo: { fontSize: '0.95rem', fontWeight: '700', color: 'var(--texto)', margin: '0 0 14px', fontFamily: 'Inter, sans-serif', letterSpacing: '-0.01em' },
+  categoriaTitulo: { fontSize: '0.95rem', fontWeight: '700', color: 'var(--texto)', margin: '0 0 14px', fontFamily: 'var(--fonte-corpo)', letterSpacing: '-0.01em' },
 
   // Linhas de documento (Armazenamento e Lixeira) — mesmo visual das linhas de ListaDocumentos
   linhaDoc: { display: 'flex', alignItems: 'center', gap: '10px', background: 'var(--card)', border: '1px solid var(--borda)', borderRadius: '10px', padding: '10px 12px' },
-  nomeDoc: { fontSize: '0.82rem', color: 'var(--texto)', margin: 0, fontFamily: 'Inter,sans-serif', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-  metaDoc: { fontSize: '0.7rem', color: 'var(--texto-apagado)', margin: '2px 0 0', fontFamily: 'Inter,sans-serif' },
-  btnRestaurar: { background: 'var(--verde-glow)', border: '1px solid rgba(0,177,65,0.25)', borderRadius: '7px', color: 'var(--verde)', padding: '5px 12px', fontSize: '0.76rem', fontWeight: '600', cursor: 'pointer', fontFamily: 'Inter, sans-serif', flexShrink: 0, whiteSpace: 'nowrap' },
+  nomeDoc: { fontSize: '0.82rem', color: 'var(--texto)', margin: 0, fontFamily: 'var(--fonte-corpo)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  metaDoc: { fontSize: '0.7rem', color: 'var(--texto-apagado)', margin: '2px 0 0', fontFamily: 'var(--fonte-corpo)' },
+  btnRestaurar: { background: 'var(--verde-glow)', border: '1px solid rgba(0,177,65,0.25)', borderRadius: '7px', color: 'var(--verde)', padding: '5px 12px', fontSize: '0.76rem', fontWeight: '600', cursor: 'pointer', fontFamily: 'var(--fonte-corpo)', flexShrink: 0, whiteSpace: 'nowrap' },
 
   secao: { display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' },
   secaoTitulo: { fontSize: '0.66rem', fontWeight: '700', color: 'var(--verde)', textTransform: 'uppercase', letterSpacing: '1.2px', margin: 0 },
   botaoTema: { width: '50px', height: '50px', background: 'var(--card)', border: '1px solid var(--borda)', borderRadius: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   sliderWrapper: { display: 'flex', alignItems: 'center', gap: '10px' },
-  sliderLabel: { fontSize: '0.82rem', fontWeight: '700', color: 'var(--texto-apagado)', fontFamily: 'Inter, sans-serif', flexShrink: 0 },
+  sliderLabel: { fontSize: '0.82rem', fontWeight: '700', color: 'var(--texto-apagado)', fontFamily: 'var(--fonte-corpo)', flexShrink: 0 },
   sliderTrack: { flex: 1, position: 'relative', height: '18px', display: 'flex', alignItems: 'center' },
   sliderLinha: { position: 'absolute', left: 0, right: 0, height: '2px', background: 'var(--borda)', borderRadius: '2px' },
   sliderLinhaAtiva: { position: 'absolute', left: 0, height: '2px', background: 'var(--verde)', borderRadius: '2px', transition: 'width 0.2s' },
   sliderPonto: { position: 'absolute', width: '13px', height: '13px', borderRadius: '50%', cursor: 'pointer', transition: 'all 0.2s', zIndex: 1 },
   sliderLabels: { display: 'flex', justifyContent: 'space-between', marginTop: '-7px' },
-  sliderOpcaoLabel: { fontSize: '0.68rem', fontFamily: 'Inter, sans-serif', transition: 'color 0.2s' },
+  sliderOpcaoLabel: { fontSize: '0.68rem', fontFamily: 'var(--fonte-corpo)', transition: 'color 0.2s' },
   fontePreview: { background: 'var(--input)', border: '1px solid var(--borda)', borderRadius: '9px', padding: '11px 13px', marginTop: '3px' },
   toggleRow: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '14px', background: 'var(--input)', border: '1px solid var(--borda)', borderRadius: '10px', padding: '11px 13px' },
-  toggleLabel: { fontSize: '0.82rem', fontWeight: '500', color: 'var(--texto)', margin: '0 0 3px', fontFamily: 'Inter, sans-serif' },
-  toggleDesc: { fontSize: '0.72rem', color: 'var(--texto-apagado)', margin: 0, lineHeight: '1.4', fontFamily: 'Inter, sans-serif' },
+  toggleLabel: { fontSize: '0.82rem', fontWeight: '500', color: 'var(--texto)', margin: '0 0 3px', fontFamily: 'var(--fonte-corpo)' },
+  toggleDesc: { fontSize: '0.72rem', color: 'var(--texto-apagado)', margin: 0, lineHeight: '1.4', fontFamily: 'var(--fonte-corpo)' },
   toggle: { width: '38px', height: '21px', borderRadius: '99px', background: 'var(--borda)', border: 'none', cursor: 'pointer', position: 'relative', flexShrink: 0, transition: 'background 0.2s', marginTop: '2px', padding: 0 },
   toggleAtivo: { background: 'var(--verde)' },
   toggleBola: { position: 'absolute', top: '3px', left: '3px', width: '15px', height: '15px', borderRadius: '50%', background: '#fff', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' },
   toggleBolaAtiva: { left: '20px' },
 
   // ── Setores: grade ──
-  btnNovo: { background: 'var(--gradiente-verde)', color: '#fff', border: 'none', borderRadius: '9px', padding: '7px 14px', fontFamily: 'Inter, sans-serif', fontWeight: '600', fontSize: '0.78rem', cursor: 'pointer' },
+  btnNovo: { background: 'var(--gradiente-verde)', color: '#fff', border: 'none', borderRadius: '9px', padding: '7px 14px', fontFamily: 'var(--fonte-corpo)', fontWeight: '600', fontSize: '0.78rem', cursor: 'pointer' },
   gridSetores: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(175px, 1fr))', gap: '10px' },
   cardSetor: { background: 'var(--card)', border: '1px solid var(--borda)', borderRadius: '12px', overflow: 'hidden', cursor: 'pointer', transition: 'border-color 0.15s, transform 0.1s' },
   cardBarra: { height: '4px', width: '100%' },
   cardCorpo: { padding: '11px' },
-  selo: { width: '23px', height: '23px', borderRadius: '7px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: '700', color: '#fff', flexShrink: 0, fontFamily: 'Inter, sans-serif' },
-  cardNome: { fontSize: '0.83rem', fontWeight: '600', color: 'var(--texto)', fontFamily: 'Inter, sans-serif', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  selo: { width: '23px', height: '23px', borderRadius: '7px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: '700', color: '#fff', flexShrink: 0, fontFamily: 'var(--fonte-corpo)' },
+  cardNome: { fontSize: '0.83rem', fontWeight: '600', color: 'var(--texto)', fontFamily: 'var(--fonte-corpo)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
   iconeCadeado: { color: 'var(--texto-apagado)', display: 'flex', flexShrink: 0, cursor: 'help' },
   badgeDemanda: { fontSize: '0.6rem', fontWeight: '700', color: 'var(--verde)', background: 'rgba(0,177,65,0.1)', border: '1px solid rgba(0,177,65,0.2)', borderRadius: '99px', padding: '1px 7px', textTransform: 'uppercase', letterSpacing: '0.4px' },
-  cardResponsavel: { fontSize: '0.72rem', color: 'var(--texto-apagado)', margin: '0 0 8px', fontFamily: 'Inter, sans-serif' },
+  cardResponsavel: { fontSize: '0.72rem', color: 'var(--texto-apagado)', margin: '0 0 8px', fontFamily: 'var(--fonte-corpo)' },
   avataresRow: { display: 'flex', alignItems: 'center', minHeight: '22px' },
   avatarOverlap: { border: '2px solid var(--card)', borderRadius: '50%' },
   maisMembros: { fontSize: '0.65rem', fontWeight: '600', color: 'var(--texto-apagado)', marginLeft: '6px' },
-  semMembros: { fontSize: '0.7rem', color: 'var(--texto-apagado)', fontStyle: 'italic', fontFamily: 'Inter, sans-serif' },
+  semMembros: { fontSize: '0.7rem', color: 'var(--texto-apagado)', fontStyle: 'italic', fontFamily: 'var(--fonte-corpo)' },
 
   // ── Setores: detalhe ──
-  btnVoltar: { background: 'none', border: 'none', color: 'var(--texto-apagado)', cursor: 'pointer', fontFamily: 'Inter,sans-serif', fontSize: '0.8rem', padding: '0 0 12px', display: 'flex', alignItems: 'center', gap: '6px' },
+  btnVoltar: { background: 'none', border: 'none', color: 'var(--texto-apagado)', cursor: 'pointer', fontFamily: 'var(--fonte-corpo)', fontSize: '0.8rem', padding: '0 0 12px', display: 'flex', alignItems: 'center', gap: '6px' },
   detalheHeader: { display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' },
-  detalheTitulo: { fontSize: '1rem', fontWeight: '700', color: 'var(--texto)', margin: 0, fontFamily: 'Inter, sans-serif' },
+  detalheTitulo: { fontSize: '1rem', fontWeight: '700', color: 'var(--texto)', margin: 0, fontFamily: 'var(--fonte-corpo)' },
   campo: { display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '13px' },
-  label: { fontSize: '0.68rem', fontWeight: '600', color: 'var(--texto-apagado)', textTransform: 'uppercase', letterSpacing: '1px', fontFamily: 'Inter, sans-serif' },
-  input: { background: 'var(--input)', border: '1px solid var(--borda)', borderRadius: '9px', padding: '8px 12px', color: 'var(--texto)', fontSize: '0.85rem', fontFamily: 'Inter, sans-serif', width: '100%', boxSizing: 'border-box' },
-  hint: { fontSize: '0.7rem', color: 'var(--texto-apagado)', margin: 0, lineHeight: '1.4', fontFamily: 'Inter, sans-serif' },
+  label: { fontSize: '0.68rem', fontWeight: '600', color: 'var(--texto-apagado)', textTransform: 'uppercase', letterSpacing: '1px', fontFamily: 'var(--fonte-corpo)' },
+  input: { background: 'var(--input)', border: '1px solid var(--borda)', borderRadius: '9px', padding: '8px 12px', color: 'var(--texto)', fontSize: '0.85rem', fontFamily: 'var(--fonte-corpo)', width: '100%', boxSizing: 'border-box' },
+  hint: { fontSize: '0.7rem', color: 'var(--texto-apagado)', margin: 0, lineHeight: '1.4', fontFamily: 'var(--fonte-corpo)' },
   membroLinha: { display: 'flex', alignItems: 'center', gap: '9px', padding: '5px 9px', borderRadius: '7px', background: 'var(--input)', border: '1px solid var(--borda)' },
   btnRemoverMembro: { background: 'none', border: 'none', color: 'var(--texto-apagado)', cursor: 'pointer', display: 'flex', padding: '4px' },
-  btnAddMembro: { background: 'none', border: '1px dashed var(--borda)', borderRadius: '7px', color: 'var(--texto-apagado)', padding: '7px', cursor: 'pointer', fontFamily: 'Inter, sans-serif', fontSize: '0.78rem', marginTop: '7px', width: '100%' },
-  btnMini: { background: 'var(--gradiente-verde)', color: '#fff', border: 'none', borderRadius: '7px', padding: '0 12px', fontFamily: 'Inter, sans-serif', fontWeight: '600', fontSize: '0.75rem', cursor: 'pointer' },
-  btnMiniCanc: { background: 'none', border: '1px solid var(--borda)', borderRadius: '7px', color: 'var(--texto-apagado)', padding: '0 11px', fontFamily: 'Inter, sans-serif', fontSize: '0.75rem', cursor: 'pointer' },
-  btnSalvar: { background: 'var(--gradiente-verde)', color: '#fff', border: 'none', borderRadius: '9px', padding: '8px 16px', fontFamily: 'Inter, sans-serif', fontWeight: '600', fontSize: '0.84rem', cursor: 'pointer', marginTop: '4px' },
+  btnAddMembro: { background: 'none', border: '1px dashed var(--borda)', borderRadius: '7px', color: 'var(--texto-apagado)', padding: '7px', cursor: 'pointer', fontFamily: 'var(--fonte-corpo)', fontSize: '0.78rem', marginTop: '7px', width: '100%' },
+  btnMini: { background: 'var(--gradiente-verde)', color: '#fff', border: 'none', borderRadius: '7px', padding: '0 12px', fontFamily: 'var(--fonte-corpo)', fontWeight: '600', fontSize: '0.75rem', cursor: 'pointer' },
+  btnMiniCanc: { background: 'none', border: '1px solid var(--borda)', borderRadius: '7px', color: 'var(--texto-apagado)', padding: '0 11px', fontFamily: 'var(--fonte-corpo)', fontSize: '0.75rem', cursor: 'pointer' },
+  btnSalvar: { background: 'var(--gradiente-verde)', color: '#fff', border: 'none', borderRadius: '9px', padding: '8px 16px', fontFamily: 'var(--fonte-corpo)', fontWeight: '600', fontSize: '0.84rem', cursor: 'pointer', marginTop: '4px' },
   erro: { color: '#FCA5A5', fontSize: '0.78rem', background: 'rgba(239,68,68,0.1)', padding: '7px 11px', borderRadius: '7px', marginBottom: '13px' },
 
   // ── Acesso e senha ──
-  valorComAcao: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--input)', border: '1px solid var(--borda)', borderRadius: '9px', padding: '8px 12px', color: 'var(--texto)', fontSize: '0.85rem', fontFamily: 'Inter, sans-serif' },
-  btnAlterar: { background: 'none', border: 'none', color: 'var(--verde)', fontSize: '0.78rem', cursor: 'pointer', fontFamily: 'Inter, sans-serif', fontWeight: '500' },
+  valorComAcao: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--input)', border: '1px solid var(--borda)', borderRadius: '9px', padding: '8px 12px', color: 'var(--texto)', fontSize: '0.85rem', fontFamily: 'var(--fonte-corpo)' },
+  btnAlterar: { background: 'none', border: 'none', color: 'var(--verde)', fontSize: '0.78rem', cursor: 'pointer', fontFamily: 'var(--fonte-corpo)', fontWeight: '500' },
   subForm: { background: 'var(--input-2)', border: '1px solid var(--borda)', borderRadius: '10px', padding: '13px', display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '13px' },
   sucessoMsg: { color: 'var(--verde)', fontSize: '0.78rem', background: 'rgba(0,177,65,0.08)', padding: '7px 11px', borderRadius: '7px' },
 }

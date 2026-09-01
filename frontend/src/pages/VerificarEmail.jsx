@@ -24,7 +24,7 @@ export default function VerificarEmail() {
     <div data-tema="escuro" style={{
       minHeight: '100vh', background: 'var(--fundo)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontFamily: 'Inter, sans-serif', padding: '20px'
+      fontFamily: 'var(--fonte-corpo)', padding: '20px'
     }}>
       <div style={{
         background: 'var(--card)', border: '1px solid var(--borda)',
@@ -52,7 +52,7 @@ export default function VerificarEmail() {
             </p>
             <button
               onClick={() => navigate('/login')}
-              style={{ background: 'linear-gradient(135deg, #00b141, #008f34)', color: '#fff', border: 'none', borderRadius: '10px', padding: '12px 28px', fontFamily: 'Inter, sans-serif', fontWeight: '600', fontSize: '0.95rem', cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,177,65,0.3)' }}
+              style={{ background: 'linear-gradient(135deg, #00b141, #008f34)', color: '#fff', border: 'none', borderRadius: '10px', padding: '12px 28px', fontFamily: 'var(--fonte-corpo)', fontWeight: '600', fontSize: '0.95rem', cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,177,65,0.3)' }}
             >
               Ir para o sistema
             </button>
@@ -72,7 +72,7 @@ export default function VerificarEmail() {
             </p>
             <button
               onClick={() => navigate('/login')}
-              style={{ background: 'none', border: '1px solid var(--borda)', borderRadius: '10px', padding: '12px 28px', color: 'var(--texto-secundario)', fontFamily: 'Inter, sans-serif', fontWeight: '500', fontSize: '0.95rem', cursor: 'pointer' }}
+              style={{ background: 'none', border: '1px solid var(--borda)', borderRadius: '10px', padding: '12px 28px', color: 'var(--texto-secundario)', fontFamily: 'var(--fonte-corpo)', fontWeight: '500', fontSize: '0.95rem', cursor: 'pointer' }}
             >
               Ir para o login
             </button>

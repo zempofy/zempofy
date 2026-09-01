@@ -109,7 +109,7 @@ function ModalNovoModelo({ fechar, onSalvo }) {
                   <button key={setor._id} onClick={() => toggleSetor(setor)} style={{
                     display: 'flex', alignItems: 'center', gap: '6px',
                     padding: '6px 14px', borderRadius: '99px', cursor: 'pointer',
-                    fontSize: '0.8rem', fontFamily: 'Inter, sans-serif', fontWeight: '500',
+                    fontSize: '0.8rem', fontFamily: 'var(--fonte-corpo)', fontWeight: '500',
                     border: ativo ? `2px solid ${setor.cor}` : '1px solid var(--borda)',
                     background: ativo ? `${setor.cor}22` : 'transparent',
                     color: ativo ? setor.cor : 'var(--texto-apagado)',
@@ -301,13 +301,13 @@ function ModalExcluirPermanente({ nome, onConfirmar, onCancelar }) {
         <button style={s.btnX} onClick={onCancelar}>✕</button>
       </div>
       <div style={{ padding: '20px 24px' }}>
-        <p style={{ fontSize: '0.875rem', color: 'var(--texto)', margin: '0 0 12px', fontFamily: 'Inter, sans-serif' }}>
+        <p style={{ fontSize: '0.875rem', color: 'var(--texto)', margin: '0 0 12px', fontFamily: 'var(--fonte-corpo)' }}>
           Tem certeza que deseja excluir <strong>{nome}</strong> permanentemente?
         </p>
         <div style={{ background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.25)', borderRadius: '8px', padding: '10px 12px', marginBottom: '14px' }}>
-          <p style={{ fontSize: '0.8rem', color: '#f87171', margin: 0, fontFamily: 'Inter, sans-serif', lineHeight: '1.4' }}>Essa ação é permanente e não pode ser desfeita.</p>
+          <p style={{ fontSize: '0.8rem', color: '#f87171', margin: 0, fontFamily: 'var(--fonte-corpo)', lineHeight: '1.4' }}>Essa ação é permanente e não pode ser desfeita.</p>
         </div>
-        <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', cursor: 'pointer', fontSize: '0.8rem', color: 'var(--texto-apagado)', fontFamily: 'Inter, sans-serif' }}>
+        <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', cursor: 'pointer', fontSize: '0.8rem', color: 'var(--texto-apagado)', fontFamily: 'var(--fonte-corpo)' }}>
           <input type="checkbox" checked={ciente} onChange={e => setCiente(e.target.checked)} style={{ marginTop: '2px', accentColor: '#f87171', width: '15px', height: '15px', flexShrink: 0, cursor: 'pointer' }} />
           Estou ciente de que essa exclusão é permanente e não pode ser desfeita.
         </label>
@@ -543,7 +543,7 @@ function ModelosConteudo({ ctl }) {
 
         <div style={s.listaAtividades}>
           {tarefas.length === 0 && (
-            <p style={{ fontSize: '0.8rem', color: 'var(--texto-apagado)', padding: '6px 4px 12px', fontFamily: 'Inter, sans-serif' }}>Nenhuma atividade ainda.</p>
+            <p style={{ fontSize: '0.8rem', color: 'var(--texto-apagado)', padding: '6px 4px 12px', fontFamily: 'var(--fonte-corpo)' }}>Nenhuma atividade ainda.</p>
           )}
           {tarefas.map((at, i) => (
             <div key={at._id} style={s.atividadeLinha} className="mod-ativ">
@@ -687,75 +687,75 @@ function ModelosConteudo({ ctl }) {
 const s = {
   // ── Nível 1: cabeçalho + grade de cards (mesmo padrão visual da categoria Setores) ──
   categoriaHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', gap: '10px', flexWrap: 'wrap' },
-  categoriaTitulo: { fontSize: '0.95rem', fontWeight: '700', color: 'var(--texto)', margin: 0, fontFamily: 'Inter, sans-serif', letterSpacing: '-0.01em' },
-  btnNovo: { background: 'var(--gradiente-verde)', color: '#fff', border: 'none', borderRadius: '9px', padding: '7px 14px', fontFamily: 'Inter, sans-serif', fontWeight: '600', fontSize: '0.78rem', cursor: 'pointer' },
+  categoriaTitulo: { fontSize: '0.95rem', fontWeight: '700', color: 'var(--texto)', margin: 0, fontFamily: 'var(--fonte-corpo)', letterSpacing: '-0.01em' },
+  btnNovo: { background: 'var(--gradiente-verde)', color: '#fff', border: 'none', borderRadius: '9px', padding: '7px 14px', fontFamily: 'var(--fonte-corpo)', fontWeight: '600', fontSize: '0.78rem', cursor: 'pointer' },
   gridModelos: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(175px, 1fr))', gap: '10px' },
   cardModelo: { background: 'var(--card)', border: '1px solid var(--borda)', borderRadius: '12px', overflow: 'hidden', cursor: 'pointer', transition: 'border-color 0.15s, transform 0.1s, opacity 0.15s' },
   cardBarra: { height: '4px', width: '100%' },
   cardCorpo: { padding: '11px' },
-  selo: { width: '23px', height: '23px', borderRadius: '7px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: '700', color: '#fff', flexShrink: 0, fontFamily: 'Inter, sans-serif' },
-  cardNome: { fontSize: '0.83rem', fontWeight: '600', color: 'var(--texto)', fontFamily: 'Inter, sans-serif', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-  cardMeta: { fontSize: '0.72rem', color: 'var(--texto-apagado)', margin: 0, fontFamily: 'Inter, sans-serif' },
+  selo: { width: '23px', height: '23px', borderRadius: '7px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: '700', color: '#fff', flexShrink: 0, fontFamily: 'var(--fonte-corpo)' },
+  cardNome: { fontSize: '0.83rem', fontWeight: '600', color: 'var(--texto)', fontFamily: 'var(--fonte-corpo)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  cardMeta: { fontSize: '0.72rem', color: 'var(--texto-apagado)', margin: 0, fontFamily: 'var(--fonte-corpo)' },
 
   // ── Conteúdo: cabeçalho do detalhe ──
   cabecalhoModelo: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px', marginBottom: '20px', flexWrap: 'wrap' },
-  subtituloFixo: { fontSize: '0.76rem', color: 'var(--texto-apagado)', marginTop: '3px', fontFamily: 'Inter, sans-serif' },
-  btnInativar: { background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.25)', borderRadius: '9px', color: '#f87171', padding: '7px 14px', fontFamily: 'Inter, sans-serif', fontWeight: '600', fontSize: '0.78rem', cursor: 'pointer', whiteSpace: 'nowrap' },
-  btnReativar: { background: 'var(--gradiente-verde)', color: '#fff', border: 'none', borderRadius: '9px', padding: '7px 14px', fontFamily: 'Inter, sans-serif', fontWeight: '600', fontSize: '0.78rem', cursor: 'pointer', whiteSpace: 'nowrap' },
-  btnExcluirPerm: { background: 'none', border: '1px solid rgba(248,113,113,0.3)', borderRadius: '9px', color: '#f87171', padding: '7px 14px', fontFamily: 'Inter, sans-serif', fontWeight: '600', fontSize: '0.78rem', cursor: 'pointer', whiteSpace: 'nowrap' },
+  subtituloFixo: { fontSize: '0.76rem', color: 'var(--texto-apagado)', marginTop: '3px', fontFamily: 'var(--fonte-corpo)' },
+  btnInativar: { background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.25)', borderRadius: '9px', color: '#f87171', padding: '7px 14px', fontFamily: 'var(--fonte-corpo)', fontWeight: '600', fontSize: '0.78rem', cursor: 'pointer', whiteSpace: 'nowrap' },
+  btnReativar: { background: 'var(--gradiente-verde)', color: '#fff', border: 'none', borderRadius: '9px', padding: '7px 14px', fontFamily: 'var(--fonte-corpo)', fontWeight: '600', fontSize: '0.78rem', cursor: 'pointer', whiteSpace: 'nowrap' },
+  btnExcluirPerm: { background: 'none', border: '1px solid rgba(248,113,113,0.3)', borderRadius: '9px', color: '#f87171', padding: '7px 14px', fontFamily: 'var(--fonte-corpo)', fontWeight: '600', fontSize: '0.78rem', cursor: 'pointer', whiteSpace: 'nowrap' },
 
   // ── Nível 2: fluxo de setores ──
   fluxoSetores: { display: 'flex', flexDirection: 'column' },
   linhaFluxo: { display: 'flex', alignItems: 'stretch', gap: '10px' },
   colNumero: { display: 'flex', flexDirection: 'column', alignItems: 'center', width: '22px', flexShrink: 0 },
-  numeroCirculo: { width: '22px', height: '22px', borderRadius: '50%', background: 'rgba(0,177,65,0.12)', color: 'var(--verde)', fontSize: '0.72rem', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontFamily: 'Inter, sans-serif' },
+  numeroCirculo: { width: '22px', height: '22px', borderRadius: '50%', background: 'rgba(0,177,65,0.12)', color: 'var(--verde)', fontSize: '0.72rem', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontFamily: 'var(--fonte-corpo)' },
   linhaConectora: { flex: 1, width: '2px', minHeight: '18px', background: 'var(--borda)', margin: '2px 0' },
   linhaConteudo: { flex: 1, display: 'flex', alignItems: 'center', gap: '10px', background: 'var(--card)', border: '1px solid var(--borda)', borderRadius: '11px', padding: '11px 14px', cursor: 'pointer', marginBottom: '8px', minWidth: 0, transition: 'border-color 0.15s' },
-  setorNome: { fontSize: '0.85rem', fontWeight: '600', color: 'var(--texto)', fontFamily: 'Inter, sans-serif', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  setorNome: { fontSize: '0.85rem', fontWeight: '600', color: 'var(--texto)', fontFamily: 'var(--fonte-corpo)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
   countBadge: { fontSize: '0.68rem', color: 'var(--texto-apagado)', background: 'var(--input)', border: '1px solid var(--borda)', padding: '2px 8px', borderRadius: '99px', whiteSpace: 'nowrap', flexShrink: 0 },
   handleArrastar: { color: 'var(--texto-apagado)', fontSize: '18px', letterSpacing: '2px', cursor: 'grab', display: 'flex', alignItems: 'center', padding: '0 4px 8px', userSelect: 'none', flexShrink: 0 },
 
   // ── Nível 3: atividades do setor ──
   detalheHeader: { display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' },
-  detalheTitulo: { fontSize: '1rem', fontWeight: '700', color: 'var(--texto)', margin: 0, fontFamily: 'Inter, sans-serif' },
+  detalheTitulo: { fontSize: '1rem', fontWeight: '700', color: 'var(--texto)', margin: 0, fontFamily: 'var(--fonte-corpo)' },
   listaAtividades: { display: 'flex', flexDirection: 'column' },
   atividadeLinha: { display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 4px', borderBottom: '1px solid var(--borda)', position: 'relative' },
   atividadeNum: { fontSize: '0.68rem', color: 'var(--texto-apagado)', width: '18px', textAlign: 'center', flexShrink: 0 },
-  atividadeDesc: { fontSize: '0.85rem', color: 'var(--texto)', flex: 1, fontFamily: 'Inter, sans-serif' },
+  atividadeDesc: { fontSize: '0.85rem', color: 'var(--texto)', flex: 1, fontFamily: 'var(--fonte-corpo)' },
   respBadge: { fontSize: '0.7rem', color: 'var(--verde)', background: 'rgba(0,177,65,0.08)', border: '1px solid rgba(0,177,65,0.18)', padding: '2px 8px', borderRadius: '99px', whiteSpace: 'nowrap' },
   btnRemov: { background: 'none', border: 'none', color: 'var(--texto-apagado)', fontSize: '11px', cursor: 'pointer', padding: '2px 4px', opacity: 0, transition: 'opacity 0.15s', flexShrink: 0 },
-  linhaAdicionar: { textAlign: 'left', background: 'none', border: '1px dashed var(--borda)', borderRadius: '9px', color: 'var(--verde)', fontSize: '0.82rem', fontWeight: '600', cursor: 'pointer', padding: '10px 12px', marginTop: '10px', fontFamily: 'Inter, sans-serif' },
-  btnVoltar: { background: 'none', border: 'none', color: 'var(--texto-apagado)', fontSize: '0.8rem', cursor: 'pointer', fontFamily: 'Inter, sans-serif', padding: '0', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '16px' },
+  linhaAdicionar: { textAlign: 'left', background: 'none', border: '1px dashed var(--borda)', borderRadius: '9px', color: 'var(--verde)', fontSize: '0.82rem', fontWeight: '600', cursor: 'pointer', padding: '10px 12px', marginTop: '10px', fontFamily: 'var(--fonte-corpo)' },
+  btnVoltar: { background: 'none', border: 'none', color: 'var(--texto-apagado)', fontSize: '0.8rem', cursor: 'pointer', fontFamily: 'var(--fonte-corpo)', padding: '0', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '16px' },
 
   // ── Painel lateral direito (adicionar atividade) ──
   painelWrapper: { width: '300px', flexShrink: 0, position: 'fixed', right: '0', top: '54px', bottom: '0', borderLeft: '1px solid var(--borda)', background: 'var(--card)', display: 'flex', flexDirection: 'column', zIndex: 9200, overflowY: 'auto' },
   painel: { display: 'flex', flexDirection: 'column', height: '100%' },
   painelTopo: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', padding: '18px 16px', borderBottom: '1px solid var(--borda)', flexShrink: 0 },
-  painelTitulo: { fontSize: '0.9rem', fontWeight: '600', color: 'var(--texto)', fontFamily: 'Inter, sans-serif' },
+  painelTitulo: { fontSize: '0.9rem', fontWeight: '600', color: 'var(--texto)', fontFamily: 'var(--fonte-corpo)' },
   abas: { display: 'flex', borderBottom: '1px solid var(--borda)', flexShrink: 0 },
-  aba: { flex: 1, padding: '10px 8px', fontSize: '0.78rem', fontFamily: 'Inter, sans-serif', background: 'none', border: 'none', color: 'var(--texto-apagado)', cursor: 'pointer', borderBottom: '2px solid transparent', transition: 'all 0.15s' },
+  aba: { flex: 1, padding: '10px 8px', fontSize: '0.78rem', fontFamily: 'var(--fonte-corpo)', background: 'none', border: 'none', color: 'var(--texto-apagado)', cursor: 'pointer', borderBottom: '2px solid transparent', transition: 'all 0.15s' },
   abaAtiva: { color: 'var(--verde)', borderBottomColor: 'var(--verde)', fontWeight: '600' },
   bancoItem: { display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', borderBottom: '1px solid var(--borda)' },
-  btnUsar: { fontSize: '0.72rem', color: 'var(--verde)', background: 'rgba(0,177,65,0.08)', border: '1px solid rgba(0,177,65,0.2)', borderRadius: '6px', padding: '3px 10px', cursor: 'pointer', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' },
+  btnUsar: { fontSize: '0.72rem', color: 'var(--verde)', background: 'rgba(0,177,65,0.08)', border: '1px solid rgba(0,177,65,0.2)', borderRadius: '6px', padding: '3px 10px', cursor: 'pointer', fontFamily: 'var(--fonte-corpo)', whiteSpace: 'nowrap' },
   badgeAdicionada: { fontSize: '0.7rem', color: 'var(--texto-apagado)', background: 'var(--input)', border: '1px solid var(--borda)', borderRadius: '6px', padding: '3px 8px', whiteSpace: 'nowrap' },
-  btnLink: { background: 'none', border: 'none', color: 'var(--verde)', fontSize: '0.82rem', cursor: 'pointer', fontFamily: 'Inter, sans-serif', fontWeight: '600' },
+  btnLink: { background: 'none', border: 'none', color: 'var(--verde)', fontSize: '0.82rem', cursor: 'pointer', fontFamily: 'var(--fonte-corpo)', fontWeight: '600' },
   vazioPanel: { display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '32px 16px' },
 
   // ── Compartilhados (modais) ──
   overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 9200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' },
   modal: { background: 'var(--card)', border: '1px solid var(--borda)', borderRadius: '16px', width: '100%', maxWidth: '560px', maxHeight: '88vh', overflowY: 'auto', boxShadow: '0 24px 64px rgba(0,0,0,0.6)' },
   modalTopo: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px', borderBottom: '1px solid var(--borda)' },
-  modalTitulo: { fontWeight: '700', fontSize: '1rem', color: 'var(--texto)', fontFamily: 'Inter, sans-serif' },
+  modalTitulo: { fontWeight: '700', fontSize: '1rem', color: 'var(--texto)', fontFamily: 'var(--fonte-corpo)' },
   btnX: { background: 'none', border: '1px solid var(--borda)', borderRadius: '6px', color: 'var(--texto-apagado)', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', cursor: 'pointer', flexShrink: 0 },
   modalCorpo: { padding: '24px', display: 'flex', flexDirection: 'column', gap: '18px' },
   modalRodape: { display: 'flex', gap: '12px', justifyContent: 'flex-end', padding: '16px 24px', borderTop: '1px solid var(--borda)' },
   campo: { display: 'flex', flexDirection: 'column', gap: '8px' },
-  label: { fontSize: '0.7rem', fontWeight: '600', color: 'var(--texto-apagado)', textTransform: 'uppercase', letterSpacing: '1px', fontFamily: 'Inter, sans-serif' },
-  input: { background: 'var(--input)', border: '1px solid var(--borda)', borderRadius: '10px', padding: '10px 14px', color: 'var(--texto)', fontSize: '0.9rem', fontFamily: 'Inter, sans-serif', width: '100%', boxSizing: 'border-box' },
-  btnCancelar: { background: 'none', border: '1px solid var(--borda)', borderRadius: '10px', color: 'var(--texto-apagado)', padding: '10px 20px', fontFamily: 'Inter, sans-serif', fontWeight: '500', fontSize: '0.875rem', cursor: 'pointer' },
-  btnSalvar: { background: 'var(--gradiente-verde)', color: '#fff', border: 'none', borderRadius: '10px', padding: '10px 20px', fontFamily: 'Inter, sans-serif', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer' },
+  label: { fontSize: '0.7rem', fontWeight: '600', color: 'var(--texto-apagado)', textTransform: 'uppercase', letterSpacing: '1px', fontFamily: 'var(--fonte-corpo)' },
+  input: { background: 'var(--input)', border: '1px solid var(--borda)', borderRadius: '10px', padding: '10px 14px', color: 'var(--texto)', fontSize: '0.9rem', fontFamily: 'var(--fonte-corpo)', width: '100%', boxSizing: 'border-box' },
+  btnCancelar: { background: 'none', border: '1px solid var(--borda)', borderRadius: '10px', color: 'var(--texto-apagado)', padding: '10px 20px', fontFamily: 'var(--fonte-corpo)', fontWeight: '500', fontSize: '0.875rem', cursor: 'pointer' },
+  btnSalvar: { background: 'var(--gradiente-verde)', color: '#fff', border: 'none', borderRadius: '10px', padding: '10px 20px', fontFamily: 'var(--fonte-corpo)', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer' },
   erro: { color: '#FCA5A5', fontSize: '0.8rem', background: 'rgba(239,68,68,0.1)', padding: '8px 12px', borderRadius: '8px' },
   ordemItem: { display: 'flex', alignItems: 'center', gap: '10px', background: 'var(--input)', border: '1px solid var(--borda)', borderRadius: '8px', padding: '10px 14px', marginBottom: '6px', userSelect: 'none', cursor: 'grab' },
   ordemNum: { width: '20px', height: '20px', borderRadius: '50%', background: 'rgba(0,177,65,0.12)', color: 'var(--verde)', fontSize: '0.72rem', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  ordemNome: { fontSize: '0.85rem', color: 'var(--texto)', flex: 1, fontFamily: 'Inter, sans-serif' },
+  ordemNome: { fontSize: '0.85rem', color: 'var(--texto)', flex: 1, fontFamily: 'var(--fonte-corpo)' },
 }

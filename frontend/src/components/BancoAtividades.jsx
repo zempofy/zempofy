@@ -89,7 +89,7 @@ function Balao({ alvo, titulo, texto, passo, total, onProximo, onFechar, posicao
         border: '1px solid rgba(0,177,65,0.35)',
         borderRadius: '14px', padding: '18px 20px',
         boxShadow: '0 12px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(0,177,65,0.1)',
-        zIndex: 9999, fontFamily: 'Inter, sans-serif',
+        zIndex: 9999, fontFamily: 'var(--fonte-corpo)',
       }}>
         <div style={{ position: 'absolute', width: 0, height: 0, ...arrowStyle }} />
 
@@ -120,7 +120,7 @@ function Balao({ alvo, titulo, texto, passo, total, onProximo, onFechar, posicao
           <button onClick={onProximo} style={{
             background: 'var(--gradiente-verde)', color: '#fff',
             border: 'none', borderRadius: '8px', padding: '7px 16px',
-            fontSize: '0.82rem', fontWeight: '600', cursor: 'pointer', fontFamily: 'Inter, sans-serif',
+            fontSize: '0.82rem', fontWeight: '600', cursor: 'pointer', fontFamily: 'var(--fonte-corpo)',
           }}>
             {passo === total - 1 ? 'Concluir ✓' : 'Próximo →'}
           </button>
@@ -143,9 +143,9 @@ function ModalAtividade({ setores, atividade, fechar, onSalvo, funcionarios, ref
 
   const setorSelecionado = setores.find(s => s._id === setorId)
   const idsDoSetor = setorSelecionado?.membros?.map(m => m._id || m.toString()) || []
-  const funcionariosDoSetor = funcionarios.filter(f => idsDoSetor.includes(f._id))
-  // Mostrar APENAS membros do setor selecionado
-  const opcoesFuncionarios = funcionariosDoSetor
+  // Membros do setor + titular (titular tem acesso a tudo, não pertence a um setor)
+  const funcionariosDoSetor = funcionarios.filter(f => idsDoSetor.includes(f._id) || f.cargo === 'admin')
+  const opcoesFuncionarios = Array.from(new Map(funcionariosDoSetor.map(f => [f._id, f])).values())
 
   const salvar = async () => {
     if (!setorId) return setErro('Selecione um setor.')
@@ -192,7 +192,7 @@ function ModalAtividade({ setores, atividade, fechar, onSalvo, funcionarios, ref
                     <button key={s2._id} type="button" onClick={() => { setSetorId(s2._id); setResponsavelId('') }} style={{
                       display: 'flex', alignItems: 'center', gap: '6px',
                       padding: '6px 14px', borderRadius: '99px', cursor: 'pointer',
-                      fontSize: '0.8rem', fontFamily: 'Inter, sans-serif', fontWeight: '500',
+                      fontSize: '0.8rem', fontFamily: 'var(--fonte-corpo)', fontWeight: '500',
                       border: ativo ? `2px solid ${s2.cor}` : '1px solid var(--borda)',
                       background: ativo ? `${s2.cor}22` : 'transparent',
                       color: ativo ? s2.cor : 'var(--texto-apagado)',
@@ -470,38 +470,38 @@ export default function BancoAtividades() {
 
 const s = {
   header: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '18px', flexWrap: 'wrap', gap: '10px' },
-  titulo: { fontSize: '1.05rem', fontWeight: '700', color: 'var(--texto)', margin: 0, fontFamily: 'Inter, sans-serif', letterSpacing: '-0.03em' },
-  subtitulo: { fontSize: '0.76rem', color: 'var(--texto-apagado)', marginTop: '3px', fontFamily: 'Inter, sans-serif' },
-  btnNovo: { background: 'var(--gradiente-verde)', color: '#fff', border: 'none', borderRadius: '9px', padding: '8px 16px', fontFamily: 'Inter, sans-serif', fontWeight: '600', fontSize: '0.8rem', cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,177,65,0.25)', whiteSpace: 'nowrap' },
-  btnTutorial: { background: 'none', border: '1px solid var(--borda)', borderRadius: '9px', padding: '8px 14px', fontFamily: 'Inter, sans-serif', fontWeight: '500', fontSize: '0.78rem', cursor: 'pointer', color: 'var(--texto-apagado)', whiteSpace: 'nowrap' },
+  titulo: { fontSize: '1.05rem', fontWeight: '700', color: 'var(--texto)', margin: 0, fontFamily: 'var(--fonte-corpo)', letterSpacing: '-0.03em' },
+  subtitulo: { fontSize: '0.76rem', color: 'var(--texto-apagado)', marginTop: '3px', fontFamily: 'var(--fonte-corpo)' },
+  btnNovo: { background: 'var(--gradiente-verde)', color: '#fff', border: 'none', borderRadius: '9px', padding: '8px 16px', fontFamily: 'var(--fonte-corpo)', fontWeight: '600', fontSize: '0.8rem', cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,177,65,0.25)', whiteSpace: 'nowrap' },
+  btnTutorial: { background: 'none', border: '1px solid var(--borda)', borderRadius: '9px', padding: '8px 14px', fontFamily: 'var(--fonte-corpo)', fontWeight: '500', fontSize: '0.78rem', cursor: 'pointer', color: 'var(--texto-apagado)', whiteSpace: 'nowrap' },
   blocos: { display: 'flex', flexDirection: 'column', gap: '0' },
   setorBloco: { paddingTop: '3px', paddingBottom: '3px' },
   setorHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' },
   setorEsq: { display: 'flex', alignItems: 'center', gap: '9px' },
   bolinha: { width: '10px', height: '10px', borderRadius: '50%', flexShrink: 0 },
-  setorNome: { fontSize: '0.86rem', fontWeight: '600', color: 'var(--texto)', fontFamily: 'Inter, sans-serif' },
+  setorNome: { fontSize: '0.86rem', fontWeight: '600', color: 'var(--texto)', fontFamily: 'var(--fonte-corpo)' },
   countBadge: { fontSize: '0.68rem', color: 'var(--texto-apagado)', background: 'var(--input)', border: '1px solid var(--borda)', padding: '1px 7px', borderRadius: '99px' },
   atividades: { display: 'flex', flexDirection: 'column', gap: '5px', marginLeft: '19px' },
   atividadeCard: { display: 'flex', alignItems: 'center', gap: '9px', background: 'var(--input)', border: '1px solid var(--borda)', borderRadius: '9px', padding: '8px 12px' },
   atividadeIcone: { width: '26px', height: '26px', borderRadius: '6px', background: 'var(--card)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  atividadeDesc: { fontSize: '0.82rem', color: 'var(--texto)', fontFamily: 'Inter, sans-serif' },
+  atividadeDesc: { fontSize: '0.82rem', color: 'var(--texto)', fontFamily: 'var(--fonte-corpo)' },
   respBadge: { fontSize: '0.71rem', color: 'var(--verde)', background: 'rgba(0,177,65,0.08)', border: '1px solid rgba(0,177,65,0.2)', padding: '2px 9px', borderRadius: '99px', whiteSpace: 'nowrap' },
   acoes: { display: 'flex', gap: '6px', opacity: 0, transition: 'opacity .15s' },
-  btnAcao: { background: 'none', border: '1px solid var(--borda)', borderRadius: '6px', color: 'var(--texto-apagado)', fontSize: '0.72rem', cursor: 'pointer', padding: '3px 9px', fontFamily: 'Inter, sans-serif' },
-  vazio: { fontSize: '0.78rem', color: 'var(--texto-apagado)', padding: '8px 0', fontFamily: 'Inter, sans-serif' },
+  btnAcao: { background: 'none', border: '1px solid var(--borda)', borderRadius: '6px', color: 'var(--texto-apagado)', fontSize: '0.72rem', cursor: 'pointer', padding: '3px 9px', fontFamily: 'var(--fonte-corpo)' },
+  vazio: { fontSize: '0.78rem', color: 'var(--texto-apagado)', padding: '8px 0', fontFamily: 'var(--fonte-corpo)' },
   vazioGlobal: { color: 'var(--texto-apagado)', textAlign: 'center', marginTop: '32px' },
   divisor: { border: 'none', borderTop: '1px solid var(--borda)', margin: '12px 0' },
   overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9980, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' },
   modal: { background: 'var(--card)', border: '1px solid var(--borda)', borderRadius: '16px', width: '100%', maxWidth: '500px', boxShadow: '0 24px 64px rgba(0,0,0,0.6)', maxHeight: '90vh', overflowY: 'auto' },
   modalTopo: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px', borderBottom: '1px solid var(--borda)' },
-  modalTitulo: { fontWeight: '700', fontSize: '1rem', color: 'var(--texto)', fontFamily: 'Inter, sans-serif' },
+  modalTitulo: { fontWeight: '700', fontSize: '1rem', color: 'var(--texto)', fontFamily: 'var(--fonte-corpo)' },
   btnX: { background: 'none', border: '1px solid var(--borda)', borderRadius: '6px', color: 'var(--texto-apagado)', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', cursor: 'pointer', flexShrink: 0 },
   modalCorpo: { padding: '24px', display: 'flex', flexDirection: 'column', gap: '18px' },
   modalRodape: { display: 'flex', gap: '12px', justifyContent: 'flex-end', padding: '16px 24px', borderTop: '1px solid var(--borda)' },
   campo: { display: 'flex', flexDirection: 'column', gap: '8px' },
-  label: { fontSize: '0.7rem', fontWeight: '600', color: 'var(--texto-apagado)', textTransform: 'uppercase', letterSpacing: '1px', fontFamily: 'Inter, sans-serif' },
-  input: { background: 'var(--input)', border: '1px solid var(--borda)', borderRadius: '10px', padding: '10px 14px', color: 'var(--texto)', fontSize: '0.9rem', fontFamily: 'Inter, sans-serif', width: '100%', boxSizing: 'border-box' },
-  btnCancelar: { background: 'none', border: '1px solid var(--borda)', borderRadius: '10px', color: 'var(--texto-apagado)', padding: '10px 20px', fontFamily: 'Inter, sans-serif', fontWeight: '500', fontSize: '0.875rem', cursor: 'pointer' },
-  btnSalvar: { background: 'var(--gradiente-verde)', color: '#fff', border: 'none', borderRadius: '10px', padding: '10px 20px', fontFamily: 'Inter, sans-serif', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer' },
+  label: { fontSize: '0.7rem', fontWeight: '600', color: 'var(--texto-apagado)', textTransform: 'uppercase', letterSpacing: '1px', fontFamily: 'var(--fonte-corpo)' },
+  input: { background: 'var(--input)', border: '1px solid var(--borda)', borderRadius: '10px', padding: '10px 14px', color: 'var(--texto)', fontSize: '0.9rem', fontFamily: 'var(--fonte-corpo)', width: '100%', boxSizing: 'border-box' },
+  btnCancelar: { background: 'none', border: '1px solid var(--borda)', borderRadius: '10px', color: 'var(--texto-apagado)', padding: '10px 20px', fontFamily: 'var(--fonte-corpo)', fontWeight: '500', fontSize: '0.875rem', cursor: 'pointer' },
+  btnSalvar: { background: 'var(--gradiente-verde)', color: '#fff', border: 'none', borderRadius: '10px', padding: '10px 20px', fontFamily: 'var(--fonte-corpo)', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer' },
   erro: { color: '#FCA5A5', fontSize: '0.8rem', background: 'rgba(239,68,68,0.1)', padding: '8px 12px', borderRadius: '8px' },
 }

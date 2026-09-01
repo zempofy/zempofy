@@ -26,7 +26,10 @@ const statusDemanda = (setorNome, item, competencia) => {
     const v = item.dados?.[c.id]
     return !(v === undefined || v === null || v === '')
   })
-  return completo ? 'concluido' : 'pendente'
+  // Pergunta booleana marcada como "Não" conta como preenchida, mas ainda precisa de atenção —
+  // campo com pendenteSeNao mantém a competência pendente mesmo com tudo mais respondido.
+  const algumNaoPendente = campos.some(c => c.pendenteSeNao && item.dados?.[c.id] === false)
+  return (completo && !algumNaoPendente) ? 'concluido' : 'pendente'
 }
 
 const mudarCompetencia = (competencia, delta) => {
@@ -139,7 +142,7 @@ export default function Demandas() {
         {/* Seletor de setor */}
         {podeTrocarSetor ? (
           <div ref={setorDropdownRef} style={{ position: 'relative' }}>
-            <button onClick={() => setSetorDropdownAberto(v => !v)} style={{ padding: '7px 14px', borderRadius: '8px', fontSize: '0.78rem', fontWeight: '600', cursor: 'pointer', fontFamily: 'Inter,sans-serif', display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid rgba(0,177,65,0.3)', background: 'rgba(0,177,65,0.08)', color: 'var(--verde)' }}>
+            <button onClick={() => setSetorDropdownAberto(v => !v)} style={{ padding: '7px 14px', borderRadius: '8px', fontSize: '0.78rem', fontWeight: '600', cursor: 'pointer', fontFamily: 'var(--fonte-corpo)', display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid rgba(0,177,65,0.3)', background: 'rgba(0,177,65,0.08)', color: 'var(--verde)' }}>
               <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: setorSelecionado?.cor || 'var(--verde)' }} />
               {setorSelecionado?.nome}
               <Icone.ChevronDown size={14} />
@@ -147,7 +150,7 @@ export default function Demandas() {
             {setorDropdownAberto && (
               <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, minWidth: '210px', background: 'var(--card)', border: '1px solid var(--borda)', borderRadius: '8px', boxShadow: '0 8px 24px rgba(0,0,0,0.4)', zIndex: 10, padding: '6px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
                 {setoresList.map(setor => (
-                  <button key={setor._id} onClick={() => { setSetorId(setor._id); setSetorDropdownAberto(false) }} style={{ padding: '8px 10px', borderRadius: '6px', fontSize: '0.8rem', fontWeight: '600', cursor: 'pointer', fontFamily: 'Inter,sans-serif', display: 'flex', alignItems: 'center', gap: '8px', border: 'none', textAlign: 'left', background: mesmoSetor(setor, setorSelecionado) ? 'rgba(0,177,65,0.08)' : 'none', color: mesmoSetor(setor, setorSelecionado) ? 'var(--verde)' : 'var(--texto)' }}>
+                  <button key={setor._id} onClick={() => { setSetorId(setor._id); setSetorDropdownAberto(false) }} style={{ padding: '8px 10px', borderRadius: '6px', fontSize: '0.8rem', fontWeight: '600', cursor: 'pointer', fontFamily: 'var(--fonte-corpo)', display: 'flex', alignItems: 'center', gap: '8px', border: 'none', textAlign: 'left', background: mesmoSetor(setor, setorSelecionado) ? 'rgba(0,177,65,0.08)' : 'none', color: mesmoSetor(setor, setorSelecionado) ? 'var(--verde)' : 'var(--texto)' }}>
                     <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: setor.cor || 'var(--verde)' }} />
                     {setor.nome}
                   </button>
@@ -156,7 +159,7 @@ export default function Demandas() {
             )}
           </div>
         ) : (
-          <div style={{ padding: '7px 14px', borderRadius: '8px', fontSize: '0.78rem', fontWeight: '600', fontFamily: 'Inter,sans-serif', display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid var(--borda)', background: 'var(--input)', color: 'var(--texto-apagado)' }}>
+          <div style={{ padding: '7px 14px', borderRadius: '8px', fontSize: '0.78rem', fontWeight: '600', fontFamily: 'var(--fonte-corpo)', display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid var(--borda)', background: 'var(--input)', color: 'var(--texto-apagado)' }}>
             <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: setorSelecionado?.cor || 'var(--verde)' }} />
             {setorSelecionado?.nome}
           </div>
@@ -169,7 +172,7 @@ export default function Demandas() {
             <button onClick={() => podeVoltar && setCompetencia(c => mudarCompetencia(c, -1))} disabled={!podeVoltar} style={{ width: '30px', height: '30px', borderRadius: '7px', border: '1px solid var(--borda)', background: 'var(--input)', color: podeVoltar ? 'var(--texto)' : 'var(--texto-apagado)', cursor: podeVoltar ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: podeVoltar ? 1 : 0.4 }}>
               <Icone.ChevronLeft size={14} />
             </button>
-            <span style={{ fontSize: '0.82rem', fontWeight: '600', color: 'var(--texto)', fontFamily: 'Inter,sans-serif', minWidth: '130px', textAlign: 'center' }}>
+            <span style={{ fontSize: '0.82rem', fontWeight: '600', color: 'var(--texto)', fontFamily: 'var(--fonte-corpo)', minWidth: '130px', textAlign: 'center' }}>
               {nomeMes(competencia)} {competencia.slice(0, 4)}
             </span>
             <button onClick={() => podeAvancar && setCompetencia(c => mudarCompetencia(c, 1))} disabled={!podeAvancar} style={{ width: '30px', height: '30px', borderRadius: '7px', border: '1px solid var(--borda)', background: 'var(--input)', color: podeAvancar ? 'var(--texto)' : 'var(--texto-apagado)', cursor: podeAvancar ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: podeAvancar ? 1 : 0.4 }}>
@@ -182,15 +185,15 @@ export default function Demandas() {
       {/* Barra de resumo */}
       <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
         <div style={{ flex: '1', minWidth: '120px', background: 'var(--card)', border: '1px solid var(--borda)', borderRadius: '12px', padding: '14px 16px' }}>
-          <p style={{ fontSize: '1.4rem', fontWeight: '700', color: '#f59e0b', margin: 0, fontFamily: 'Inter,sans-serif' }}>{pendentes}</p>
+          <p style={{ fontSize: '1.4rem', fontWeight: '700', color: '#f59e0b', margin: 0, fontFamily: 'var(--fonte-corpo)' }}>{pendentes}</p>
           <p style={{ fontSize: '0.72rem', color: 'var(--texto-apagado)', margin: '2px 0 0' }}>Pendentes</p>
         </div>
         <div style={{ flex: '1', minWidth: '120px', background: 'var(--card)', border: '1px solid var(--borda)', borderRadius: '12px', padding: '14px 16px' }}>
-          <p style={{ fontSize: '1.4rem', fontWeight: '700', color: 'var(--verde)', margin: 0, fontFamily: 'Inter,sans-serif' }}>{concluidas}</p>
+          <p style={{ fontSize: '1.4rem', fontWeight: '700', color: 'var(--verde)', margin: 0, fontFamily: 'var(--fonte-corpo)' }}>{concluidas}</p>
           <p style={{ fontSize: '0.72rem', color: 'var(--texto-apagado)', margin: '2px 0 0' }}>Concluídas</p>
         </div>
         <div style={{ flex: '1', minWidth: '120px', background: 'var(--card)', border: '1px solid var(--borda)', borderRadius: '12px', padding: '14px 16px' }}>
-          <p style={{ fontSize: '1.4rem', fontWeight: '700', color: 'var(--texto)', margin: 0, fontFamily: 'Inter,sans-serif' }}>{total}</p>
+          <p style={{ fontSize: '1.4rem', fontWeight: '700', color: 'var(--texto)', margin: 0, fontFamily: 'var(--fonte-corpo)' }}>{total}</p>
           <p style={{ fontSize: '0.72rem', color: 'var(--texto-apagado)', margin: '2px 0 0' }}>Clientes no setor</p>
         </div>
       </div>
@@ -199,7 +202,7 @@ export default function Demandas() {
       <div style={{ display: 'flex', gap: '10px', marginBottom: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
         <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
           {chipsFiltro.map(c => (
-            <button key={c.id} onClick={() => setFiltro(c.id)} style={{ padding: '6px 14px', borderRadius: '8px', fontSize: '0.78rem', fontWeight: '600', cursor: 'pointer', fontFamily: 'Inter,sans-serif', border: `1px solid ${filtro === c.id ? 'rgba(0,177,65,0.3)' : 'var(--borda)'}`, background: filtro === c.id ? 'rgba(0,177,65,0.08)' : 'var(--input)', color: filtro === c.id ? 'var(--verde)' : 'var(--texto-apagado)' }}>
+            <button key={c.id} onClick={() => setFiltro(c.id)} style={{ padding: '6px 14px', borderRadius: '8px', fontSize: '0.78rem', fontWeight: '600', cursor: 'pointer', fontFamily: 'var(--fonte-corpo)', border: `1px solid ${filtro === c.id ? 'rgba(0,177,65,0.3)' : 'var(--borda)'}`, background: filtro === c.id ? 'rgba(0,177,65,0.08)' : 'var(--input)', color: filtro === c.id ? 'var(--verde)' : 'var(--texto-apagado)' }}>
               {c.label}
             </button>
           ))}
@@ -210,7 +213,7 @@ export default function Demandas() {
             value={busca}
             onChange={e => setBusca(e.target.value)}
             placeholder="Buscar cliente..."
-            style={{ width: '100%', boxSizing: 'border-box', padding: '7px 12px 7px 32px', borderRadius: '8px', border: '1px solid var(--borda)', background: 'var(--input)', color: 'var(--texto)', fontSize: '0.8rem', fontFamily: 'Inter,sans-serif' }}
+            style={{ width: '100%', boxSizing: 'border-box', padding: '7px 12px 7px 32px', borderRadius: '8px', border: '1px solid var(--borda)', background: 'var(--input)', color: 'var(--texto)', fontSize: '0.8rem', fontFamily: 'var(--fonte-corpo)' }}
           />
         </div>
       </div>
@@ -228,13 +231,13 @@ export default function Demandas() {
               style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', background: 'var(--card)', border: '1px solid var(--borda)', borderRadius: '10px', padding: '14px 16px', cursor: 'pointer', transition: 'border-color 0.15s' }}
               onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(0,177,65,0.3)'}
               onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--borda)'}>
-              <span style={{ fontSize: '0.86rem', fontWeight: '600', color: 'var(--texto)', fontFamily: 'Inter,sans-serif' }}>{d.nome || '—'}</span>
+              <span style={{ fontSize: '0.86rem', fontWeight: '600', color: 'var(--texto)', fontFamily: 'var(--fonte-corpo)' }}>{d.nome || '—'}</span>
               {d._status === 'concluido' ? (
-                <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.72rem', fontWeight: '700', color: 'var(--verde)', fontFamily: 'Inter,sans-serif' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.72rem', fontWeight: '700', color: 'var(--verde)', fontFamily: 'var(--fonte-corpo)' }}>
                   <Icone.Check size={12} /> Concluído
                 </span>
               ) : (
-                <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.72rem', fontWeight: '700', color: '#f59e0b', fontFamily: 'Inter,sans-serif' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.72rem', fontWeight: '700', color: '#f59e0b', fontFamily: 'var(--fonte-corpo)' }}>
                   <Icone.Circle size={8} /> Pendente
                 </span>
               )}

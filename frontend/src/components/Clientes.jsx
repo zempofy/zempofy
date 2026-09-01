@@ -170,12 +170,11 @@ const CONFIG_DEMANDA = {
         ativoQuando: ['clt','ambos'],
         campos: [
           { id:'funcionariosAtivos', label:'Funcionários ativos no mês', tipo:'numero' },
-          { id:'folhaProcessada', label:'Folha de pagamento processada', tipo:'booleano' },
           { id:'admissoes', label:'Nº de admissões no mês', tipo:'numero' },
           { id:'rescisoes', label:'Nº de rescisões no mês', tipo:'numero' },
           { id:'ferias', label:'Nº de férias programadas/pagas no mês', tipo:'numero' },
-          { id:'esocialEnviado', label:'eSocial enviado', tipo:'booleano' },
-          { id:'fgtsInssRecolhidos', label:'FGTS/INSS recolhidos', tipo:'booleano' },
+          { id:'esocialEnviado', label:'eSocial enviado', tipo:'booleano', pendenteSeNao:true },
+          { id:'fgtsInssRecolhidos', label:'FGTS/INSS recolhidos', tipo:'booleano', pendenteSeNao:true },
         ],
         camposSazonais: {
           meses: [11,12],
@@ -188,10 +187,10 @@ const CONFIG_DEMANDA = {
       proLabore: {
         ativoQuando: ['pro_labore','ambos'],
         campos: [
-          { id:'valorProLabore', label:'Valor do pró-labore', tipo:'moeda' },
-          { id:'inssProLabore', label:'INSS (11%)', tipo:'moeda' },
-          { id:'irrfProLabore', label:'IRRF', tipo:'moeda' },
-          // campo 'guiaPaga' removido (27/07/2026) — vencimento é fixo dia 20, não há o que rastrear
+          { id:'proLaboreProcessado', label:'Pró-labore enviado para o eSocial?', tipo:'booleano' },
+          // campos de valor/INSS/IRRF removidos (30/08/2026) — vira uma confirmação booleana,
+          // igual contabilFeito; lançamentos antigos com valorProLabore/inssProLabore/irrfProLabore
+          // continuam salvos no banco, só deixam de aparecer na tela
         ]
       }
     },
@@ -270,7 +269,7 @@ function Secao({ titulo, children }) {
   return (
     <div style={{ marginBottom: '32px' }}>
       <div style={{ display:'flex', alignItems:'center', gap:'12px', marginBottom:'20px' }}>
-        <p style={{ fontSize:'0.72rem', fontWeight:'700', color:'var(--texto-apagado)', textTransform:'uppercase', letterSpacing:'1.2px', margin:0, whiteSpace:'nowrap', fontFamily:'Inter,sans-serif' }}>{titulo}</p>
+        <p style={{ fontSize:'0.72rem', fontWeight:'700', color:'var(--texto-apagado)', textTransform:'uppercase', letterSpacing:'1.2px', margin:0, whiteSpace:'nowrap', fontFamily:'var(--fonte-corpo)' }}>{titulo}</p>
         <div style={{ flex:1, height:'1px', background:'var(--borda)' }} />
       </div>
       <div style={{ display:'flex', flexDirection:'column', gap:'14px' }}>
@@ -283,7 +282,7 @@ function Secao({ titulo, children }) {
 function Campo({ label, obrigatorio, children }) {
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:'6px' }}>
-      <label style={{ fontSize:'0.7rem', fontWeight:'600', color:'var(--texto-apagado)', textTransform:'uppercase', letterSpacing:'1px', fontFamily:'Inter,sans-serif', lineHeight:'1.3', minHeight:'2.6em', display:'flex', alignItems:'flex-end' }}>
+      <label style={{ fontSize:'0.7rem', fontWeight:'600', color:'var(--texto-apagado)', textTransform:'uppercase', letterSpacing:'1px', fontFamily:'var(--fonte-corpo)', lineHeight:'1.3', minHeight:'2.6em', display:'flex', alignItems:'flex-end' }}>
         {label}{obrigatorio && <span style={{ color:'#f87171', marginLeft:'3px' }}>*</span>}
       </label>
       {children}
@@ -329,7 +328,7 @@ function ModalVigenciaMudanca({ onEscolher, onCancelar }) {
             const marcado = selecionado===op.valor
             return (
               <button key={op.valor} onClick={()=>setSelecionado(op.valor)} style={{
-                textAlign:'left', padding:'14px 16px', borderRadius:'10px', cursor:'pointer', fontFamily:'Inter,sans-serif',
+                textAlign:'left', padding:'14px 16px', borderRadius:'10px', cursor:'pointer', fontFamily:'var(--fonte-corpo)',
                 border:`1px solid ${marcado?'rgba(0,177,65,0.4)':'var(--borda)'}`,
                 background: marcado?'rgba(0,177,65,0.08)':'var(--card)',
               }}>
@@ -534,8 +533,8 @@ function FormCliente({ cliente, fechar, onSalvo }) {
       {/* Cabeçalho */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'28px', flexShrink:0 }}>
         <div>
-          <h1 style={{ fontSize:'1.5rem', fontWeight:'700', color:'var(--texto)', margin:0, letterSpacing:'-0.03em', fontFamily:'Inter,sans-serif' }}>{cliente ? 'Editar cliente' : 'Novo cliente'}</h1>
-          <p style={{ fontSize:'0.82rem', color:'var(--texto-apagado)', marginTop:'4px', fontFamily:'Inter,sans-serif' }}>Preencha as informações abaixo</p>
+          <h1 style={{ fontSize:'1.5rem', fontWeight:'700', color:'var(--texto)', margin:0, letterSpacing:'-0.03em', fontFamily:'var(--fonte-corpo)' }}>{cliente ? 'Editar cliente' : 'Novo cliente'}</h1>
+          <p style={{ fontSize:'0.82rem', color:'var(--texto-apagado)', marginTop:'4px', fontFamily:'var(--fonte-corpo)' }}>Preencha as informações abaixo</p>
         </div>
         <button style={s.btnX} onClick={fechar} title="Cancelar">✕</button>
       </div>
@@ -644,7 +643,7 @@ function FormCliente({ cliente, fechar, onSalvo }) {
                 return (
                   <button key={setor._id} onClick={()=>toggleSetor(setor._id)} style={{
                     display:'flex', alignItems:'center', gap:'8px', padding:'7px 14px',
-                    borderRadius:'8px', cursor:'pointer', fontFamily:'Inter,sans-serif',
+                    borderRadius:'8px', cursor:'pointer', fontFamily:'var(--fonte-corpo)',
                     fontSize:'0.82rem', fontWeight:'500', transition:'all 0.12s',
                     background: marcado ? 'rgba(0,177,65,0.1)' : 'var(--input)',
                     border: `1px solid ${marcado ? 'rgba(0,177,65,0.3)' : 'var(--borda)'}`,
@@ -708,7 +707,7 @@ function FormCliente({ cliente, fechar, onSalvo }) {
                   <div style={{ position:'absolute', top:'calc(100% + 4px)', left:0, right:0, background:'var(--card)', border:'1px solid var(--borda)', borderRadius:'8px', boxShadow:'0 8px 24px rgba(0,0,0,0.4)', zIndex:10, overflow:'hidden' }}>
                     {cidadesSugestoes.map(c=>(
                       <button key={c} onMouseDown={()=>{ setEnd('cidade',c); setCidadesSugestoes([]) }}
-                        style={{ display:'block', width:'100%', padding:'8px 12px', background:'none', border:'none', borderBottom:'1px solid var(--borda)', color:'var(--texto)', fontSize:'0.82rem', cursor:'pointer', textAlign:'left', fontFamily:'Inter,sans-serif' }}
+                        style={{ display:'block', width:'100%', padding:'8px 12px', background:'none', border:'none', borderBottom:'1px solid var(--borda)', color:'var(--texto)', fontSize:'0.82rem', cursor:'pointer', textAlign:'left', fontFamily:'var(--fonte-corpo)' }}
                         onMouseEnter={e=>e.currentTarget.style.background='var(--input)'}
                         onMouseLeave={e=>e.currentTarget.style.background='none'}
                       >{c}</button>
@@ -726,8 +725,8 @@ function FormCliente({ cliente, fechar, onSalvo }) {
           {form.socios.map((sc, i) => (
             <div key={i} style={{ border:'1px solid var(--borda)', borderRadius:'10px', padding:'14px', display:'flex', flexDirection:'column', gap:'10px' }}>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                <p style={{ fontSize:'0.78rem', fontWeight:'600', color:'var(--texto)', margin:0, fontFamily:'Inter,sans-serif' }}>Sócio {i+1}{sc.qualificacao ? ` — ${sc.qualificacao}` : ''}</p>
-                {form.socios.length > 1 && <button onClick={()=>removeSocio(i)} style={{ background:'none', border:'none', color:'#f87171', cursor:'pointer', fontSize:'11px', fontFamily:'Inter,sans-serif' }}>Remover</button>}
+                <p style={{ fontSize:'0.78rem', fontWeight:'600', color:'var(--texto)', margin:0, fontFamily:'var(--fonte-corpo)' }}>Sócio {i+1}{sc.qualificacao ? ` — ${sc.qualificacao}` : ''}</p>
+                {form.socios.length > 1 && <button onClick={()=>removeSocio(i)} style={{ background:'none', border:'none', color:'#f87171', cursor:'pointer', fontSize:'11px', fontFamily:'var(--fonte-corpo)' }}>Remover</button>}
               </div>
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px' }}>
                 <Campo label="Nome"><input style={s.inp} value={sc.nome} onChange={e=>setSocio(i,'nome',e.target.value)} /></Campo>
@@ -739,7 +738,7 @@ function FormCliente({ cliente, fechar, onSalvo }) {
               </div>
             </div>
           ))}
-          <button onClick={addSocio} style={{ background:'none', border:'1px dashed var(--borda)', borderRadius:'10px', color:'var(--texto-apagado)', padding:'8px', cursor:'pointer', fontFamily:'Inter,sans-serif', fontSize:'0.8rem', width:'100%' }}>
+          <button onClick={addSocio} style={{ background:'none', border:'1px dashed var(--borda)', borderRadius:'10px', color:'var(--texto-apagado)', padding:'8px', cursor:'pointer', fontFamily:'var(--fonte-corpo)', fontSize:'0.8rem', width:'100%' }}>
             + Adicionar sócio
           </button>
         </Secao>
@@ -806,7 +805,7 @@ function BarraSetoresCliente({ setores, setorAtivo, setorClicavel, onInformacoes
             style={{
               position:'relative', zIndex:1, width:'96px', flexShrink:0, padding:'6px 8px', border:'none', background:'none',
               display:'flex', alignItems:'center', justifyContent:'center', minHeight:'28px',
-              cursor: clicavel ? 'pointer' : 'default', fontFamily:'Inter,sans-serif', fontSize:'0.76rem', fontWeight:'600', lineHeight:'1.2',
+              cursor: clicavel ? 'pointer' : 'default', fontFamily:'var(--fonte-corpo)', fontSize:'0.76rem', fontWeight:'600', lineHeight:'1.2',
               whiteSpace:'normal', textAlign:'center', color: ehAtivo ? (item.setor?.cor || 'var(--texto)') : 'var(--texto-apagado)',
               transition:'color 0.2s',
             }}>
@@ -918,7 +917,7 @@ function TelaDetalhe({ clienteId, voltar, onAtualizado, abaInicial = 'info', set
   return (
     <div>
       {/* Voltar */}
-      <button onClick={voltar} style={{ background:'none', border:'none', color:'var(--texto-apagado)', cursor:'pointer', fontFamily:'Inter,sans-serif', fontSize:'0.82rem', padding:'0 0 12px', display:'flex', alignItems:'center', gap:'6px' }}>← Voltar para clientes</button>
+      <button onClick={voltar} style={{ background:'none', border:'none', color:'var(--texto-apagado)', cursor:'pointer', fontFamily:'var(--fonte-corpo)', fontSize:'0.82rem', padding:'0 0 12px', display:'flex', alignItems:'center', gap:'6px' }}>← Voltar para clientes</button>
 
       {/* Cabeçalho modelo A */}
       <div style={{ marginBottom:'20px' }}>
@@ -927,8 +926,8 @@ function TelaDetalhe({ clienteId, voltar, onAtualizado, abaInicial = 'info', set
           <div style={{ display:'flex', alignItems:'center', gap:'12px' }}>
             <div style={{ width:'42px', height:'42px', borderRadius:'10px', background:'var(--verde)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1rem', fontWeight:'700', color:'#fff', flexShrink:0 }}>{nomeCliente.slice(0,2).toUpperCase()}</div>
             <div>
-              <h1 style={{ fontSize:'1.3rem', fontWeight:'700', color:'var(--texto)', margin:0, letterSpacing:'-0.02em', fontFamily:'Inter,sans-serif' }}>{nomeCliente}</h1>
-              {dados.nomeFantasia&&dados.nomeFantasia!==nomeCliente&&<p style={{ fontSize:'0.78rem', color:'var(--texto-apagado)', margin:'2px 0 0', fontFamily:'Inter,sans-serif' }}>{dados.nomeFantasia}</p>}
+              <h1 style={{ fontSize:'1.3rem', fontWeight:'700', color:'var(--texto)', margin:0, letterSpacing:'-0.02em', fontFamily:'var(--fonte-corpo)' }}>{nomeCliente}</h1>
+              {dados.nomeFantasia&&dados.nomeFantasia!==nomeCliente&&<p style={{ fontSize:'0.78rem', color:'var(--texto-apagado)', margin:'2px 0 0', fontFamily:'var(--fonte-corpo)' }}>{dados.nomeFantasia}</p>}
             </div>
           </div>
           {temPermissao('gerenciarClientes') && (
@@ -958,13 +957,13 @@ function TelaDetalhe({ clienteId, voltar, onAtualizado, abaInicial = 'info', set
 
         {/* Linha 2: status + origem */}
         <div style={{ display:'flex', alignItems:'center', gap:'6px', flexWrap:'wrap' }}>
-          <span style={{ display:'inline-flex', alignItems:'center', gap:'4px', padding:'3px 9px', borderRadius:'99px', fontSize:'0.72rem', fontWeight:'600', fontFamily:'Inter,sans-serif', background:st.bg, color:st.cor }}>{st.label}</span>
+          <span style={{ display:'inline-flex', alignItems:'center', gap:'4px', padding:'3px 9px', borderRadius:'99px', fontSize:'0.72rem', fontWeight:'600', fontFamily:'var(--fonte-corpo)', background:st.bg, color:st.cor }}>{st.label}</span>
           {dados.onboardings?.some(o=>o.status!=='concluida') ? (
-            <span style={{ display:'inline-flex', alignItems:'center', gap:'4px', padding:'3px 9px', borderRadius:'99px', fontSize:'0.72rem', fontWeight:'600', background:'rgba(0,177,65,0.08)', color:'var(--verde)', fontFamily:'Inter,sans-serif' }}>
+            <span style={{ display:'inline-flex', alignItems:'center', gap:'4px', padding:'3px 9px', borderRadius:'99px', fontSize:'0.72rem', fontWeight:'600', background:'rgba(0,177,65,0.08)', color:'var(--verde)', fontFamily:'var(--fonte-corpo)' }}>
               <Icone.ClipboardList size={11}/>Em onboarding
             </span>
           ) : dados.origem==='onboarding' ? (
-            <span style={{ display:'inline-flex', alignItems:'center', gap:'4px', padding:'3px 9px', borderRadius:'99px', fontSize:'0.72rem', fontWeight:'600', background:'var(--input)', color:'var(--texto-apagado)', border:'1px solid var(--borda)', fontFamily:'Inter,sans-serif' }}>
+            <span style={{ display:'inline-flex', alignItems:'center', gap:'4px', padding:'3px 9px', borderRadius:'99px', fontSize:'0.72rem', fontWeight:'600', background:'var(--input)', color:'var(--texto-apagado)', border:'1px solid var(--borda)', fontFamily:'var(--fonte-corpo)' }}>
               <Icone.Zap size={11}/>Via onboarding
             </span>
           ) : null}
@@ -973,7 +972,7 @@ function TelaDetalhe({ clienteId, voltar, onAtualizado, abaInicial = 'info', set
 
       <div style={{ display:'flex', borderBottom:'1px solid var(--borda)', marginBottom:'24px', gap:'4px', overflowX:'auto' }}>
         {abas.map(a=>(
-          <button key={a.id} onClick={()=>setAba(a.id)} style={{ background:'none', border:'none', borderBottom:`2px solid ${aba===a.id?'var(--verde)':'transparent'}`, color:aba===a.id?'var(--verde)':'var(--texto-apagado)', padding:'10px 16px', fontFamily:'Inter,sans-serif', fontSize:'0.85rem', fontWeight:aba===a.id?'600':'400', cursor:'pointer', whiteSpace:'nowrap' }}>{a.label}</button>
+          <button key={a.id} onClick={()=>setAba(a.id)} style={{ background:'none', border:'none', borderBottom:`2px solid ${aba===a.id?'var(--verde)':'transparent'}`, color:aba===a.id?'var(--verde)':'var(--texto-apagado)', padding:'10px 16px', fontFamily:'var(--fonte-corpo)', fontSize:'0.85rem', fontWeight:aba===a.id?'600':'400', cursor:'pointer', whiteSpace:'nowrap' }}>{a.label}</button>
         ))}
       </div>
 
@@ -1068,8 +1067,8 @@ function TelaDetalhe({ clienteId, voltar, onAtualizado, abaInicial = 'info', set
           <div style={{ ...s.modalPeq }} onClick={e=>e.stopPropagation()}>
             <div style={s.modalTopo}><p style={s.modalTit}>Inativar cliente</p><button style={s.btnX} onClick={()=>setConfirmInativar(false)}>✕</button></div>
             <div style={{ padding:'20px 24px' }}>
-              <p style={{ fontSize:'0.875rem', color:'var(--texto)', margin:'0 0 12px', fontFamily:'Inter,sans-serif' }}>Tem certeza que deseja inativar <strong>{nomeCliente}</strong>?</p>
-              <p style={{ fontSize:'0.8rem', color:'var(--texto-apagado)', background:'var(--input)', border:'1px solid var(--borda)', borderRadius:'8px', padding:'10px 12px', margin:0, fontFamily:'Inter,sans-serif', display:'flex', alignItems:'flex-start', gap:'8px' }}><Icone.AlertTriangle size={14} style={{flexShrink:0,marginTop:'1px'}}/> O cadastro e o histórico do cliente permanecem preservados. A reativação pode ser feita a qualquer momento; enquanto o cliente estiver inativo, a edição dos dados ficará bloqueada.</p>
+              <p style={{ fontSize:'0.875rem', color:'var(--texto)', margin:'0 0 12px', fontFamily:'var(--fonte-corpo)' }}>Tem certeza que deseja inativar <strong>{nomeCliente}</strong>?</p>
+              <p style={{ fontSize:'0.8rem', color:'var(--texto-apagado)', background:'var(--input)', border:'1px solid var(--borda)', borderRadius:'8px', padding:'10px 12px', margin:0, fontFamily:'var(--fonte-corpo)', display:'flex', alignItems:'flex-start', gap:'8px' }}><Icone.AlertTriangle size={14} style={{flexShrink:0,marginTop:'1px'}}/> O cadastro e o histórico do cliente permanecem preservados. A reativação pode ser feita a qualquer momento; enquanto o cliente estiver inativo, a edição dos dados ficará bloqueada.</p>
             </div>
             <div style={s.modalRodape}>
               <button style={s.btnCanc} onClick={()=>setConfirmInativar(false)}>Cancelar</button>
@@ -1084,12 +1083,12 @@ function TelaDetalhe({ clienteId, voltar, onAtualizado, abaInicial = 'info', set
           <div style={{ ...s.modalPeq }} onClick={e=>e.stopPropagation()}>
             <div style={s.modalTopo}><p style={s.modalTit}>Excluir cliente</p><button style={s.btnX} onClick={()=>{setConfirmExcluir(false);setCienteExclusao(false)}}>✕</button></div>
             <div style={{ padding:'20px 24px' }}>
-              <p style={{ fontSize:'0.875rem', color:'var(--texto)', margin:'0 0 12px', fontFamily:'Inter,sans-serif' }}>Tem certeza que deseja excluir <strong>{nomeCliente}</strong> da carteira?</p>
+              <p style={{ fontSize:'0.875rem', color:'var(--texto)', margin:'0 0 12px', fontFamily:'var(--fonte-corpo)' }}>Tem certeza que deseja excluir <strong>{nomeCliente}</strong> da carteira?</p>
               <div style={{ background:'rgba(248,113,113,0.08)', border:'1px solid rgba(248,113,113,0.25)', borderRadius:'8px', padding:'10px 12px', margin:'0 0 14px' }}>
-                <p style={{ fontSize:'0.8rem', color:'#f87171', fontWeight:'700', margin:'0 0 4px', fontFamily:'Inter,sans-serif', display:'flex', alignItems:'center', gap:'8px' }}><Icone.AlertTriangle size={14} style={{flexShrink:0}}/> Essa ação é permanente.</p>
-                <p style={{ fontSize:'0.8rem', color:'#f87171', margin:0, fontFamily:'Inter,sans-serif', lineHeight:'1.4' }}>Todo o cadastro, histórico e lançamentos deste cliente serão apagados e não há como desfazer.</p>
+                <p style={{ fontSize:'0.8rem', color:'#f87171', fontWeight:'700', margin:'0 0 4px', fontFamily:'var(--fonte-corpo)', display:'flex', alignItems:'center', gap:'8px' }}><Icone.AlertTriangle size={14} style={{flexShrink:0}}/> Essa ação é permanente.</p>
+                <p style={{ fontSize:'0.8rem', color:'#f87171', margin:0, fontFamily:'var(--fonte-corpo)', lineHeight:'1.4' }}>Todo o cadastro, histórico e lançamentos deste cliente serão apagados e não há como desfazer.</p>
               </div>
-              <label style={{ display:'flex', alignItems:'flex-start', gap:'8px', cursor:'pointer', fontSize:'0.8rem', color:'var(--texto-apagado)', fontFamily:'Inter,sans-serif' }}>
+              <label style={{ display:'flex', alignItems:'flex-start', gap:'8px', cursor:'pointer', fontSize:'0.8rem', color:'var(--texto-apagado)', fontFamily:'var(--fonte-corpo)' }}>
                 <input type="checkbox" checked={cienteExclusao} onChange={e=>setCienteExclusao(e.target.checked)} style={{ marginTop:'2px', accentColor:'#f87171', width:'15px', height:'15px', flexShrink:0, cursor:'pointer' }} />
                 Estou ciente de que essa exclusão é permanente e não pode ser desfeita.
               </label>
@@ -1156,7 +1155,7 @@ function CampoValor({ tipo, valor, onChange, disabled }) {
           const corAtivaRgb = op.v===false ? '239,68,68' : '0,177,65'
           return (
             <button key={String(op.v)} type="button" onClick={()=>onChange(op.v)} style={{
-              flex:1, padding:'9px', borderRadius:'8px', cursor:'pointer', fontFamily:'Inter,sans-serif', fontSize:'0.85rem', fontWeight:'600',
+              flex:1, padding:'9px', borderRadius:'8px', cursor:'pointer', fontFamily:'var(--fonte-corpo)', fontSize:'0.85rem', fontWeight:'600',
               border:`1px solid ${ativo?`rgba(${corAtivaRgb},0.3)`:'var(--borda)'}`,
               background: ativo?`rgba(${corAtivaRgb},0.08)`:'var(--input)',
               color: ativo?corAtiva:'var(--texto-apagado)',
@@ -1264,7 +1263,7 @@ function BlocoExtratosBancarios({ clienteId, setor, bancos=[], competencia, valo
           <button style={s.btnCanc} onClick={()=>{setAdicionando(false);setBancoSelecionado('');setNomeOutro('')}}>Cancelar</button>
         </div>
       ) : (
-        <button onClick={()=>setAdicionando(true)} style={{ background:'none', border:'1px dashed var(--borda)', borderRadius:'10px', color:'var(--texto-apagado)', padding:'10px', cursor:'pointer', fontFamily:'Inter,sans-serif', fontSize:'0.82rem', width:'100%' }}>
+        <button onClick={()=>setAdicionando(true)} style={{ background:'none', border:'1px dashed var(--borda)', borderRadius:'10px', color:'var(--texto-apagado)', padding:'10px', cursor:'pointer', fontFamily:'var(--fonte-corpo)', fontSize:'0.82rem', width:'100%' }}>
           + Adicionar banco
         </button>
       ))}
@@ -1283,6 +1282,10 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
   const [salvando, setSalvando] = useState(false)
   const [lancamento, setLancamento] = useState(null)
   const [valores, setValores] = useState({})
+  // Referência pra saber se tem alteração não salva — nasce igual ao que a tela mostra assim que
+  // carrega (incluindo preenchimento automático tipo funcionariosAtivos), não ao que está no banco
+  // (lancamento.dados), senão o aviso dispara sozinho por causa do valor pré-preenchido.
+  const [valoresBase, setValoresBase] = useState({})
   const [criandoCampo, setCriandoCampo] = useState(false)
   const [novoLabel, setNovoLabel] = useState('')
   const [novoTipo, setNovoTipo] = useState('moeda')
@@ -1291,6 +1294,7 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
   const [editandoSituacao, setEditandoSituacao] = useState(false)
   const [valorVigenciaPendente, setValorVigenciaPendente] = useState(null)
   const [qtdDocs, setQtdDocs] = useState(null)
+  const [observacaoAnterior, setObservacaoAnterior] = useState(null)
   const listaDocsRef = useRef(null)
   // Mais permissivo que a edição de campo de propósito: documento pode ser enviado mesmo numa
   // competência já fechada pra edição (mês passado, só titular edita campo) — só precisa ter
@@ -1306,11 +1310,37 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
   const situacaoResolvida = lancamento?.situacaoResolvida ?? situacao
   const blocos = blocosFixosDoSetor(config, { regime: regimeResolvido, situacao: situacaoResolvida, competencia })
 
+  const vazio = (v) => v === undefined || v === null || v === ''
+
   useEffect(() => {
     setCarregando(true)
     setEditandoSituacao(false)
+    setObservacaoAnterior(null)
     api.get(`/clientes/${clienteId}/lancamentos/${setor._id}/${competencia}`)
-      .then(r => { setLancamento(r.data); setValores(r.data?.dados || {}) })
+      .then(r => {
+        setLancamento(r.data)
+        const dadosAtuais = r.data?.dados || {}
+        setValores(dadosAtuais)
+        setValoresBase(dadosAtuais)
+
+        // Busca o mês anterior pra (a) mostrar a observação como referência de leitura e
+        // (b) pré-preencher "Funcionários ativos" — só se o campo deste mês ainda estiver vazio.
+        // Roda depois do fetch acima (não em paralelo) pra saber com certeza se está vazio antes de decidir.
+        const competenciaAnterior = mudarCompetencia(competencia, -1)
+        api.get(`/clientes/${clienteId}/lancamentos/${setor._id}/${competenciaAnterior}`)
+          .then(rAnterior => {
+            const dadosAnteriores = rAnterior.data?.dados || {}
+            setObservacaoAnterior(dadosAnteriores.observacoesGerais?.trim() || null)
+            if (vazio(dadosAtuais.funcionariosAtivos) && !vazio(dadosAnteriores.funcionariosAtivos)) {
+              // Guard funcional: se a pessoa já digitou algo nesse meio-tempo, não sobrescreve.
+              // valoresBase acompanha o mesmo preenchimento — senão o aviso de alteração não
+              // salva dispara sozinho, comparando a tela com um baseline que nunca teve o valor.
+              setValores(vs => vazio(vs.funcionariosAtivos) ? { ...vs, funcionariosAtivos: dadosAnteriores.funcionariosAtivos } : vs)
+              setValoresBase(vb => vazio(vb.funcionariosAtivos) ? { ...vb, funcionariosAtivos: dadosAnteriores.funcionariosAtivos } : vb)
+            }
+          })
+          .catch(() => setObservacaoAnterior(null))
+      })
       .catch(() => mostrar('Erro ao carregar dados.', 'erro'))
       .finally(() => setCarregando(false))
   }, [clienteId, setor._id, competencia])
@@ -1325,9 +1355,10 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
   const setValor = (id, v) => setValores(vs => ({ ...vs, [id]: v }))
   const podeEditar = !!lancamento?.podeEditar
 
-  // Compara com o que veio salvo do servidor pra saber se tem algo digitado que ainda não foi
-  // pro banco — usado pra avisar antes de trocar de competência e perder isso.
-  const alteracaoNaoSalva = !carregando && JSON.stringify(valores) !== JSON.stringify(lancamento?.dados || {})
+  // Compara com valoresBase (o que a tela mostrava assim que carregou, já incluindo qualquer
+  // preenchimento automático) — não com lancamento?.dados direto, senão um campo pré-preenchido
+  // sozinho (que só existe na tela, nunca foi salvo) já dispara o aviso à toa.
+  const alteracaoNaoSalva = !carregando && JSON.stringify(valores) !== JSON.stringify(valoresBase)
   useEffect(() => { onAlteracaoNaoSalva && onAlteracaoNaoSalva(alteracaoNaoSalva) }, [alteracaoNaoSalva])
 
   const salvar = async () => {
@@ -1335,6 +1366,7 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
     try {
       const r = await api.post(`/clientes/${clienteId}/lancamentos/${setor._id}/${competencia}`, { dados: valores })
       setLancamento(r.data)
+      setValoresBase(r.data?.dados || {})
       mostrar('Dados salvos!', 'sucesso')
     } catch (e) { mostrar(e.response?.data?.erro || 'Erro ao salvar.', 'erro') }
     finally { setSalvando(false) }
@@ -1372,7 +1404,7 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
         <div style={{ display:'flex', flexDirection:'column', gap:'8px', maxWidth:'320px' }}>
           {config.perguntaInicial.opcoes.map(op=>(
             <button key={op.valor} onClick={()=>responderPergunta(op.valor)} disabled={respondendo} style={{
-              padding:'12px 16px', borderRadius:'10px', textAlign:'left', cursor:'pointer', fontFamily:'Inter,sans-serif', fontSize:'0.875rem', fontWeight:'500',
+              padding:'12px 16px', borderRadius:'10px', textAlign:'left', cursor:'pointer', fontFamily:'var(--fonte-corpo)', fontSize:'0.875rem', fontWeight:'500',
               border:'1px solid var(--borda)', background:'var(--card)', color:'var(--texto)',
             }}>{op.label}</button>
           ))}
@@ -1391,13 +1423,13 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
         <div style={{ display:'flex', flexDirection:'column', gap:'8px', maxWidth:'320px' }}>
           {config.perguntaInicial.opcoes.map(op=>(
             <button key={op.valor} onClick={()=>op.valor!==situacao && setValorVigenciaPendente(op.valor)} disabled={respondendo} style={{
-              padding:'12px 16px', borderRadius:'10px', textAlign:'left', cursor:'pointer', fontFamily:'Inter,sans-serif', fontSize:'0.875rem', fontWeight:'500',
+              padding:'12px 16px', borderRadius:'10px', textAlign:'left', cursor:'pointer', fontFamily:'var(--fonte-corpo)', fontSize:'0.875rem', fontWeight:'500',
               border: op.valor===situacao ? '1px solid var(--verde)' : '1px solid var(--borda)',
               background: op.valor===situacao ? 'rgba(0,177,65,0.08)' : 'var(--card)', color:'var(--texto)',
             }}>{op.label}{op.valor===situacao && ' · atual'}</button>
           ))}
         </div>
-        <button onClick={()=>setEditandoSituacao(false)} disabled={respondendo} style={{ marginTop:'14px', background:'none', border:'1px solid var(--borda)', borderRadius:'8px', color:'var(--texto-apagado)', padding:'8px 16px', fontFamily:'Inter,sans-serif', fontSize:'0.82rem', cursor:'pointer' }}>
+        <button onClick={()=>setEditandoSituacao(false)} disabled={respondendo} style={{ marginTop:'14px', background:'none', border:'1px solid var(--borda)', borderRadius:'8px', color:'var(--texto-apagado)', padding:'8px 16px', fontFamily:'var(--fonte-corpo)', fontSize:'0.82rem', cursor:'pointer' }}>
           Cancelar
         </button>
         {valorVigenciaPendente && (
@@ -1428,7 +1460,7 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
                 {pillInfo.hint && <span style={{ fontSize:'0.65rem', color:'var(--texto-apagado)' }}>· {pillInfo.hint}</span>}
               </div>
               {config?.perguntaInicial && podeEditar && podeAlterarConfig && competencia === competenciaPadraoDoSetor(setor.nome) && (
-                <button onClick={()=>setEditandoSituacao(true)} style={{ background:'none', border:'1px solid var(--borda)', borderRadius:'7px', color:'var(--texto-apagado)', padding:'5px 12px', fontFamily:'Inter,sans-serif', fontSize:'0.72rem', fontWeight:'600', cursor:'pointer' }}>
+                <button onClick={()=>setEditandoSituacao(true)} style={{ background:'none', border:'1px solid var(--borda)', borderRadius:'7px', color:'var(--texto-apagado)', padding:'5px 12px', fontFamily:'var(--fonte-corpo)', fontSize:'0.72rem', fontWeight:'600', cursor:'pointer' }}>
                   Editar
                 </button>
               )}
@@ -1512,6 +1544,12 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
       </div>
 
       <div style={{ marginBottom:'20px' }}>
+        {observacaoAnterior && (
+          <div style={{ background:'var(--input)', border:'1px solid var(--borda)', borderRadius:'10px', padding:'10px 14px', marginBottom:'10px' }}>
+            <p style={{ fontSize:'0.72rem', fontWeight:'700', color:'var(--texto-apagado)', margin:'0 0 4px' }}>Observação de {nomeMes(mudarCompetencia(competencia,-1))}:</p>
+            <p style={{ fontSize:'0.82rem', color:'var(--texto)', margin:0, whiteSpace:'pre-wrap' }}>{observacaoAnterior}</p>
+          </div>
+        )}
         <Campo label="Observações">
           {podeEditar ? (
             <textarea style={{ ...s.inp, minHeight:'56px', resize:'vertical' }} value={valores.observacoesGerais||''} onChange={e=>setValor('observacoesGerais', e.target.value)} placeholder="Opcional" />
@@ -1542,7 +1580,7 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
           <button style={s.btnCanc} onClick={()=>{setCriandoCampo(false);setNovoLabel('')}}>Cancelar</button>
         </div>
       ) : (
-        <button onClick={()=>setCriandoCampo(true)} style={{ background:'none', border:'1px dashed var(--borda)', borderRadius:'10px', color:'var(--texto-apagado)', padding:'10px', cursor:'pointer', fontFamily:'Inter,sans-serif', fontSize:'0.82rem', width:'100%', marginBottom:'20px' }}>
+        <button onClick={()=>setCriandoCampo(true)} style={{ background:'none', border:'1px dashed var(--borda)', borderRadius:'10px', color:'var(--texto-apagado)', padding:'10px', cursor:'pointer', fontFamily:'var(--fonte-corpo)', fontSize:'0.82rem', width:'100%', marginBottom:'20px' }}>
           + Adicionar campo
         </button>
       ))}
@@ -1641,7 +1679,7 @@ function AbaDemanda({ clienteId, setor, clienteRegime, configSetor, onAtualizado
             <button onClick={()=>podeVoltar&&irPara(-1)} disabled={!podeVoltar} style={{ width:'30px', height:'30px', borderRadius:'7px', border:'1px solid var(--borda)', background:'var(--input)', color: podeVoltar?'var(--texto)':'var(--texto-apagado)', cursor: podeVoltar?'pointer':'default', display:'flex', alignItems:'center', justifyContent:'center', opacity: podeVoltar?1:0.4 }}>
               <Icone.ChevronLeft size={14}/>
             </button>
-            <span style={{ fontSize:'0.82rem', fontWeight:'600', color:'var(--texto)', fontFamily:'Inter,sans-serif', minWidth:'130px', textAlign:'center' }}>
+            <span style={{ fontSize:'0.82rem', fontWeight:'600', color:'var(--texto)', fontFamily:'var(--fonte-corpo)', minWidth:'130px', textAlign:'center' }}>
               {nomeMes(competencia)} {competencia.slice(0,4)}
             </span>
             <button onClick={()=>irPara(1)} style={{ width:'30px', height:'30px', borderRadius:'7px', border:'1px solid var(--borda)', background:'var(--input)', color:'var(--texto)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
@@ -1688,12 +1726,16 @@ function AbaHistorico({ clienteId, setor, clienteRegime, configSetor, onAtualiza
   const anoAtual = Number(competenciaAtual().slice(0,4))
   // Teto de navegação pra frente: setor em modo "defasada" nunca deveria abrir o mês civil
   // atual, só a competência (mês anterior) e os passados — ver competenciaPadraoDoSetor
-  const teto = competenciaPadraoDoSetor(setor.nome)
+  const tetoPadrao = competenciaPadraoDoSetor(setor.nome)
+  // Titular pode preencher um mês além do teto padrão — se isso já aconteceu, o teto efetivo
+  // acompanha a competência mais avançada com dado, senão a pasta dela nem aparece pra abrir
+  const maiorComDado = lancamentos.reduce((max, l) => l.competencia > max ? l.competencia : max, tetoPadrao)
+  const teto = maiorComDado > tetoPadrao ? maiorComDado : tetoPadrao
   const anoTeto = Number(teto.slice(0,4))
   const mesTetoNum = Number(teto.slice(5,7))
 
-  const btnPasta = { display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'8px', padding:'20px 12px', background:'var(--card)', border:'1px solid var(--borda)', borderRadius:'12px', cursor:'pointer', fontFamily:'Inter,sans-serif', fontSize:'0.82rem', fontWeight:'600', color:'var(--texto)' }
-  const btnVoltar = { background:'none', border:'none', color:'var(--texto-apagado)', cursor:'pointer', fontFamily:'Inter,sans-serif', fontSize:'0.82rem', padding:'0 0 16px', display:'flex', alignItems:'center', gap:'6px' }
+  const btnPasta = { display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'8px', padding:'20px 12px', background:'var(--card)', border:'1px solid var(--borda)', borderRadius:'12px', cursor:'pointer', fontFamily:'var(--fonte-corpo)', fontSize:'0.82rem', fontWeight:'600', color:'var(--texto)' }
+  const btnVoltar = { background:'none', border:'none', color:'var(--texto-apagado)', cursor:'pointer', fontFamily:'var(--fonte-corpo)', fontSize:'0.82rem', padding:'0 0 16px', display:'flex', alignItems:'center', gap:'6px' }
 
   // Nível 3 — dados do mês selecionado
   if (mesSelecionado) {
@@ -1733,7 +1775,7 @@ function AbaHistorico({ clienteId, setor, clienteRegime, configSetor, onAtualiza
 
   // Nível 1 — anos
   const anos = []
-  for (let a = INICIO_DEMANDA_ANO; a <= anoAtual; a++) anos.push(a)
+  for (let a = INICIO_DEMANDA_ANO; a <= Math.max(anoAtual, anoTeto); a++) anos.push(a)
 
   return (
     <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(140px,1fr))', gap:'12px' }}>
@@ -1783,7 +1825,7 @@ function CardCliente({ cliente, onClick }) {
         {cliente._emOnboarding && (
           <div style={{ display:'flex', alignItems:'center', gap:'5px', padding:'3px 8px', background:'rgba(0,177,65,0.08)', border:'1px solid rgba(0,177,65,0.2)', borderRadius:'6px' }}>
             <Icone.ClipboardList size={11} style={{ color:'var(--verde)' }}/>
-            <span style={{ fontSize:'0.63rem', fontWeight:'700', color:'var(--verde)', fontFamily:'Inter,sans-serif', letterSpacing:'0.3px' }}>
+            <span style={{ fontSize:'0.63rem', fontWeight:'700', color:'var(--verde)', fontFamily:'var(--fonte-corpo)', letterSpacing:'0.3px' }}>
               EM ONBOARDING{cliente._pctOnboarding !== null ? ` · ${cliente._pctOnboarding}%` : ''}
             </span>
           </div>
@@ -1791,7 +1833,7 @@ function CardCliente({ cliente, onClick }) {
         {cliente.origem === 'onboarding' && !cliente._emOnboarding && (
           <div style={{ display:'flex', alignItems:'center', gap:'5px', padding:'3px 8px', background:'rgba(99,102,241,0.08)', border:'1px solid rgba(99,102,241,0.2)', borderRadius:'6px' }}>
             <Icone.Zap size={11} style={{ color:'#818cf8' }}/>
-            <span style={{ fontSize:'0.63rem', fontWeight:'700', color:'#818cf8', fontFamily:'Inter,sans-serif', letterSpacing:'0.3px' }}>VIA ONBOARDING</span>
+            <span style={{ fontSize:'0.63rem', fontWeight:'700', color:'#818cf8', fontFamily:'var(--fonte-corpo)', letterSpacing:'0.3px' }}>VIA ONBOARDING</span>
           </div>
         )}
       </div>
@@ -1971,18 +2013,18 @@ export default function Clientes({ detalheInicial = null, abaInicial = 'info', s
         <input style={{ ...s.inp, flex:1, minWidth:'200px' }} value={busca} onChange={e=>setBusca(e.target.value)} placeholder="Buscar por nome, CNPJ ou CPF..." />
         {setoresList.length>0&&(
           <div ref={setorDropdownRef} style={{ position:'relative' }}>
-            <button onClick={()=>setSetorDropdownAberto(v=>!v)} style={{ padding:'7px 14px', borderRadius:'8px', fontSize:'0.78rem', fontWeight:'600', cursor:'pointer', fontFamily:'Inter,sans-serif', display:'flex', alignItems:'center', gap:'8px', border:`1px solid ${filtroSetor?'rgba(0,177,65,0.3)':'var(--borda)'}`, background:filtroSetor?'rgba(0,177,65,0.08)':'var(--input)', color:filtroSetor?'var(--verde)':'var(--texto-apagado)' }}>
+            <button onClick={()=>setSetorDropdownAberto(v=>!v)} style={{ padding:'7px 14px', borderRadius:'8px', fontSize:'0.78rem', fontWeight:'600', cursor:'pointer', fontFamily:'var(--fonte-corpo)', display:'flex', alignItems:'center', gap:'8px', border:`1px solid ${filtroSetor?'rgba(0,177,65,0.3)':'var(--borda)'}`, background:filtroSetor?'rgba(0,177,65,0.08)':'var(--input)', color:filtroSetor?'var(--verde)':'var(--texto-apagado)' }}>
               {filtroSetor && setorFiltroAtivo && <div style={{ width:'7px', height:'7px', borderRadius:'50%', background:setorFiltroAtivo.cor||'var(--verde)' }}/>}
               {filtroSetor && setorFiltroAtivo ? setorFiltroAtivo.nome : 'Todos os setores'}
               <Icone.ChevronDown size={14}/>
             </button>
             {setorDropdownAberto && (
               <div style={{ position:'absolute', top:'calc(100% + 4px)', left:0, minWidth:'210px', background:'var(--card)', border:'1px solid var(--borda)', borderRadius:'8px', boxShadow:'0 8px 24px rgba(0,0,0,0.4)', zIndex:10, padding:'6px', display:'flex', flexDirection:'column', gap:'2px' }}>
-                <button onClick={()=>{ setFiltroSetor(null); setSetorDropdownAberto(false) }} style={{ padding:'8px 10px', borderRadius:'6px', fontSize:'0.8rem', fontWeight:'600', cursor:'pointer', fontFamily:'Inter,sans-serif', border:'none', textAlign:'left', background:!filtroSetor?'rgba(0,177,65,0.08)':'none', color:!filtroSetor?'var(--verde)':'var(--texto)' }}>
+                <button onClick={()=>{ setFiltroSetor(null); setSetorDropdownAberto(false) }} style={{ padding:'8px 10px', borderRadius:'6px', fontSize:'0.8rem', fontWeight:'600', cursor:'pointer', fontFamily:'var(--fonte-corpo)', border:'none', textAlign:'left', background:!filtroSetor?'rgba(0,177,65,0.08)':'none', color:!filtroSetor?'var(--verde)':'var(--texto)' }}>
                   Todos os setores
                 </button>
                 {setoresList.map(setor=>(
-                  <button key={setor._id} onClick={()=>{ setFiltroSetor(setor._id); setSetorDropdownAberto(false) }} style={{ padding:'8px 10px', borderRadius:'6px', fontSize:'0.8rem', fontWeight:'600', cursor:'pointer', fontFamily:'Inter,sans-serif', display:'flex', alignItems:'center', gap:'8px', border:'none', textAlign:'left', background:filtroSetor===setor._id?'rgba(0,177,65,0.08)':'none', color:filtroSetor===setor._id?'var(--verde)':'var(--texto)' }}>
+                  <button key={setor._id} onClick={()=>{ setFiltroSetor(setor._id); setSetorDropdownAberto(false) }} style={{ padding:'8px 10px', borderRadius:'6px', fontSize:'0.8rem', fontWeight:'600', cursor:'pointer', fontFamily:'var(--fonte-corpo)', display:'flex', alignItems:'center', gap:'8px', border:'none', textAlign:'left', background:filtroSetor===setor._id?'rgba(0,177,65,0.08)':'none', color:filtroSetor===setor._id?'var(--verde)':'var(--texto)' }}>
                     <div style={{ width:'7px', height:'7px', borderRadius:'50%', background:setor.cor||'var(--verde)' }}/>
                     {setor.nome}
                   </button>
@@ -1991,7 +2033,7 @@ export default function Clientes({ detalheInicial = null, abaInicial = 'info', s
             )}
           </div>
         )}
-        <button onClick={()=>setFiltroPessoaFisica(v=>!v)} style={{ padding:'7px 14px', borderRadius:'8px', fontSize:'0.78rem', fontWeight:'600', cursor:'pointer', fontFamily:'Inter,sans-serif', display:'flex', alignItems:'center', gap:'6px', border:`1px solid ${filtroPessoaFisica?'rgba(0,177,65,0.3)':'var(--borda)'}`, background:filtroPessoaFisica?'rgba(0,177,65,0.08)':'var(--input)', color:filtroPessoaFisica?'var(--verde)':'var(--texto-apagado)' }}>
+        <button onClick={()=>setFiltroPessoaFisica(v=>!v)} style={{ padding:'7px 14px', borderRadius:'8px', fontSize:'0.78rem', fontWeight:'600', cursor:'pointer', fontFamily:'var(--fonte-corpo)', display:'flex', alignItems:'center', gap:'6px', border:`1px solid ${filtroPessoaFisica?'rgba(0,177,65,0.3)':'var(--borda)'}`, background:filtroPessoaFisica?'rgba(0,177,65,0.08)':'var(--input)', color:filtroPessoaFisica?'var(--verde)':'var(--texto-apagado)' }}>
           <Icone.User size={13}/> Pessoa Física
         </button>
       </div>
@@ -1999,7 +2041,7 @@ export default function Clientes({ detalheInicial = null, abaInicial = 'info', s
       {/* Subfiltro (ex: Regime quando setor Fiscal está selecionado) */}
       {opcoesVisiveis.length > 0 && (
         <div ref={subFiltroDropdownRef} style={{ position:'relative', display:'inline-block', marginBottom:'20px' }}>
-          <button onClick={()=>setSubFiltroDropdownAberto(v=>!v)} style={{ padding:'5px 12px', borderRadius:'7px', fontSize:'0.72rem', fontWeight:'600', cursor:'pointer', fontFamily:'Inter,sans-serif', display:'flex', alignItems:'center', gap:'6px', border:'1px solid var(--borda)', background:'transparent', color:'var(--texto-apagado)' }}>
+          <button onClick={()=>setSubFiltroDropdownAberto(v=>!v)} style={{ padding:'5px 12px', borderRadius:'7px', fontSize:'0.72rem', fontWeight:'600', cursor:'pointer', fontFamily:'var(--fonte-corpo)', display:'flex', alignItems:'center', gap:'6px', border:'1px solid var(--borda)', background:'transparent', color:'var(--texto-apagado)' }}>
             {subFiltro===undefined
               ? `Todos · ${subFiltroConfig.nome}`
               : `${opcoesVisiveis.find(op=>op.value===subFiltro)?.label} · ${subFiltroConfig.nome}`}
@@ -2007,11 +2049,11 @@ export default function Clientes({ detalheInicial = null, abaInicial = 'info', s
           </button>
           {subFiltroDropdownAberto && (
             <div style={{ position:'absolute', top:'calc(100% + 4px)', left:0, minWidth:'190px', background:'var(--card)', border:'1px solid var(--borda)', borderRadius:'8px', boxShadow:'0 8px 24px rgba(0,0,0,0.4)', zIndex:10, padding:'6px', display:'flex', flexDirection:'column', gap:'2px' }}>
-              <button onClick={()=>{ setSubFiltro(undefined); setSubFiltroDropdownAberto(false) }} style={{ padding:'7px 10px', borderRadius:'6px', fontSize:'0.76rem', fontWeight:'600', cursor:'pointer', fontFamily:'Inter,sans-serif', border:'none', textAlign:'left', background:subFiltro===undefined?'rgba(0,177,65,0.08)':'none', color:subFiltro===undefined?'var(--verde)':'var(--texto)' }}>
+              <button onClick={()=>{ setSubFiltro(undefined); setSubFiltroDropdownAberto(false) }} style={{ padding:'7px 10px', borderRadius:'6px', fontSize:'0.76rem', fontWeight:'600', cursor:'pointer', fontFamily:'var(--fonte-corpo)', border:'none', textAlign:'left', background:subFiltro===undefined?'rgba(0,177,65,0.08)':'none', color:subFiltro===undefined?'var(--verde)':'var(--texto)' }}>
                 Todos
               </button>
               {opcoesVisiveis.map(op=>(
-                <button key={String(op.value)} onClick={()=>{ setSubFiltro(op.value); setSubFiltroDropdownAberto(false) }} style={{ padding:'7px 10px', borderRadius:'6px', fontSize:'0.76rem', fontWeight:'600', cursor:'pointer', fontFamily:'Inter,sans-serif', border:'none', textAlign:'left', background:subFiltro===op.value?'rgba(0,177,65,0.08)':'none', color:subFiltro===op.value?'var(--verde)':'var(--texto)' }}>
+                <button key={String(op.value)} onClick={()=>{ setSubFiltro(op.value); setSubFiltroDropdownAberto(false) }} style={{ padding:'7px 10px', borderRadius:'6px', fontSize:'0.76rem', fontWeight:'600', cursor:'pointer', fontFamily:'var(--fonte-corpo)', border:'none', textAlign:'left', background:subFiltro===op.value?'rgba(0,177,65,0.08)':'none', color:subFiltro===op.value?'var(--verde)':'var(--texto)' }}>
                   {op.label}
                 </button>
               ))}
@@ -2044,22 +2086,22 @@ export default function Clientes({ detalheInicial = null, abaInicial = 'info', s
 }
 
 const s = {
-  btnNovo: { background: 'var(--gradiente-verde)', color: '#fff', border: 'none', borderRadius: '9px', padding: '7px 14px', fontFamily: 'Inter, sans-serif', fontWeight: '600', fontSize: '0.78rem', cursor: 'pointer' },
+  btnNovo: { background: 'var(--gradiente-verde)', color: '#fff', border: 'none', borderRadius: '9px', padding: '7px 14px', fontFamily: 'var(--fonte-corpo)', fontWeight: '600', fontSize: '0.78rem', cursor: 'pointer' },
   overlay: { position:'fixed', inset:0, background:'rgba(0,0,0,0.6)', zIndex:9999, display:'flex', alignItems:'center', justifyContent:'center', padding:'20px' },
   modalPeq: { background:'var(--card)', border:'1px solid var(--borda)', borderRadius:'16px', width:'100%', maxWidth:'400px', boxShadow:'0 24px 64px rgba(0,0,0,0.6)' },
   modalTopo: { display:'flex', alignItems:'center', justifyContent:'space-between', padding:'20px 24px', borderBottom:'1px solid var(--borda)' },
-  modalTit: { fontWeight:'700', fontSize:'1rem', color:'var(--texto)', fontFamily:'Inter,sans-serif', margin:0 },
+  modalTit: { fontWeight:'700', fontSize:'1rem', color:'var(--texto)', fontFamily:'var(--fonte-corpo)', margin:0 },
   modalRodape: { display:'flex', gap:'12px', justifyContent:'flex-end', padding:'16px 24px', borderTop:'1px solid var(--borda)' },
   btnX: { background:'none', border:'1px solid var(--borda)', borderRadius:'6px', color:'var(--texto-apagado)', width:'28px', height:'28px', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'12px', cursor:'pointer' },
-  btnPrimario: { background:'var(--gradiente-verde)', color:'#fff', border:'none', borderRadius:'10px', padding:'10px 20px', fontFamily:'Inter,sans-serif', fontWeight:'600', fontSize:'0.875rem', cursor:'pointer', boxShadow:'0 2px 8px rgba(0,177,65,0.25)', whiteSpace:'nowrap' },
-  btnSecundario: { background:'none', border:'1px solid var(--borda)', borderRadius:'8px', color:'var(--verde)', padding:'8px 14px', fontFamily:'Inter,sans-serif', fontWeight:'600', fontSize:'0.78rem', cursor:'pointer', whiteSpace:'nowrap' },
-  btnCanc: { background:'none', border:'1px solid var(--borda)', borderRadius:'10px', color:'var(--texto-apagado)', padding:'10px 20px', fontFamily:'Inter,sans-serif', fontWeight:'500', fontSize:'0.875rem', cursor:'pointer' },
-  btnSalv: { background:'var(--gradiente-verde)', color:'#fff', border:'none', borderRadius:'10px', padding:'10px 20px', fontFamily:'Inter,sans-serif', fontWeight:'600', fontSize:'0.875rem', cursor:'pointer' },
-  btnAcao: { background:'none', border:'1px solid var(--borda)', borderRadius:'6px', color:'var(--texto-apagado)', fontSize:'0.75rem', cursor:'pointer', padding:'5px 12px', fontFamily:'Inter,sans-serif' },
-  inp: { background:'var(--input)', border:'1px solid var(--borda)', borderRadius:'8px', padding:'8px 12px', color:'var(--texto)', fontSize:'0.85rem', fontFamily:'Inter,sans-serif', width:'100%', boxSizing:'border-box', colorScheme:'dark' },
-  erro: { color:'#FCA5A5', fontSize:'0.8rem', background:'rgba(239,68,68,0.1)', padding:'8px 12px', borderRadius:'8px', fontFamily:'Inter,sans-serif' },
+  btnPrimario: { background:'var(--gradiente-verde)', color:'#fff', border:'none', borderRadius:'10px', padding:'10px 20px', fontFamily:'var(--fonte-corpo)', fontWeight:'600', fontSize:'0.875rem', cursor:'pointer', boxShadow:'0 2px 8px rgba(0,177,65,0.25)', whiteSpace:'nowrap' },
+  btnSecundario: { background:'none', border:'1px solid var(--borda)', borderRadius:'8px', color:'var(--verde)', padding:'8px 14px', fontFamily:'var(--fonte-corpo)', fontWeight:'600', fontSize:'0.78rem', cursor:'pointer', whiteSpace:'nowrap' },
+  btnCanc: { background:'none', border:'1px solid var(--borda)', borderRadius:'10px', color:'var(--texto-apagado)', padding:'10px 20px', fontFamily:'var(--fonte-corpo)', fontWeight:'500', fontSize:'0.875rem', cursor:'pointer' },
+  btnSalv: { background:'var(--gradiente-verde)', color:'#fff', border:'none', borderRadius:'10px', padding:'10px 20px', fontFamily:'var(--fonte-corpo)', fontWeight:'600', fontSize:'0.875rem', cursor:'pointer' },
+  btnAcao: { background:'none', border:'1px solid var(--borda)', borderRadius:'6px', color:'var(--texto-apagado)', fontSize:'0.75rem', cursor:'pointer', padding:'5px 12px', fontFamily:'var(--fonte-corpo)' },
+  inp: { background:'var(--input)', border:'1px solid var(--borda)', borderRadius:'8px', padding:'8px 12px', color:'var(--texto)', fontSize:'0.85rem', fontFamily:'var(--fonte-corpo)', width:'100%', boxSizing:'border-box', colorScheme:'dark' },
+  erro: { color:'#FCA5A5', fontSize:'0.8rem', background:'rgba(239,68,68,0.1)', padding:'8px 12px', borderRadius:'8px', fontFamily:'var(--fonte-corpo)' },
   secCard: { background:'var(--card)', border:'1px solid var(--borda)', borderRadius:'12px', padding:'18px 20px' },
-  secTit: { fontSize:'0.75rem', fontWeight:'700', color:'var(--texto-apagado)', textTransform:'uppercase', letterSpacing:'1px', margin:'0 0 14px', fontFamily:'Inter,sans-serif' },
+  secTit: { fontSize:'0.75rem', fontWeight:'700', color:'var(--texto-apagado)', textTransform:'uppercase', letterSpacing:'1px', margin:'0 0 14px', fontFamily:'var(--fonte-corpo)' },
 }
 
 // Reaproveitado pela tela Demandas — mesma lógica de campos configurados por setor/regime/situação,

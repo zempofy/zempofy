@@ -291,7 +291,7 @@ function PopoverEvento({ item, tipo, onEditar, onExcluir, onFechar }) {
         <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'12px'}}>
           <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
             <div style={{width:'12px', height:'12px', borderRadius:'3px', background: tipo==='tarefa' ? 'var(--texto-apagado)' : item.cor, flexShrink:0}} />
-            <p style={{margin:0, fontFamily:'Inter, sans-serif', fontWeight:'700', fontSize:'1rem', color:'var(--texto)'}}>{item.titulo || item.descricao}</p>
+            <p style={{margin:0, fontFamily:'var(--fonte-corpo)', fontWeight:'700', fontSize:'1rem', color:'var(--texto)'}}>{item.titulo || item.descricao}</p>
           </div>
           <button style={s.btnX} onClick={onFechar}>✕</button>
         </div>
@@ -436,16 +436,16 @@ export default function Agenda({ cargo, usuarios = [] }) {
 
 const s = {
   cabecalho: { display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'20px', flexWrap:'wrap', gap:'12px', overflow:'hidden' },
-  titulo: { fontSize:'1.8rem', color:'var(--texto)', fontFamily:'Inter, sans-serif', fontWeight:'700' },
-  btnHoje: { background:'none', border:'1px solid var(--borda)', borderRadius:'8px', padding:'6px 14px', color:'var(--texto)', fontSize:'0.85rem', cursor:'pointer', fontFamily:'Inter, sans-serif' },
+  titulo: { fontSize:'1.8rem', color:'var(--texto)', fontFamily:'var(--fonte-corpo)', fontWeight:'700' },
+  btnHoje: { background:'none', border:'1px solid var(--borda)', borderRadius:'8px', padding:'6px 14px', color:'var(--texto)', fontSize:'0.85rem', cursor:'pointer', fontFamily:'var(--fonte-corpo)' },
   navBotoes: { display:'flex', alignItems:'center', gap:'8px' },
   btnNav: { background:'none', border:'1px solid var(--borda)', borderRadius:'8px', width:'32px', height:'32px', color:'var(--texto)', fontSize:'1.2rem', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' },
-  navTitulo: { fontFamily:'Inter, sans-serif', fontWeight:'600', fontSize:'1rem', color:'var(--texto)', minWidth:'120px', textAlign:'center' },
+  navTitulo: { fontFamily:'var(--fonte-corpo)', fontWeight:'600', fontSize:'1rem', color:'var(--texto)', minWidth:'120px', textAlign:'center' },
   visaoBotoes: { display:'flex', background:'var(--input)', borderRadius:'8px', padding:'3px', gap:'2px' },
-  btnVisao: { background:'none', border:'none', borderRadius:'6px', padding:'5px 14px', color:'var(--texto-apagado)', fontSize:'0.85rem', cursor:'pointer', fontFamily:'Inter, sans-serif' },
+  btnVisao: { background:'none', border:'none', borderRadius:'6px', padding:'5px 14px', color:'var(--texto-apagado)', fontSize:'0.85rem', cursor:'pointer', fontFamily:'var(--fonte-corpo)' },
   btnVisaoAtivo: { background:'var(--borda)', color:'var(--texto)' },
-  btnNovo: { background:'linear-gradient(135deg, var(--verde), var(--verde-escuro))', color:'#fff', border:'none', borderRadius:'8px', padding:'8px 16px', fontFamily:'Inter, sans-serif', fontWeight:'600', fontSize:'0.85rem', cursor:'pointer' },
-  select: { background:'var(--input)', border:'1px solid var(--borda)', borderRadius:'8px', padding:'6px 12px', color:'var(--texto)', fontSize:'0.85rem', fontFamily:'Inter, sans-serif', cursor:'pointer' },
+  btnNovo: { background:'linear-gradient(135deg, var(--verde), var(--verde-escuro))', color:'#fff', border:'none', borderRadius:'8px', padding:'8px 16px', fontFamily:'var(--fonte-corpo)', fontWeight:'600', fontSize:'0.85rem', cursor:'pointer' },
+  select: { background:'var(--input)', border:'1px solid var(--borda)', borderRadius:'8px', padding:'6px 12px', color:'var(--texto)', fontSize:'0.85rem', fontFamily:'var(--fonte-corpo)', cursor:'pointer' },
   calendarioWrapper: { background:'var(--card)', border:'1px solid var(--borda)', borderRadius:'16px', overflow:'hidden', width:'100%' },
 
   // Grade
@@ -483,19 +483,19 @@ const s = {
   fundo: { position:'fixed', inset:0, background:'rgba(0,0,0,0.6)', zIndex:1000 },
   janelaEvento: { position:'fixed', top:'50%', left:'50%', transform:'translate(-50%, -50%)', width:'100%', maxWidth:'440px', background:'var(--card)', border:'1px solid var(--borda)', borderRadius:'20px', zIndex:1001, boxShadow:'0 24px 64px rgba(0,0,0,0.6)', overflow:'hidden' },
   modalTopo: { display:'flex', alignItems:'center', justifyContent:'space-between', padding:'20px 24px', borderBottom:'1px solid var(--borda)' },
-  modalTitulo: { fontFamily:'Inter, sans-serif', fontWeight:'700', fontSize:'1rem', color:'var(--texto)' },
+  modalTitulo: { fontFamily:'var(--fonte-corpo)', fontWeight:'700', fontSize:'1rem', color:'var(--texto)' },
   btnX: { background:'none', border:'1px solid var(--borda)', borderRadius:'6px', color:'var(--texto-apagado)', width:'28px', height:'28px', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'12px', cursor:'pointer' },
   modalCorpo: { padding:'24px', display:'flex', flexDirection:'column', gap:'16px' },
   campo: { display:'flex', flexDirection:'column', gap:'6px' },
   label: { fontSize:'0.7rem', fontWeight:'600', color:'var(--texto-apagado)', textTransform:'uppercase', letterSpacing:'0.8px' },
-  input: { background:'var(--input)', border:'1px solid var(--borda)', borderRadius:'10px', padding:'10px 14px', color:'var(--texto)', fontSize:'0.9rem', width:'100%', fontFamily:'Inter, sans-serif' },
+  input: { background:'var(--input)', border:'1px solid var(--borda)', borderRadius:'10px', padding:'10px 14px', color:'var(--texto)', fontSize:'0.9rem', width:'100%', fontFamily:'var(--fonte-corpo)' },
   coresWrapper: { display:'flex', gap:'10px', alignItems:'center' },
   bolinhaCor: { width:'26px', height:'26px', borderRadius:'50%', border:'none', cursor:'pointer', transition:'all 0.2s', flexShrink:0 },
-  btnCancelar: { flex:1, padding:'10px', borderRadius:'10px', background:'none', border:'1px solid var(--borda)', color:'var(--texto-apagado)', fontSize:'0.9rem', cursor:'pointer', fontFamily:'Inter, sans-serif' },
-  btnSalvar: { flex:1, padding:'10px', borderRadius:'10px', background:'linear-gradient(135deg, var(--verde), var(--verde-escuro))', border:'none', color:'#fff', fontSize:'0.9rem', cursor:'pointer', fontFamily:'Inter, sans-serif', fontWeight:'600' },
+  btnCancelar: { flex:1, padding:'10px', borderRadius:'10px', background:'none', border:'1px solid var(--borda)', color:'var(--texto-apagado)', fontSize:'0.9rem', cursor:'pointer', fontFamily:'var(--fonte-corpo)' },
+  btnSalvar: { flex:1, padding:'10px', borderRadius:'10px', background:'linear-gradient(135deg, var(--verde), var(--verde-escuro))', border:'none', color:'#fff', fontSize:'0.9rem', cursor:'pointer', fontFamily:'var(--fonte-corpo)', fontWeight:'600' },
   erro: { color:'#FCA5A5', fontSize:'0.8rem', background:'rgba(239,68,68,0.1)', padding:'8px 12px', borderRadius:'8px', margin:0 },
 
   // Popover detalhe
   popoverEvento: { position:'fixed', top:'50%', left:'50%', transform:'translate(-50%, -50%)', width:'100%', maxWidth:'340px', background:'var(--card)', border:'1px solid var(--borda)', borderRadius:'16px', zIndex:1001, boxShadow:'0 24px 64px rgba(0,0,0,0.6)', padding:'20px' },
-  btnAcao: { flex:1, padding:'8px', borderRadius:'8px', background:'none', border:'1px solid var(--borda)', color:'var(--texto)', fontSize:'0.85rem', cursor:'pointer', fontFamily:'Inter, sans-serif' },
+  btnAcao: { flex:1, padding:'8px', borderRadius:'8px', background:'none', border:'1px solid var(--borda)', color:'var(--texto)', fontSize:'0.85rem', cursor:'pointer', fontFamily:'var(--fonte-corpo)' },
 }

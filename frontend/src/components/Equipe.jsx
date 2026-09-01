@@ -47,7 +47,7 @@ function CheckItem({ ativo, label, desc, onClick, sub = false, somenteLeitura = 
         {ativo && <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><polyline points="1.5 5 4 7.5 8.5 2.5"/></svg>}
       </div>
       <div style={{ flex: 1 }}>
-        <p style={{ margin: 0, fontSize: sub ? '0.82rem' : '0.875rem', fontWeight: '500', color: sub ? 'var(--texto-apagado)' : 'var(--texto)', fontFamily: 'Inter, sans-serif' }}>{label}</p>
+        <p style={{ margin: 0, fontSize: sub ? '0.82rem' : '0.875rem', fontWeight: '500', color: sub ? 'var(--texto-apagado)' : 'var(--texto)', fontFamily: 'var(--fonte-corpo)' }}>{label}</p>
         <p style={{ margin: 0, fontSize: '0.72rem', color: 'var(--texto-apagado)' }}>{desc}</p>
       </div>
     </div>
@@ -88,7 +88,7 @@ export function PainelPermissoes({ permissoes, onChange, somenteLeitura = false 
               {permissoes[p.key] && <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><polyline points="1.5 5 4 7.5 8.5 2.5"/></svg>}
             </div>
             <div style={{ flex: 1 }}>
-              <p style={{ margin: 0, fontSize: '0.875rem', fontWeight: '500', color: 'var(--texto)', fontFamily: 'Inter, sans-serif' }}>{p.label}</p>
+              <p style={{ margin: 0, fontSize: '0.875rem', fontWeight: '500', color: 'var(--texto)', fontFamily: 'var(--fonte-corpo)' }}>{p.label}</p>
               <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--texto-apagado)' }}>{p.desc}</p>
             </div>
             {p.subpermissoes?.length > 0 && (
@@ -208,7 +208,7 @@ function LinhaMembro({
           </p>
           {f._id === usuarioId ? (
             <>
-              <p style={{ fontSize: '0.78rem', color: 'var(--texto-apagado)', margin: '0 0 12px', fontFamily: 'Inter, sans-serif' }}>
+              <p style={{ fontSize: '0.78rem', color: 'var(--texto-apagado)', margin: '0 0 12px', fontFamily: 'var(--fonte-corpo)' }}>
                 Você não pode editar suas próprias permissões — só o titular pode alterar isso.
               </p>
               <PainelPermissoes permissoes={f.permissoes || PERMISSOES_VAZIAS} onChange={() => {}} somenteLeitura />
@@ -454,24 +454,24 @@ export default function PaginaEquipe({ usuario, recarregar }) {
           <div style={{ background: 'var(--card)', border: '1px solid var(--borda)', borderRadius: '18px', width: '100%', maxWidth: '420px', margin: '0 16px', boxShadow: '0 8px 32px rgba(0,0,0,0.5)', overflow: 'hidden' }}
             onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 22px', borderBottom: '1px solid var(--borda)' }}>
-              <span style={{ fontWeight: '700', fontSize: '0.95rem', color: 'var(--texto)', fontFamily: 'Inter, sans-serif' }}>Excluir membro</span>
+              <span style={{ fontWeight: '700', fontSize: '0.95rem', color: 'var(--texto)', fontFamily: 'var(--fonte-corpo)' }}>Excluir membro</span>
               <button style={{ background: 'none', border: '1px solid var(--borda)', borderRadius: '6px', color: 'var(--texto-apagado)', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', cursor: 'pointer' }} onClick={() => { setConfirmandoExcluirId(null); setCienteExclusao(false) }}>✕</button>
             </div>
             <div style={{ padding: '20px 22px' }}>
-              <p style={{ fontSize: '0.875rem', color: 'var(--texto)', margin: '0 0 12px', fontFamily: 'Inter, sans-serif' }}>Tem certeza que deseja excluir <strong>{membroParaExcluir?.nome}</strong> permanentemente?</p>
+              <p style={{ fontSize: '0.875rem', color: 'var(--texto)', margin: '0 0 12px', fontFamily: 'var(--fonte-corpo)' }}>Tem certeza que deseja excluir <strong>{membroParaExcluir?.nome}</strong> permanentemente?</p>
               <div style={{ background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.25)', borderRadius: '8px', padding: '10px 12px', marginBottom: '14px' }}>
-                <p style={{ fontSize: '0.8rem', color: '#f87171', fontWeight: '700', margin: '0 0 4px', fontFamily: 'Inter, sans-serif', display: 'flex', alignItems: 'center', gap: '8px' }}><Icone.AlertTriangle size={14}/> Essa ação é permanente.</p>
-                <p style={{ fontSize: '0.8rem', color: '#f87171', margin: 0, fontFamily: 'Inter, sans-serif', lineHeight: '1.4' }}>O registro deste membro será apagado e não há como desfazer.</p>
+                <p style={{ fontSize: '0.8rem', color: '#f87171', fontWeight: '700', margin: '0 0 4px', fontFamily: 'var(--fonte-corpo)', display: 'flex', alignItems: 'center', gap: '8px' }}><Icone.AlertTriangle size={14}/> Essa ação é permanente.</p>
+                <p style={{ fontSize: '0.8rem', color: '#f87171', margin: 0, fontFamily: 'var(--fonte-corpo)', lineHeight: '1.4' }}>O registro deste membro será apagado e não há como desfazer.</p>
               </div>
-              <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', cursor: 'pointer', fontSize: '0.8rem', color: 'var(--texto-apagado)', fontFamily: 'Inter, sans-serif' }}>
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', cursor: 'pointer', fontSize: '0.8rem', color: 'var(--texto-apagado)', fontFamily: 'var(--fonte-corpo)' }}>
                 <input type="checkbox" checked={cienteExclusao} onChange={e => setCienteExclusao(e.target.checked)} style={{ marginTop: '2px', accentColor: '#f87171', width: '15px', height: '15px', flexShrink: 0, cursor: 'pointer' }} />
                 Estou ciente de que essa exclusão é permanente e não pode ser desfeita.
               </label>
             </div>
             <div style={{ display: 'flex', gap: '10px', padding: '16px 22px', borderTop: '1px solid var(--borda)', justifyContent: 'flex-end' }}>
-              <button style={{ background: 'none', border: '1px solid var(--borda)', borderRadius: '8px', color: 'var(--texto-apagado)', padding: '9px 18px', fontFamily: 'Inter, sans-serif', fontSize: '0.85rem', cursor: 'pointer' }} onClick={() => { setConfirmandoExcluirId(null); setCienteExclusao(false) }}>Cancelar</button>
+              <button style={{ background: 'none', border: '1px solid var(--borda)', borderRadius: '8px', color: 'var(--texto-apagado)', padding: '9px 18px', fontFamily: 'var(--fonte-corpo)', fontSize: '0.85rem', cursor: 'pointer' }} onClick={() => { setConfirmandoExcluirId(null); setCienteExclusao(false) }}>Cancelar</button>
               <button
-                style={{ background: 'rgba(248,113,113,0.15)', border: '1px solid rgba(248,113,113,0.3)', borderRadius: '8px', color: '#f87171', padding: '9px 18px', fontFamily: 'Inter, sans-serif', fontWeight: '600', fontSize: '0.85rem', cursor: cienteExclusao ? 'pointer' : 'default', opacity: cienteExclusao ? 1 : 0.5 }}
+                style={{ background: 'rgba(248,113,113,0.15)', border: '1px solid rgba(248,113,113,0.3)', borderRadius: '8px', color: '#f87171', padding: '9px 18px', fontFamily: 'var(--fonte-corpo)', fontWeight: '600', fontSize: '0.85rem', cursor: cienteExclusao ? 'pointer' : 'default', opacity: cienteExclusao ? 1 : 0.5 }}
                 disabled={!cienteExclusao}
                 onClick={() => excluirPermanente(confirmandoExcluirId)}
               >
@@ -496,8 +496,8 @@ export default function PaginaEquipe({ usuario, recarregar }) {
       {isTitular && (
         <div style={{ background: 'var(--card)', border: '1px solid var(--borda)', borderRadius: '11px', padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
           <div>
-            <p style={{ fontSize: '0.82rem', fontWeight: '500', color: 'var(--texto)', margin: 0, fontFamily: 'Inter, sans-serif' }}>Colaboradores podem me atribuir tarefas</p>
-            <p style={{ fontSize: '0.72rem', color: 'var(--texto-apagado)', margin: '2px 0 0', fontFamily: 'Inter, sans-serif' }}>Permite que a equipe crie tarefas com você como responsável</p>
+            <p style={{ fontSize: '0.82rem', fontWeight: '500', color: 'var(--texto)', margin: 0, fontFamily: 'var(--fonte-corpo)' }}>Colaboradores podem me atribuir tarefas</p>
+            <p style={{ fontSize: '0.72rem', color: 'var(--texto-apagado)', margin: '2px 0 0', fontFamily: 'var(--fonte-corpo)' }}>Permite que a equipe crie tarefas com você como responsável</p>
           </div>
           <div
             onClick={() => toggleAtribuir(!podeAtribuir)}
@@ -520,8 +520,8 @@ export default function PaginaEquipe({ usuario, recarregar }) {
 
       {mostrarForm && (
         <div style={s.formulario}>
-          <h3 style={{ color: 'var(--texto)', marginBottom: '12px', fontSize: '0.92rem', fontFamily: 'Inter, sans-serif' }}>Convidar colaborador</h3>
-          <p style={{ fontSize: '0.76rem', color: 'var(--texto-apagado)', margin: '-6px 0 12px', fontFamily: 'Inter, sans-serif' }}>A pessoa recebe um e-mail com um link pra definir a própria senha.</p>
+          <h3 style={{ color: 'var(--texto)', marginBottom: '12px', fontSize: '0.92rem', fontFamily: 'var(--fonte-corpo)' }}>Convidar colaborador</h3>
+          <p style={{ fontSize: '0.76rem', color: 'var(--texto-apagado)', margin: '-6px 0 12px', fontFamily: 'var(--fonte-corpo)' }}>A pessoa recebe um e-mail com um link pra definir a própria senha.</p>
           {erro && <div style={s.erro}>{erro}</div>}
           <form onSubmit={criar} style={s.formGrid}>
             <div style={s.campo}>
@@ -543,7 +543,7 @@ export default function PaginaEquipe({ usuario, recarregar }) {
                     }} style={{
                       display: 'flex', alignItems: 'center', gap: '6px',
                       padding: '6px 14px', borderRadius: '99px', cursor: 'pointer',
-                      fontSize: '0.8rem', fontFamily: 'Inter, sans-serif', fontWeight: '500',
+                      fontSize: '0.8rem', fontFamily: 'var(--fonte-corpo)', fontWeight: '500',
                       border: ativo ? `2px solid ${st.cor}` : '1px solid var(--borda)',
                       background: ativo ? `${st.cor}22` : 'transparent',
                       color: ativo ? st.cor : 'var(--texto-apagado)',
@@ -589,10 +589,10 @@ const s = {
   formGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '10px', alignItems: 'end' },
   campo: { display: 'flex', flexDirection: 'column', gap: '5px' },
   label: { fontSize: '0.66rem', fontWeight: '600', color: 'var(--texto-apagado)', textTransform: 'uppercase', letterSpacing: '0.8px' },
-  input: { background: 'var(--input)', border: '1px solid var(--borda)', borderRadius: '9px', padding: '7px 11px', color: 'var(--texto)', fontSize: '0.83rem', width: '100%', fontFamily: 'Inter, sans-serif', boxSizing: 'border-box' },
+  input: { background: 'var(--input)', border: '1px solid var(--borda)', borderRadius: '9px', padding: '7px 11px', color: 'var(--texto)', fontSize: '0.83rem', width: '100%', fontFamily: 'var(--fonte-corpo)', boxSizing: 'border-box' },
   erro: { background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.25)', borderRadius: '7px', padding: '8px 12px', color: '#f87171', fontSize: '0.8rem', marginBottom: '10px' },
-  btnPrimario: { background: 'var(--gradiente-verde)', color: '#fff', border: 'none', borderRadius: '9px', padding: '7px 15px', fontFamily: 'Inter, sans-serif', fontWeight: '600', fontSize: '0.8rem', cursor: 'pointer', whiteSpace: 'nowrap' },
-  btnNeutro: { background: 'none', border: '1px solid var(--borda)', borderRadius: '7px', padding: '5px 10px', color: 'var(--texto-apagado)', fontSize: '0.76rem', cursor: 'pointer', fontFamily: 'Inter, sans-serif' },
+  btnPrimario: { background: 'var(--gradiente-verde)', color: '#fff', border: 'none', borderRadius: '9px', padding: '7px 15px', fontFamily: 'var(--fonte-corpo)', fontWeight: '600', fontSize: '0.8rem', cursor: 'pointer', whiteSpace: 'nowrap' },
+  btnNeutro: { background: 'none', border: '1px solid var(--borda)', borderRadius: '7px', padding: '5px 10px', color: 'var(--texto-apagado)', fontSize: '0.76rem', cursor: 'pointer', fontFamily: 'var(--fonte-corpo)' },
   tabelaWrapper: { background: 'var(--card)', border: '1px solid var(--borda)', borderRadius: '13px', overflow: 'hidden' },
   linhaTabela: { display: 'flex', alignItems: 'center', gap: '11px', padding: '9px 13px', borderBottom: '1px solid var(--borda)' },
   nomeFunc: { fontSize: '0.83rem', fontWeight: '600', color: 'var(--texto)', letterSpacing: '-0.01em', margin: 0 },
@@ -600,5 +600,5 @@ const s = {
   badgeCargo: { fontSize: '0.66rem', color: 'var(--texto-apagado)', background: 'var(--input)', borderRadius: '6px', padding: '2px 8px', whiteSpace: 'nowrap', border: '1px solid var(--borda)' },
   btnMenu: { background: 'var(--input)', border: '1px solid var(--borda)', borderRadius: '7px', padding: '4px 8px', color: 'var(--texto-apagado)', fontSize: '0.9rem', cursor: 'pointer', letterSpacing: '2px', lineHeight: 1 },
   dropdownMenu: { position: 'absolute', right: 0, top: '32px', background: 'var(--card)', border: '1px solid var(--borda)', borderRadius: '9px', overflow: 'hidden', zIndex: 10, minWidth: '120px', boxShadow: 'var(--sombra-elevada)' },
-  dropdownItem: { display: 'block', width: '100%', padding: '8px 14px', background: 'none', border: 'none', color: 'var(--texto)', fontSize: '0.8rem', cursor: 'pointer', textAlign: 'left', fontFamily: 'Inter, sans-serif', transition: 'background 0.1s' },
+  dropdownItem: { display: 'block', width: '100%', padding: '8px 14px', background: 'none', border: 'none', color: 'var(--texto)', fontSize: '0.8rem', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--fonte-corpo)', transition: 'background 0.1s' },
 }

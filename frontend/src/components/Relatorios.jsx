@@ -122,7 +122,7 @@ function VisaoGeral({ tarefas, colaboradores }) {
         <div style={s.secaoCard}>
           <h3 style={s.secaoTitulo}>Taxa de conclusão geral</h3>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '12px' }}>
-            <span style={{ fontSize: '2.5rem', fontFamily: 'Inter, sans-serif', fontWeight: '800', color: taxa >= 70 ? 'var(--verde)' : taxa >= 40 ? '#F59E0B' : '#EF4444' }}>
+            <span style={{ fontSize: '2.5rem', fontFamily: 'var(--fonte-corpo)', fontWeight: '800', color: taxa >= 70 ? 'var(--verde)' : taxa >= 40 ? '#F59E0B' : '#EF4444' }}>
               {taxa}%
             </span>
             <div style={{ flex: 1 }}>
@@ -213,7 +213,7 @@ function VisaoIndividual({ colaborador, tarefas }) {
       <div style={s.perfilCard}>
         <Avatar nome={colaborador.nome} foto={colaborador.avatar} size={56} fontSize={22} />
         <div>
-          <p style={{ fontFamily: 'Inter, sans-serif', fontWeight: '700', fontSize: '1.2rem', color: 'var(--texto)' }}>{colaborador.nome}</p>
+          <p style={{ fontFamily: 'var(--fonte-corpo)', fontWeight: '700', fontSize: '1.2rem', color: 'var(--texto)' }}>{colaborador.nome}</p>
           <p style={{ color: 'var(--texto-apagado)', fontSize: '0.85rem' }}>{colaborador.cargo === 'administrador' ? 'Administrador' : 'Colaborador'}</p>
         </div>
       </div>
@@ -229,7 +229,7 @@ function VisaoIndividual({ colaborador, tarefas }) {
         <div style={s.secaoCard}>
           <h3 style={s.secaoTitulo}>Taxa de conclusão</h3>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '12px' }}>
-            <span style={{ fontSize: '2.5rem', fontFamily: 'Inter, sans-serif', fontWeight: '800', color: taxa >= 70 ? 'var(--verde)' : taxa >= 40 ? '#F59E0B' : '#EF4444' }}>
+            <span style={{ fontSize: '2.5rem', fontFamily: 'var(--fonte-corpo)', fontWeight: '800', color: taxa >= 70 ? 'var(--verde)' : taxa >= 40 ? '#F59E0B' : '#EF4444' }}>
               {taxa}%
             </span>
             <div style={{ flex: 1 }}>
@@ -315,7 +315,7 @@ function VisaoColaborador({ tarefas, usuario }) {
         <div style={s.secaoCard}>
           <h3 style={s.secaoTitulo}>Minha taxa de conclusão</h3>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '12px' }}>
-            <span style={{ fontSize: '2.5rem', fontFamily: 'Inter, sans-serif', fontWeight: '800', color: taxa >= 70 ? 'var(--verde)' : taxa >= 40 ? '#F59E0B' : '#EF4444' }}>
+            <span style={{ fontSize: '2.5rem', fontFamily: 'var(--fonte-corpo)', fontWeight: '800', color: taxa >= 70 ? 'var(--verde)' : taxa >= 40 ? '#F59E0B' : '#EF4444' }}>
               {taxa}%
             </span>
             <div style={{ flex: 1 }}>
@@ -420,11 +420,11 @@ export default function Relatorios() {
 const s = {
   wrapper: { height: '100%', overflowY: 'auto', paddingBottom: '32px' },
   cabecalho: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '28px', flexWrap: 'wrap', gap: '16px' },
-  titulo: { fontSize: '1.8rem', color: 'var(--texto)', fontFamily: 'Inter, sans-serif', fontWeight: '700', marginBottom: '4px' },
+  titulo: { fontSize: '1.8rem', color: 'var(--texto)', fontFamily: 'var(--fonte-corpo)', fontWeight: '700', marginBottom: '4px' },
   subtitulo: { color: 'var(--texto-apagado)', fontSize: '0.9rem' },
 
   seletorWrapper: { display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' },
-  seletorBtn: { display: 'flex', alignItems: 'center', gap: '6px', padding: '7px 14px', borderRadius: '20px', border: '1px solid var(--borda)', background: 'var(--input)', color: 'var(--texto)', fontSize: '0.82rem', cursor: 'pointer', fontFamily: 'Inter, sans-serif', transition: 'all 0.15s', whiteSpace: 'nowrap' },
+  seletorBtn: { display: 'flex', alignItems: 'center', gap: '6px', padding: '7px 14px', borderRadius: '20px', border: '1px solid var(--borda)', background: 'var(--input)', color: 'var(--texto)', fontSize: '0.82rem', cursor: 'pointer', fontFamily: 'var(--fonte-corpo)', transition: 'all 0.15s', whiteSpace: 'nowrap' },
   seletorBtnAtivo: { background: 'rgba(34,197,94,0.15)', borderColor: 'rgba(34,197,94,0.4)', color: 'var(--verde)' },
 
   conteudo: { display: 'flex', flexDirection: 'column', gap: '20px' },
@@ -433,7 +433,7 @@ const s = {
 
   cardMetrica: { background: 'var(--sidebar)', border: '1px solid var(--borda)', borderRadius: '14px', padding: '18px', display: 'flex', alignItems: 'center', gap: '14px' },
   cardMetricaIcone: { width: '42px', height: '42px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  cardMetricaValor: { fontSize: '1.6rem', fontFamily: 'Inter, sans-serif', fontWeight: '800', color: 'var(--texto)', lineHeight: 1 },
+  cardMetricaValor: { fontSize: '1.6rem', fontFamily: 'var(--fonte-corpo)', fontWeight: '800', color: 'var(--texto)', lineHeight: 1 },
   cardMetricaLabel: { fontSize: '0.78rem', color: 'var(--texto-apagado)', marginTop: '4px' },
   cardMetricaSub: { fontSize: '0.7rem', color: 'var(--texto-apagado)', marginTop: '2px' },
 

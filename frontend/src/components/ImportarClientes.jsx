@@ -193,8 +193,8 @@ export default function ImportarClientes({ fechar, onImportado }) {
       {/* Cabeçalho */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'28px', flexShrink:0 }}>
         <div>
-          <h1 style={{ fontSize:'1.5rem', fontWeight:'700', color:'var(--texto)', margin:0, letterSpacing:'-0.03em', fontFamily:'Inter,sans-serif' }}>Importar clientes</h1>
-          <p style={{ fontSize:'0.82rem', color:'var(--texto-apagado)', marginTop:'4px', fontFamily:'Inter,sans-serif' }}>Importe sua carteira de clientes via planilha Excel</p>
+          <h1 style={{ fontSize:'1.5rem', fontWeight:'700', color:'var(--texto)', margin:0, letterSpacing:'-0.03em', fontFamily:'var(--fonte-corpo)' }}>Importar clientes</h1>
+          <p style={{ fontSize:'0.82rem', color:'var(--texto-apagado)', marginTop:'4px', fontFamily:'var(--fonte-corpo)' }}>Importe sua carteira de clientes via planilha Excel</p>
         </div>
         <button onClick={fechar} style={s.btnX}>✕</button>
       </div>
@@ -229,15 +229,15 @@ export default function ImportarClientes({ fechar, onImportado }) {
                 onMouseLeave={e=>e.currentTarget.style.borderColor='var(--borda)'}
               >
                 <div style={{ display:'flex', justifyContent:'center', marginBottom:'12px' }}><Icone.FolderOpen size={32} style={{color:'var(--texto-apagado)',opacity:0.5}}/></div>
-                <p style={{ fontSize:'0.875rem', color:'var(--texto)', fontFamily:'Inter,sans-serif', margin:0 }}>Clique ou arraste o arquivo aqui</p>
-                <p style={{ fontSize:'0.75rem', color:'var(--texto-apagado)', fontFamily:'Inter,sans-serif', margin:'4px 0 0' }}>.xlsx ou .xls</p>
+                <p style={{ fontSize:'0.875rem', color:'var(--texto)', fontFamily:'var(--fonte-corpo)', margin:0 }}>Clique ou arraste o arquivo aqui</p>
+                <p style={{ fontSize:'0.75rem', color:'var(--texto-apagado)', fontFamily:'var(--fonte-corpo)', margin:'4px 0 0' }}>.xlsx ou .xls</p>
               </div>
               <input ref={inputRef} type="file" accept=".xlsx,.xls" style={{ display:'none' }} onChange={e=>{ if(e.target.files[0]) processarArquivo(e.target.files[0]) }} />
             </div>
           </div>
 
           <div style={{ padding:'14px 16px', background:'rgba(251,191,36,0.06)', border:'1px solid rgba(251,191,36,0.2)', borderRadius:'10px' }}>
-            <p style={{ fontSize:'0.78rem', color:'#fbbf24', margin:0, fontFamily:'Inter,sans-serif', lineHeight:'1.5' }}>
+            <p style={{ fontSize:'0.78rem', color:'#fbbf24', margin:0, fontFamily:'var(--fonte-corpo)', lineHeight:'1.5' }}>
               <span style={{display:'flex',alignItems:'flex-start',gap:'8px'}}><Icone.AlertTriangle size={14} style={{color:'#fbbf24',flexShrink:0,marginTop:'1px'}}/> Após importar, complete as informações de cada cliente (serviços, sócios, endereço) editando individualmente.</span>
             </p>
           </div>
@@ -248,7 +248,7 @@ export default function ImportarClientes({ fechar, onImportado }) {
       {etapa === 'preview' && (
         <div style={{ flex:1, display:'flex', flexDirection:'column', minHeight:0, gap:'16px' }}>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:'10px' }}>
-            <p style={{ fontSize:'0.875rem', color:'var(--texto)', fontFamily:'Inter,sans-serif', margin:0 }}>
+            <p style={{ fontSize:'0.875rem', color:'var(--texto)', fontFamily:'var(--fonte-corpo)', margin:0 }}>
               <strong>{clientes.length}</strong> cliente(s) encontrado(s) na planilha
             </p>
             {!enriquecidos.length && clientes.some(c=>c.cnpj) && (
@@ -263,7 +263,7 @@ export default function ImportarClientes({ fechar, onImportado }) {
 
           {/* Tabela preview */}
           <div style={{ flex:1, overflowY:'auto', border:'1px solid var(--borda)', borderRadius:'12px', overflow:'hidden' }}>
-            <table style={{ width:'100%', borderCollapse:'collapse', fontFamily:'Inter,sans-serif', fontSize:'0.8rem' }}>
+            <table style={{ width:'100%', borderCollapse:'collapse', fontFamily:'var(--fonte-corpo)', fontSize:'0.8rem' }}>
               <thead>
                 <tr style={{ background:'var(--card)', borderBottom:'1px solid var(--borda)' }}>
                   {['Razão Social','CNPJ/CPF','Porte','Regime','Status','Honorário','Receita'].map(h=>(
@@ -315,14 +315,14 @@ export default function ImportarClientes({ fechar, onImportado }) {
       {etapa === 'enriquecendo' && (
         <div style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'20px' }}>
           <Icone.Building size={40} style={{color:'var(--verde)',opacity:0.7}}/>
-          <p style={{ fontSize:'1rem', fontWeight:'600', color:'var(--texto)', fontFamily:'Inter,sans-serif' }}>Consultando a Receita Federal...</p>
+          <p style={{ fontSize:'1rem', fontWeight:'600', color:'var(--texto)', fontFamily:'var(--fonte-corpo)' }}>Consultando a Receita Federal...</p>
           <div style={{ width:'300px' }}>
             <div style={{ height:'6px', background:'var(--borda)', borderRadius:'99px', overflow:'hidden' }}>
               <div style={{ height:'100%', width:`${progresso}%`, background:'var(--verde)', borderRadius:'99px', transition:'width 0.3s' }} />
             </div>
-            <p style={{ fontSize:'0.78rem', color:'var(--texto-apagado)', textAlign:'center', marginTop:'8px', fontFamily:'Inter,sans-serif' }}>{progresso}% concluído</p>
+            <p style={{ fontSize:'0.78rem', color:'var(--texto-apagado)', textAlign:'center', marginTop:'8px', fontFamily:'var(--fonte-corpo)' }}>{progresso}% concluído</p>
           </div>
-          <p style={{ fontSize:'0.75rem', color:'var(--texto-apagado)', fontFamily:'Inter,sans-serif', textAlign:'center', maxWidth:'320px' }}>
+          <p style={{ fontSize:'0.75rem', color:'var(--texto-apagado)', fontFamily:'var(--fonte-corpo)', textAlign:'center', maxWidth:'320px' }}>
             Buscando dados de endereço, sócios e atividade de cada empresa. Isso pode levar alguns segundos.
           </p>
         </div>
@@ -333,8 +333,8 @@ export default function ImportarClientes({ fechar, onImportado }) {
         <div style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'20px' }}>
           {resultado.importados > 0 ? <Icone.CheckCircle size={48} style={{color:'var(--verde)'}}/> : <Icone.AlertTriangle size={48} style={{color:'#fbbf24'}}/>}
           <div style={{ textAlign:'center' }}>
-            <p style={{ fontSize:'1.2rem', fontWeight:'700', color:'var(--texto)', fontFamily:'Inter,sans-serif', margin:'0 0 8px' }}>Importação concluída!</p>
-            <p style={{ fontSize:'0.875rem', color:'var(--texto-apagado)', fontFamily:'Inter,sans-serif', margin:0 }}>
+            <p style={{ fontSize:'1.2rem', fontWeight:'700', color:'var(--texto)', fontFamily:'var(--fonte-corpo)', margin:'0 0 8px' }}>Importação concluída!</p>
+            <p style={{ fontSize:'0.875rem', color:'var(--texto-apagado)', fontFamily:'var(--fonte-corpo)', margin:0 }}>
               <strong style={{ color:'#00b141' }}>{resultado.importados}</strong> importado(s)
               {resultado.atualizados > 0 && <> · <strong style={{ color:'#3b82f6' }}>{resultado.atualizados}</strong> atualizado(s) (CNPJ já existia)</>}
               {' '}· <strong style={{ color: resultado.ignorados>0?'#fbbf24':'var(--texto-apagado)' }}>{resultado.ignorados}</strong> ignorado(s)
@@ -342,8 +342,8 @@ export default function ImportarClientes({ fechar, onImportado }) {
           </div>
           {resultado.erros?.length > 0 && (
             <div style={{ background:'rgba(251,191,36,0.06)', border:'1px solid rgba(251,191,36,0.2)', borderRadius:'10px', padding:'14px 16px', width:'100%', maxWidth:'400px' }}>
-              <p style={{ fontSize:'0.75rem', fontWeight:'600', color:'#fbbf24', margin:'0 0 8px', fontFamily:'Inter,sans-serif' }}>Avisos:</p>
-              {resultado.erros.map((e,i)=><p key={i} style={{ fontSize:'0.72rem', color:'var(--texto-apagado)', margin:'2px 0', fontFamily:'Inter,sans-serif' }}>• {e}</p>)}
+              <p style={{ fontSize:'0.75rem', fontWeight:'600', color:'#fbbf24', margin:'0 0 8px', fontFamily:'var(--fonte-corpo)' }}>Avisos:</p>
+              {resultado.erros.map((e,i)=><p key={i} style={{ fontSize:'0.72rem', color:'var(--texto-apagado)', margin:'2px 0', fontFamily:'var(--fonte-corpo)' }}>• {e}</p>)}
             </div>
           )}
           <button onClick={fechar} style={s.btnVerde}>Fechar</button>
@@ -355,11 +355,11 @@ export default function ImportarClientes({ fechar, onImportado }) {
 
 const s = {
   btnX: { background:'none', border:'1px solid var(--borda)', borderRadius:'6px', color:'var(--texto-apagado)', width:'28px', height:'28px', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'12px', cursor:'pointer' },
-  btnVerde: { background:'var(--gradiente-verde)', color:'#fff', border:'none', borderRadius:'10px', padding:'10px 20px', fontFamily:'Inter,sans-serif', fontWeight:'600', fontSize:'0.875rem', cursor:'pointer', boxShadow:'0 2px 8px rgba(0,177,65,0.25)', whiteSpace:'nowrap' },
-  btnSec: { background:'none', border:'1px solid var(--borda)', borderRadius:'8px', color:'var(--texto)', padding:'8px 16px', fontFamily:'Inter,sans-serif', fontWeight:'500', fontSize:'0.82rem', cursor:'pointer' },
-  btnCanc: { background:'none', border:'1px solid var(--borda)', borderRadius:'10px', color:'var(--texto-apagado)', padding:'10px 20px', fontFamily:'Inter,sans-serif', fontWeight:'500', fontSize:'0.875rem', cursor:'pointer' },
+  btnVerde: { background:'var(--gradiente-verde)', color:'#fff', border:'none', borderRadius:'10px', padding:'10px 20px', fontFamily:'var(--fonte-corpo)', fontWeight:'600', fontSize:'0.875rem', cursor:'pointer', boxShadow:'0 2px 8px rgba(0,177,65,0.25)', whiteSpace:'nowrap' },
+  btnSec: { background:'none', border:'1px solid var(--borda)', borderRadius:'8px', color:'var(--texto)', padding:'8px 16px', fontFamily:'var(--fonte-corpo)', fontWeight:'500', fontSize:'0.82rem', cursor:'pointer' },
+  btnCanc: { background:'none', border:'1px solid var(--borda)', borderRadius:'10px', color:'var(--texto-apagado)', padding:'10px 20px', fontFamily:'var(--fonte-corpo)', fontWeight:'500', fontSize:'0.875rem', cursor:'pointer' },
   passo: { display:'flex', gap:'16px', alignItems:'flex-start', padding:'20px', background:'var(--card)', border:'1px solid var(--borda)', borderRadius:'12px' },
   passoBadge: { width:'28px', height:'28px', borderRadius:'50%', background:'rgba(0,177,65,0.1)', border:'1px solid rgba(0,177,65,0.2)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'0.78rem', fontWeight:'700', color:'var(--verde)', flexShrink:0 },
-  passoTit: { fontSize:'0.9rem', fontWeight:'600', color:'var(--texto)', margin:'0 0 4px', fontFamily:'Inter,sans-serif' },
-  passoSub: { fontSize:'0.78rem', color:'var(--texto-apagado)', margin:0, fontFamily:'Inter,sans-serif' },
+  passoTit: { fontSize:'0.9rem', fontWeight:'600', color:'var(--texto)', margin:'0 0 4px', fontFamily:'var(--fonte-corpo)' },
+  passoSub: { fontSize:'0.78rem', color:'var(--texto-apagado)', margin:0, fontFamily:'var(--fonte-corpo)' },
 }

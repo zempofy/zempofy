@@ -7,7 +7,7 @@ export default function Modal({ children, onFechar, maxWidth = '440px' }) {
       <div style={{
         position: 'fixed',
         top: 0, bottom: 0,
-        left: 'var(--sidebar-largura, 0px)',
+        left: 0,
         right: 0,
         display: 'flex',
         alignItems: 'center',
