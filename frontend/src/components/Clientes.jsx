@@ -212,7 +212,7 @@ const CONFIG_DEMANDA = {
         // meses em que o bloco aparece por situação — situação ausente aqui (ex: 'mensal') aparece todo mês
         mesesAtivos: { trimestral:[3,6,9,12], semestral:[6,12] },
         campos: [
-          { id:'contabilFeito', label:'Contábil feito', tipo:'booleano' },
+          { id:'contabilFeito', label:'Contábil feito', tipo:'booleano', pendenteSeNao:true },
         ]
       }
     },
