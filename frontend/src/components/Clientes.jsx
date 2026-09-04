@@ -1294,7 +1294,6 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
   const [editandoSituacao, setEditandoSituacao] = useState(false)
   const [valorVigenciaPendente, setValorVigenciaPendente] = useState(null)
   const [qtdDocs, setQtdDocs] = useState(null)
-  const [observacaoAnterior, setObservacaoAnterior] = useState(null)
   const listaDocsRef = useRef(null)
   // Mais permissivo que a edição de campo de propósito: documento pode ser enviado mesmo numa
   // competência já fechada pra edição (mês passado, só titular edita campo) — só precisa ter
@@ -1315,7 +1314,6 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
   useEffect(() => {
     setCarregando(true)
     setEditandoSituacao(false)
-    setObservacaoAnterior(null)
     api.get(`/clientes/${clienteId}/lancamentos/${setor._id}/${competencia}`)
       .then(r => {
         setLancamento(r.data)
@@ -1323,14 +1321,13 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
         setValores(dadosAtuais)
         setValoresBase(dadosAtuais)
 
-        // Busca o mês anterior pra (a) mostrar a observação como referência de leitura e
-        // (b) pré-preencher "Funcionários ativos" — só se o campo deste mês ainda estiver vazio.
-        // Roda depois do fetch acima (não em paralelo) pra saber com certeza se está vazio antes de decidir.
+        // Busca o mês anterior pra pré-preencher "Funcionários ativos" — só se o campo deste mês
+        // ainda estiver vazio. Roda depois do fetch acima (não em paralelo) pra saber com certeza
+        // se está vazio antes de decidir.
         const competenciaAnterior = mudarCompetencia(competencia, -1)
         api.get(`/clientes/${clienteId}/lancamentos/${setor._id}/${competenciaAnterior}`)
           .then(rAnterior => {
             const dadosAnteriores = rAnterior.data?.dados || {}
-            setObservacaoAnterior(dadosAnteriores.observacoesGerais?.trim() || null)
             if (vazio(dadosAtuais.funcionariosAtivos) && !vazio(dadosAnteriores.funcionariosAtivos)) {
               // Guard funcional: se a pessoa já digitou algo nesse meio-tempo, não sobrescreve.
               // valoresBase acompanha o mesmo preenchimento — senão o aviso de alteração não
@@ -1339,7 +1336,7 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
               setValoresBase(vb => vazio(vb.funcionariosAtivos) ? { ...vb, funcionariosAtivos: dadosAnteriores.funcionariosAtivos } : vb)
             }
           })
-          .catch(() => setObservacaoAnterior(null))
+          .catch(() => {})
       })
       .catch(() => mostrar('Erro ao carregar dados.', 'erro'))
       .finally(() => setCarregando(false))
@@ -1544,12 +1541,6 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
       </div>
 
       <div style={{ marginBottom:'20px' }}>
-        {observacaoAnterior && (
-          <div style={{ background:'var(--input)', border:'1px solid var(--borda)', borderRadius:'10px', padding:'10px 14px', marginBottom:'10px' }}>
-            <p style={{ fontSize:'0.72rem', fontWeight:'700', color:'var(--texto-apagado)', margin:'0 0 4px' }}>Observação de {nomeMes(mudarCompetencia(competencia,-1))}:</p>
-            <p style={{ fontSize:'0.82rem', color:'var(--texto)', margin:0, whiteSpace:'pre-wrap' }}>{observacaoAnterior}</p>
-          </div>
-        )}
         <Campo label="Observações">
           {podeEditar ? (
             <textarea style={{ ...s.inp, minHeight:'56px', resize:'vertical' }} value={valores.observacoesGerais||''} onChange={e=>setValor('observacoesGerais', e.target.value)} placeholder="Opcional" />
