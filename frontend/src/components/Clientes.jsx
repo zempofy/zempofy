@@ -1453,7 +1453,8 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
   // acesso ao setor, mesma regra de quem preenche a Demanda.
   const temAcessoDocs = usuario?.cargo === 'admin' || usuario?.setores?.some(s => (s._id||s) === setor._id)
 
-  const config = CONFIG_DEMANDA[normalizarNome(setor.nome)]
+  const setorNome = normalizarNome(setor.nome)
+  const config = CONFIG_DEMANDA[setorNome]
   const situacao = configSetor?.situacao
   const camposExtras = configSetor?.camposExtras || []
   // Campo criado antes desta feature não tem `ativo` gravado — undefined conta como ativo,
@@ -1525,6 +1526,23 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
     setSalvando(true)
     try {
       const r = await api.post(`/clientes/${clienteId}/lancamentos/${setor._id}/${competencia}`, { dados: valores })
+      setLancamento(r.data)
+      setValoresBase(r.data?.dados || {})
+      mostrar('Dados salvos!', 'sucesso')
+    } catch (e) { mostrar(e.response?.data?.erro || 'Erro ao salvar.', 'erro') }
+    finally { setSalvando(false) }
+  }
+
+  // "Sem Movimento" (só Fiscal): zera todos os campos de valor do bloco (regime atual) e salva
+  // de uma vez. Monta o objeto e salva ele direto — setValores(zerados) seguido de salvar() não
+  // funcionaria porque salvar() lê `valores` do estado, que não atualiza na mesma execução.
+  const semMovimento = async () => {
+    const campos = blocos.flatMap(b => b.campos).filter(c => c.tipo !== 'calculado')
+    const zerados = { ...valores, ...Object.fromEntries(campos.map(c => [c.id, 0])) }
+    setValores(zerados)
+    setSalvando(true)
+    try {
+      const r = await api.post(`/clientes/${clienteId}/lancamentos/${setor._id}/${competencia}`, { dados: zerados })
       setLancamento(r.data)
       setValoresBase(r.data?.dados || {})
       mostrar('Dados salvos!', 'sucesso')
@@ -1669,6 +1687,14 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
           {lancamento?.preenchidoPor?.nome && `${!podeEditar ? ' · ' : ''}Preenchido por ${lancamento.preenchidoPor.nome}`}
         </p>
       </div>
+
+      {setorNome === 'fiscal' && podeEditar && (
+        <div style={{ marginBottom:'18px' }}>
+          <button onClick={semMovimento} disabled={salvando} style={{ background:'none', border:'1px solid var(--borda)', borderRadius:'8px', color:'var(--texto-apagado)', padding:'8px 14px', fontFamily:'var(--fonte-corpo)', fontSize:'0.78rem', fontWeight:'600', cursor:'pointer' }}>
+            {salvando ? 'Salvando...' : 'Sem Movimento'}
+          </button>
+        </div>
+      )}
 
       {config?.temBancos && (
         <BlocoExtratosBancarios
