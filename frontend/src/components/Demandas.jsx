@@ -1,36 +1,11 @@
 import { useState, useEffect, useRef } from 'react'
+import * as XLSX from 'xlsx'
 import api from '../services/api'
 import Icone from './Icones'
 import { useAuth } from '../contexts/AuthContext'
-import Clientes, { CONFIG_DEMANDA, blocosFixosDoSetor, normalizarNome, competenciaPadraoDoSetor, nomeMes, INICIO_DEMANDA_ANO } from './Clientes'
+import Clientes, { CONFIG_DEMANDA, statusDemanda, SUBFILTROS_POR_SETOR, normalizarNome, competenciaPadraoDoSetor, nomeMes, INICIO_DEMANDA_ANO } from './Clientes'
 
 const mesmoSetor = (a, b) => (a?._id || a) === (b?._id || b)
-
-// Todos os campos configurados pra esse setor/regime/situação naquele mês (exceto tipo 'calculado',
-// que nunca é salvo — ver spec do campo Faturamento total) preenchidos em `dados` = concluído
-const statusDemanda = (setorNome, item, competencia) => {
-  const config = CONFIG_DEMANDA[setorNome]
-  const blocos = blocosFixosDoSetor(config, { regime: item.regime, situacao: item.situacao, competencia })
-  const campos = blocos.flatMap(b => b.campos).filter(c => c.tipo !== 'calculado')
-  if (campos.length === 0) {
-    // Setor por regime (Fiscal): 0 campos = regime ainda não definido = pendente de verdade.
-    // Setor por situação (DP/Contábil): se a situação já foi respondida mas esse mês específico
-    // não tem nenhum módulo ativo (ex: Contábil trimestral fora de mar/jun/set/dez, ou sem banco
-    // cadastrado), mesmo sem campo pra preencher ainda existe algo a confirmar — só conta como
-    // concluído se o lançamento dessa competência já foi salvo de verdade (alguém clicou em
-    // "Salvar competência"), não automaticamente.
-    if (config?.modulos && item.situacao) return item.existe ? 'concluido' : 'pendente'
-    return 'pendente'
-  }
-  const completo = campos.every(c => {
-    const v = item.dados?.[c.id]
-    return !(v === undefined || v === null || v === '')
-  })
-  // Pergunta booleana marcada como "Não" conta como preenchida, mas ainda precisa de atenção —
-  // campo com pendenteSeNao mantém a competência pendente mesmo com tudo mais respondido.
-  const algumNaoPendente = campos.some(c => c.pendenteSeNao && item.dados?.[c.id] === false)
-  return (completo && !algumNaoPendente) ? 'concluido' : 'pendente'
-}
 
 const mudarCompetencia = (competencia, delta) => {
   const [ano, mes] = competencia.split('-').map(Number)
@@ -49,10 +24,13 @@ export default function Demandas() {
   const [demandas, setDemandas] = useState([])
   const [carregando, setCarregando] = useState(false)
   const [filtro, setFiltro] = useState('todas')
+  const [subFiltro, setSubFiltro] = useState(undefined) // undefined = "Todos", mesmo padrão do Clientes.jsx
   const [busca, setBusca] = useState('')
   const [setorDropdownAberto, setSetorDropdownAberto] = useState(false)
+  const [subFiltroDropdownAberto, setSubFiltroDropdownAberto] = useState(false)
   const [clienteAberto, setClienteAberto] = useState(null) // { clienteId, setorId, competencia } | null
   const setorDropdownRef = useRef(null)
+  const subFiltroDropdownRef = useRef(null)
 
   useEffect(() => {
     api.get('/setores').then(r => {
@@ -78,13 +56,16 @@ export default function Demandas() {
   }, [setorId, competencia])
 
   useEffect(() => {
-    if (!setorDropdownAberto) return
-    const fecharFora = (e) => { if (!setorDropdownRef.current?.contains(e.target)) setSetorDropdownAberto(false) }
-    const fecharEsc = (e) => { if (e.key === 'Escape') setSetorDropdownAberto(false) }
+    if (!setorDropdownAberto && !subFiltroDropdownAberto) return
+    const fecharFora = (e) => {
+      if (setorDropdownAberto && !setorDropdownRef.current?.contains(e.target)) setSetorDropdownAberto(false)
+      if (subFiltroDropdownAberto && !subFiltroDropdownRef.current?.contains(e.target)) setSubFiltroDropdownAberto(false)
+    }
+    const fecharEsc = (e) => { if (e.key === 'Escape') { setSetorDropdownAberto(false); setSubFiltroDropdownAberto(false) } }
     document.addEventListener('mousedown', fecharFora)
     document.addEventListener('keydown', fecharEsc)
     return () => { document.removeEventListener('mousedown', fecharFora); document.removeEventListener('keydown', fecharEsc) }
-  }, [setorDropdownAberto])
+  }, [setorDropdownAberto, subFiltroDropdownAberto])
 
   if (clienteAberto) {
     return <Clientes
@@ -116,8 +97,16 @@ export default function Demandas() {
   const concluidas = comStatus.filter(d => d._status === 'concluido').length
   const total = comStatus.length
 
+  // Subfiltro por regime/situação/periodicidade — mesma config de Clientes.jsx (SUBFILTROS_POR_SETOR),
+  // só que aqui os dados já vêm resolvidos e planos (regime/situacao direto no item, não em cliente.*).
+  const subFiltroConfig = SUBFILTROS_POR_SETOR[setorNome]
+  const valorSubFiltro = (d) => setorNome === 'fiscal' ? d.regime : d.situacao
+  const valoresPresentes = new Set(comStatus.map(valorSubFiltro))
+  const opcoesVisiveis = subFiltroConfig ? subFiltroConfig.opcoesFixas.filter(op => valoresPresentes.has(op.value)) : []
+
   const filtrados = comStatus
     .filter(d => filtro === 'todas' || d._status === filtro)
+    .filter(d => subFiltro === undefined || valorSubFiltro(d) === subFiltro)
     .filter(d => (d.nome || '').toLowerCase().includes(busca.toLowerCase()))
     .sort((a, b) => (a.nome || '').toLowerCase().localeCompare((b.nome || '').toLowerCase(), 'pt-BR', { numeric: true }))
 
@@ -131,6 +120,23 @@ export default function Demandas() {
     { id: 'pendente', label: 'Pendente' },
     { id: 'concluido', label: 'Concluído' },
   ]
+
+  const exportarExcel = () => {
+    const cabecalho = ['CLIENTE', 'STATUS', 'COMPETÊNCIA']
+    const linhas = filtrados.map(d => ({
+      'CLIENTE': d.nome || '',
+      'STATUS': d._status === 'concluido' ? 'Concluído' : 'Pendente',
+      'COMPETÊNCIA': `${nomeMes(competencia)} ${competencia.slice(0,4)}`,
+    }))
+    const ws = XLSX.utils.json_to_sheet(linhas, { header: cabecalho })
+    cabecalho.forEach((_, i) => {
+      const endereco = XLSX.utils.encode_cell({ r: 0, c: i })
+      if (ws[endereco]) ws[endereco].s = { font: { bold: true } }
+    })
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Demandas')
+    XLSX.writeFile(wb, `demandas-${setorNome}-${competencia}.xlsx`)
+  }
 
   return (
     <div>
@@ -150,7 +156,7 @@ export default function Demandas() {
             {setorDropdownAberto && (
               <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, minWidth: '210px', background: 'var(--card)', border: '1px solid var(--borda)', borderRadius: '8px', boxShadow: '0 8px 24px rgba(0,0,0,0.4)', zIndex: 10, padding: '6px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
                 {setoresList.map(setor => (
-                  <button key={setor._id} onClick={() => { setSetorId(setor._id); setSetorDropdownAberto(false) }} style={{ padding: '8px 10px', borderRadius: '6px', fontSize: '0.8rem', fontWeight: '600', cursor: 'pointer', fontFamily: 'var(--fonte-corpo)', display: 'flex', alignItems: 'center', gap: '8px', border: 'none', textAlign: 'left', background: mesmoSetor(setor, setorSelecionado) ? 'rgba(0,177,65,0.08)' : 'none', color: mesmoSetor(setor, setorSelecionado) ? 'var(--verde)' : 'var(--texto)' }}>
+                  <button key={setor._id} onClick={() => { setSetorId(setor._id); setSubFiltro(undefined); setSetorDropdownAberto(false) }} style={{ padding: '8px 10px', borderRadius: '6px', fontSize: '0.8rem', fontWeight: '600', cursor: 'pointer', fontFamily: 'var(--fonte-corpo)', display: 'flex', alignItems: 'center', gap: '8px', border: 'none', textAlign: 'left', background: mesmoSetor(setor, setorSelecionado) ? 'rgba(0,177,65,0.08)' : 'none', color: mesmoSetor(setor, setorSelecionado) ? 'var(--verde)' : 'var(--texto)' }}>
                     <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: setor.cor || 'var(--verde)' }} />
                     {setor.nome}
                   </button>
@@ -207,6 +213,31 @@ export default function Demandas() {
             </button>
           ))}
         </div>
+
+        {/* Subfiltro (ex: Regime tributário quando o setor é Fiscal) — só as opções que realmente aparecem entre os clientes desse setor/competência */}
+        {opcoesVisiveis.length > 0 && (
+          <div ref={subFiltroDropdownRef} style={{ position: 'relative' }}>
+            <button onClick={() => setSubFiltroDropdownAberto(v => !v)} style={{ padding: '5px 12px', borderRadius: '7px', fontSize: '0.72rem', fontWeight: '600', cursor: 'pointer', fontFamily: 'var(--fonte-corpo)', display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid var(--borda)', background: 'transparent', color: 'var(--texto-apagado)' }}>
+              {subFiltro === undefined
+                ? `Todos · ${subFiltroConfig.nome}`
+                : `${opcoesVisiveis.find(op => op.value === subFiltro)?.label} · ${subFiltroConfig.nome}`}
+              <Icone.ChevronDown size={12}/>
+            </button>
+            {subFiltroDropdownAberto && (
+              <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, minWidth: '190px', background: 'var(--card)', border: '1px solid var(--borda)', borderRadius: '8px', boxShadow: '0 8px 24px rgba(0,0,0,0.4)', zIndex: 10, padding: '6px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                <button onClick={() => { setSubFiltro(undefined); setSubFiltroDropdownAberto(false) }} style={{ padding: '7px 10px', borderRadius: '6px', fontSize: '0.76rem', fontWeight: '600', cursor: 'pointer', fontFamily: 'var(--fonte-corpo)', border: 'none', textAlign: 'left', background: subFiltro === undefined ? 'rgba(0,177,65,0.08)' : 'none', color: subFiltro === undefined ? 'var(--verde)' : 'var(--texto)' }}>
+                  Todos
+                </button>
+                {opcoesVisiveis.map(op => (
+                  <button key={String(op.value)} onClick={() => { setSubFiltro(op.value); setSubFiltroDropdownAberto(false) }} style={{ padding: '7px 10px', borderRadius: '6px', fontSize: '0.76rem', fontWeight: '600', cursor: 'pointer', fontFamily: 'var(--fonte-corpo)', border: 'none', textAlign: 'left', background: subFiltro === op.value ? 'rgba(0,177,65,0.08)' : 'none', color: subFiltro === op.value ? 'var(--verde)' : 'var(--texto)' }}>
+                    {op.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         <div style={{ position: 'relative', flex: '1', minWidth: '180px', maxWidth: '420px' }}>
           <Icone.Search size={13} style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)', color: 'var(--texto-apagado)' }} />
           <input
@@ -216,6 +247,9 @@ export default function Demandas() {
             style={{ width: '100%', boxSizing: 'border-box', padding: '7px 12px 7px 32px', borderRadius: '8px', border: '1px solid var(--borda)', background: 'var(--input)', color: 'var(--texto)', fontSize: '0.8rem', fontFamily: 'var(--fonte-corpo)' }}
           />
         </div>
+        <button onClick={exportarExcel} style={{ padding: '7px 14px', borderRadius: '8px', fontSize: '0.78rem', fontWeight: '600', cursor: 'pointer', fontFamily: 'var(--fonte-corpo)', border: '1px solid var(--borda)', background: 'none', color: 'var(--texto)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <Icone.Download size={14}/> Exportar
+        </button>
       </div>
 
       {/* Lista */}
@@ -232,15 +266,18 @@ export default function Demandas() {
               onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(0,177,65,0.3)'}
               onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--borda)'}>
               <span style={{ fontSize: '0.86rem', fontWeight: '600', color: 'var(--texto)', fontFamily: 'var(--fonte-corpo)' }}>{d.nome || '—'}</span>
-              {d._status === 'concluido' ? (
-                <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.72rem', fontWeight: '700', color: 'var(--verde)', fontFamily: 'var(--fonte-corpo)' }}>
-                  <Icone.Check size={12} /> Concluído
-                </span>
-              ) : (
-                <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.72rem', fontWeight: '700', color: '#f59e0b', fontFamily: 'var(--fonte-corpo)' }}>
-                  <Icone.Circle size={8} /> Pendente
-                </span>
-              )}
+              <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                {d.temAnexo && <Icone.Paperclip size={13} style={{ color: 'var(--texto-apagado)' }} title="Tem anexo" />}
+                {d._status === 'concluido' ? (
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.72rem', fontWeight: '700', color: 'var(--verde)', fontFamily: 'var(--fonte-corpo)' }}>
+                    <Icone.Check size={12} /> Concluído
+                  </span>
+                ) : (
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.72rem', fontWeight: '700', color: '#f59e0b', fontFamily: 'var(--fonte-corpo)' }}>
+                    <Icone.Circle size={8} /> Pendente
+                  </span>
+                )}
+              </span>
             </div>
           ))}
         </div>

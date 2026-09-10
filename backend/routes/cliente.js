@@ -5,8 +5,9 @@ const Cliente = require('../models/Cliente');
 const Implantacao = require('../models/Implantacao');
 const LancamentoSetor = require('../models/LancamentoSetor');
 const Setor = require('../models/Setor');
+const Documento = require('../models/Documento');
 const { clienteCreateSchema, clienteUpdateSchema, validar } = require('../validacao');
-const { competenciaAtual, resolverPorVigencia, aplicarMudancaComHistorico, buscarCompetenciaMaisAntiga, prepararHistoricoParaMudanca } = require('../services/historicoVigencia');
+const { competenciaAtual, competenciaAtualDoSetor, resolverPorVigencia, aplicarMudancaComHistorico, buscarCompetenciaMaisAntiga, prepararHistoricoParaMudanca } = require('../services/historicoVigencia');
 
 const router = express.Router();
 
@@ -96,12 +97,25 @@ router.get('/demandas/:setorId/:competencia', autenticar, async (req, res) => {
       .lean();
 
     const lancamentos = await LancamentoSetor.find({ empresa: req.usuario.empresa._id, setor: setorId, competencia })
-      .select('cliente dados').lean();
+      .select('cliente dados camposIsentos').lean();
     const dadosPorCliente = new Map(lancamentos.map(l => [l.cliente.toString(), l.dados || {}]));
+    const isentosPorCliente = new Map(lancamentos.map(l => [l.cliente.toString(), l.camposIsentos || []]));
     // existe: true só quando o lançamento realmente foi salvo pra essa competência (documento
     // encontrado no banco) — diferente de "não existe" (nunca clicou em Salvar), que resulta no
     // mesmo dados:{} por fora mas precisa contar como pendente quando não há campo nenhum pra preencher.
     const existePorCliente = new Set(lancamentos.map(l => l.cliente.toString()));
+
+    // Busca em lote (não 1 chamada por cliente) quais clientes têm pelo menos um documento
+    // dessa competência/setor — mesmo filtro de "não excluído" usado em documento.js, pra não
+    // contar um documento já mandado pra lixeira como anexo existente.
+    const clientesComDoc = await Documento.distinct('cliente', {
+      empresa: req.usuario.empresa._id,
+      tipo: 'demanda',
+      setor: setorId,
+      competencia,
+      excluido: { $ne: true },
+    });
+    const comDocSet = new Set(clientesComDoc.map(id => id.toString()));
 
     res.json(clientes.map(c => ({
       clienteId: c._id,
@@ -110,7 +124,9 @@ router.get('/demandas/:setorId/:competencia', autenticar, async (req, res) => {
       regime: resolverPorVigencia(c.historicoRegime, competencia, c.regime),
       situacao: resolverPorVigencia(c.configSetores?.[setorNome]?.historicoSituacao, competencia, c.configSetores?.[setorNome]?.situacao),
       dados: dadosPorCliente.get(c._id.toString()) || {},
+      camposIsentos: isentosPorCliente.get(c._id.toString()) || [],
       existe: existePorCliente.has(c._id.toString()),
+      temAnexo: comDocSet.has(c._id.toString()),
     })));
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao buscar demandas.' });
@@ -265,7 +281,7 @@ const podeEditarCompetencia = (usuario, setorId, competencia, clienteAtivo, seto
   if (!temAcesso) return false;
   const ehResponsavel = !!responsavelSetor && responsavelSetor.toString() === usuario._id.toString();
   if (usuario.cargo === 'admin' || ehResponsavel) return true;
-  if (setorNome === 'contabil' || competencia >= competenciaAtual()) return true;
+  if (setorNome === 'contabil' || competencia >= competenciaAtualDoSetor(setorNome)) return true;
   return !temDadosSalvos;
 };
 
@@ -410,6 +426,7 @@ router.post('/:id/campos-extras/:setorId', autenticar, async (req, res) => {
       id,
       label: label.trim(),
       tipo: tiposValidos.includes(tipo) ? tipo : 'moeda',
+      ativo: true,
     });
 
     cliente.markModified('configSetores');
@@ -418,6 +435,71 @@ router.post('/:id/campos-extras/:setorId', autenticar, async (req, res) => {
     res.status(201).json(cliente.configSetores[setorNome]);
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao criar campo.' });
+  }
+});
+
+// PATCH /api/clientes/:id/campos-extras/:setorId/:campoId — ativa/desativa um campo adicional
+// (mesmo padrão do banco: não apaga os valores já salvos em LancamentoSetor de meses anteriores,
+// só tira o campo do formulário de preenchimento dali em diante)
+router.patch('/:id/campos-extras/:setorId/:campoId', autenticar, async (req, res) => {
+  try {
+    if (!temAcessoAoSetor(req.usuario, req.params.setorId)) {
+      return res.status(403).json({ erro: 'Você não tem acesso a este setor.' });
+    }
+    const { ativo } = req.body;
+
+    const setor = await Setor.findById(req.params.setorId).select('nome').lean();
+    if (!setor) return res.status(404).json({ erro: 'Setor não encontrado.' });
+    const setorNome = normalizarNome(setor.nome);
+
+    const cliente = await Cliente.findOne({ _id: req.params.id, empresa: req.usuario.empresa._id });
+    if (!cliente) return res.status(404).json({ erro: 'Cliente não encontrado.' });
+    if (cliente.status === 'inativo') return res.status(403).json({ erro: 'Cliente inativo — reative pra poder editar.' });
+
+    const configSetor = garantirConfigSetor(cliente, setorNome);
+    const campo = configSetor.camposExtras?.find(c => c.id === req.params.campoId);
+    if (!campo) return res.status(404).json({ erro: 'Campo não encontrado.' });
+    campo.ativo = !!ativo;
+
+    cliente.markModified('configSetores');
+    await cliente.save();
+
+    res.json(cliente.configSetores[setorNome]);
+  } catch (err) {
+    res.status(500).json({ erro: 'Erro ao atualizar campo.' });
+  }
+});
+
+// DELETE /api/clientes/:id/campos-extras/:setorId/:campoId — exclusão permanente (apaga também os
+// valores salvos em meses anteriores). Só permitida com o campo já inativo, mesmo padrão de
+// "inativar antes de excluir" usado no resto do sistema (Setor/Equipe/Modelos/banco).
+router.delete('/:id/campos-extras/:setorId/:campoId', autenticar, async (req, res) => {
+  try {
+    if (!temAcessoAoSetor(req.usuario, req.params.setorId)) {
+      return res.status(403).json({ erro: 'Você não tem acesso a este setor.' });
+    }
+
+    const setor = await Setor.findById(req.params.setorId).select('nome').lean();
+    if (!setor) return res.status(404).json({ erro: 'Setor não encontrado.' });
+    const setorNome = normalizarNome(setor.nome);
+
+    const cliente = await Cliente.findOne({ _id: req.params.id, empresa: req.usuario.empresa._id });
+    if (!cliente) return res.status(404).json({ erro: 'Cliente não encontrado.' });
+    if (cliente.status === 'inativo') return res.status(403).json({ erro: 'Cliente inativo — reative pra poder editar.' });
+
+    const configSetor = garantirConfigSetor(cliente, setorNome);
+    const campo = configSetor.camposExtras?.find(c => c.id === req.params.campoId);
+    if (!campo) return res.status(404).json({ erro: 'Campo não encontrado.' });
+    if (campo.ativo !== false) return res.status(400).json({ erro: 'Remova o campo antes de excluir de vez.' });
+
+    configSetor.camposExtras = configSetor.camposExtras.filter(c => c.id !== req.params.campoId);
+
+    cliente.markModified('configSetores');
+    await cliente.save();
+
+    res.json(cliente.configSetores[setorNome]);
+  } catch (err) {
+    res.status(500).json({ erro: 'Erro ao excluir campo.' });
   }
 });
 
@@ -571,6 +653,39 @@ router.patch('/:id/bancos/:setorId/:bancoId', autenticar, async (req, res) => {
     res.json(cliente.configSetores[setorNome]);
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao atualizar banco.' });
+  }
+});
+
+// DELETE /api/clientes/:id/bancos/:setorId/:bancoId — exclusão permanente (apaga também o
+// histórico de conferência em meses anteriores). Só permitida com o banco já inativo, mesmo
+// padrão de "inativar antes de excluir" usado no resto do sistema (Setor/Equipe/Modelos).
+router.delete('/:id/bancos/:setorId/:bancoId', autenticar, async (req, res) => {
+  try {
+    if (!temAcessoAoSetor(req.usuario, req.params.setorId)) {
+      return res.status(403).json({ erro: 'Você não tem acesso a este setor.' });
+    }
+
+    const setor = await Setor.findById(req.params.setorId).select('nome').lean();
+    if (!setor) return res.status(404).json({ erro: 'Setor não encontrado.' });
+    const setorNome = normalizarNome(setor.nome);
+
+    const cliente = await Cliente.findOne({ _id: req.params.id, empresa: req.usuario.empresa._id });
+    if (!cliente) return res.status(404).json({ erro: 'Cliente não encontrado.' });
+    if (cliente.status === 'inativo') return res.status(403).json({ erro: 'Cliente inativo — reative pra poder editar.' });
+
+    const configSetor = garantirConfigSetor(cliente, setorNome);
+    const banco = configSetor.bancos?.find(b => b.id === req.params.bancoId);
+    if (!banco) return res.status(404).json({ erro: 'Banco não encontrado.' });
+    if (banco.ativo !== false) return res.status(400).json({ erro: 'Remova o banco antes de excluir de vez.' });
+
+    configSetor.bancos = configSetor.bancos.filter(b => b.id !== req.params.bancoId);
+
+    cliente.markModified('configSetores');
+    await cliente.save();
+
+    res.json(cliente.configSetores[setorNome]);
+  } catch (err) {
+    res.status(500).json({ erro: 'Erro ao excluir banco.' });
   }
 });
 

@@ -3,6 +3,20 @@ const LancamentoSetor = require('../models/LancamentoSetor');
 // "YYYY-MM" — usado como âncora por toda a feature de histórico versionado.
 const competenciaAtual = () => new Date().toISOString().slice(0, 7);
 
+// Espelha competenciaDefasada/competenciaPadraoDoSetor do frontend (Clientes.jsx) — Fiscal e
+// Departamento Pessoal não trabalham no mês civil, sempre em cima do mês anterior (é a
+// competência que a tela de Demandas abre por padrão pra esses setores). Sem esse espelho,
+// podeEditarCompetencia comparava contra o mês civil e travava colaborador comum assim que ele
+// salvava a competência que a própria tela abriu, mesmo sendo o "mês atual de trabalho" do setor.
+const MESES_DEFASADOS = ['fiscal', 'departamento pessoal'];
+const competenciaDefasada = () => {
+  const [ano, mes] = competenciaAtual().split('-').map(Number);
+  const d = new Date(ano, mes - 2, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+};
+const competenciaAtualDoSetor = (setorNome) =>
+  MESES_DEFASADOS.includes(setorNome) ? competenciaDefasada() : competenciaAtual();
+
 // Resolve qual valor valia numa competência X: pega, dentro do histórico, a entrada com
 // vigenteDesde mais recente que seja <= X (comparação lexicográfica de "YYYY-MM", que já é
 // cronológica). Sem entrada qualificável, usa a mais antiga do array. Sem histórico nenhum
@@ -63,6 +77,7 @@ const prepararHistoricoParaMudanca = async ({ historicoAtual, valorAntigo, modo,
 
 module.exports = {
   competenciaAtual,
+  competenciaAtualDoSetor,
   resolverPorVigencia,
   aplicarMudancaComHistorico,
   buscarCompetenciaMaisAntiga,

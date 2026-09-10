@@ -138,6 +138,9 @@ const CONFIG_DEMANDA = {
         { id:'issRetido', label:'ISS retido', tipo:'moeda' },
         { id:'icmsAntecipado', label:'ICMS antecipação', tipo:'moeda' },
         { id:'icmsDifal', label:'ICMS difal', tipo:'moeda' },
+        { id:'irRetido', label:'IR retido', tipo:'moeda' },
+        { id:'csllRetido', label:'CSLL retido', tipo:'moeda' },
+        { id:'crf', label:'CRF', tipo:'moeda' },
       ],
       lucro_real: [
         { id:'totalVendas', label:'Venda', tipo:'moeda' },
@@ -151,6 +154,9 @@ const CONFIG_DEMANDA = {
         { id:'issRetido', label:'ISS retido', tipo:'moeda' },
         { id:'icmsAntecipado', label:'ICMS antecipação', tipo:'moeda' },
         { id:'icmsDifal', label:'ICMS difal', tipo:'moeda' },
+        { id:'irRetido', label:'IR retido', tipo:'moeda' },
+        { id:'csllRetido', label:'CSLL retido', tipo:'moeda' },
+        { id:'crf', label:'CRF', tipo:'moeda' },
       ],
       // mei: definir campos quando for a vez
     }
@@ -253,6 +259,46 @@ const blocosFixosDoSetor = (config, { regime, situacao, competencia }) => {
   return []
 }
 
+// Todos os campos configurados pra esse setor/regime/situação naquele mês (exceto tipo 'calculado',
+// que nunca é salvo — ver spec do campo Faturamento total) preenchidos em `dados` = concluído.
+// Movida de Demandas.jsx pra cá (e exportada) porque o aviso de "Desde o início" (ModalVigenciaMudanca)
+// também precisa simular esse status pra saber quais competências já concluídas seriam reabertas.
+const statusDemanda = (setorNome, item, competencia) => {
+  const config = CONFIG_DEMANDA[setorNome]
+  const blocos = blocosFixosDoSetor(config, { regime: item.regime, situacao: item.situacao, competencia })
+  const campos = blocos.flatMap(b => b.campos).filter(c => c.tipo !== 'calculado')
+  if (campos.length === 0) {
+    // Setor por regime (Fiscal): 0 campos = regime ainda não definido = pendente de verdade.
+    // Setor por situação (DP/Contábil): se a situação já foi respondida mas esse mês específico
+    // não tem nenhum módulo ativo (ex: Contábil trimestral fora de mar/jun/set/dez, ou sem banco
+    // cadastrado), mesmo sem campo pra preencher ainda existe algo a confirmar — só conta como
+    // concluído se o lançamento dessa competência já foi salvo de verdade (alguém clicou em
+    // "Salvar competência"), não automaticamente.
+    if (config?.modulos && item.situacao) return item.existe ? 'concluido' : 'pendente'
+    return 'pendente'
+  }
+  const completo = campos.every(c => {
+    if (item.camposIsentos?.includes(c.id)) return true // isento pra este lançamento específico
+    const v = item.dados?.[c.id]
+    return !(v === undefined || v === null || v === '')
+  })
+  // Pergunta booleana marcada como "Não" conta como preenchida, mas ainda precisa de atenção —
+  // campo com pendenteSeNao mantém a competência pendente mesmo com tudo mais respondido.
+  const algumNaoPendente = campos.some(c => c.pendenteSeNao && item.dados?.[c.id] === false)
+  return (completo && !algumNaoPendente) ? 'concluido' : 'pendente'
+}
+
+// Espelha backend/services/historicoVigencia.js — precisa existir também no frontend pra
+// ModalVigenciaMudanca simular, ANTES de confirmar, qual seria o valor resolvido de cada
+// competência sob o histórico atual (o "depois" do modo 'inicio' não precisa disso: vira
+// sempre o valor novo puro, ver comentário em calcularReabertos).
+const resolverPorVigencia = (historico, competencia, fallback) => {
+  if (!historico?.length) return fallback
+  const ordenado = [...historico].sort((a, b) => a.vigenteDesde.localeCompare(b.vigenteDesde))
+  const validos = ordenado.filter(h => h.vigenteDesde <= competencia)
+  return (validos.at(-1) || ordenado[0]).valor
+}
+
 const MESES_NOME = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
 const nomeMes = (competencia) => MESES_NOME[Number(competencia.slice(5,7))-1]
 
@@ -260,7 +306,9 @@ const labelRegime = (v) => REGIMES.find(r=>r.value===v)?.label || v
 const labelPorte = (v) => PORTES.find(r=>r.value===v)?.label || v
 const honorarioEfetivo = (cliente) => Number(cliente.honorario) || cliente.servicosContratados?.reduce((a,sv)=>a+(Number(sv.honorarioMensal)||0),0) || 0
 const statusInfo = (v) => STATUS_OPTS.find(s=>s.value===v) || STATUS_OPTS[0]
-const formatMoeda = (v) => v ? `R$ ${Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2})}` : '—'
+// `v ? ... : '—'` trataria 0 como "vazio" e mostraria '—' num valor realmente zerado — mesma
+// pegadinha do `valor ?` no <input> de moeda de CampoValor (ver zerarSeVazio).
+const formatMoeda = (v) => (v || v === 0) ? `R$ ${Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2})}` : '—'
 const formatData = (v) => v ? new Date(v).toLocaleDateString('pt-BR') : '—'
 const isoData = (v) => v ? new Date(v).toISOString().split('T')[0] : ''
 
@@ -300,16 +348,34 @@ function InfoLinha({ label, valor }) {
 }
 
 // ── Diálogo de vigência: pergunta a partir de quando uma mudança de regime/situação passa a valer ──
-function ModalVigenciaMudanca({ onEscolher, onCancelar }) {
+// `calcularReabertos` (opcional): async () => ['YYYY-MM', ...] — competências que hoje resolvem
+// pra "concluído" e passariam a "pendente" se o modo 'inicio' for confirmado. Cada chamador
+// (regime no FormCliente, situação no FormularioCompetencia) sabe montar essa simulação com os
+// dados que já tem à mão; o modal só dispara o cálculo quando "Desde o início" é selecionado e
+// mostra o resultado antes do botão final de confirmar.
+function ModalVigenciaMudanca({ onEscolher, onCancelar, calcularReabertos }) {
   const agora = competenciaAtual()
   const mesAtualLabel = `${nomeMes(agora)} de ${agora.slice(0,4)}`
   const [selecionado, setSelecionado] = useState(null)
   const [salvando, setSalvando] = useState(false)
+  const [reabertos, setReabertos] = useState(null) // null = ainda não calculado
+  const [calculando, setCalculando] = useState(false)
 
   const OPCOES = [
     { valor:'agora', titulo:'A partir de agora', sufixo:' (recomendado)', desc:`Os meses já preenchidos continuam exatamente como estavam. Vale a partir da competência atual (${mesAtualLabel}), independente do mês que você está vendo agora.` },
     { valor:'inicio', titulo:'Desde o início', sufixo:'', desc:'Corrige também os meses já preenchidos com essa configuração. Use se a configuração inicial estava errada.' },
   ]
+
+  const selecionar = (valor) => {
+    setSelecionado(valor)
+    if (valor === 'inicio' && calcularReabertos && reabertos === null) {
+      setCalculando(true)
+      calcularReabertos()
+        .then(lista => setReabertos(lista))
+        .catch(() => setReabertos([]))
+        .finally(() => setCalculando(false))
+    }
+  }
 
   const confirmar = async () => {
     if (!selecionado) return
@@ -327,7 +393,7 @@ function ModalVigenciaMudanca({ onEscolher, onCancelar }) {
           {OPCOES.map(op => {
             const marcado = selecionado===op.valor
             return (
-              <button key={op.valor} onClick={()=>setSelecionado(op.valor)} style={{
+              <button key={op.valor} onClick={()=>selecionar(op.valor)} style={{
                 textAlign:'left', padding:'14px 16px', borderRadius:'10px', cursor:'pointer', fontFamily:'var(--fonte-corpo)',
                 border:`1px solid ${marcado?'rgba(0,177,65,0.4)':'var(--borda)'}`,
                 background: marcado?'rgba(0,177,65,0.08)':'var(--card)',
@@ -342,10 +408,22 @@ function ModalVigenciaMudanca({ onEscolher, onCancelar }) {
               </button>
             )
           })}
+          {selecionado === 'inicio' && calcularReabertos && (
+            <div style={{ display:'flex', gap:'8px', alignItems:'flex-start', padding:'10px 14px', borderRadius:'8px', background:'rgba(245,158,11,0.08)', border:'1px solid rgba(245,158,11,0.25)' }}>
+              <Icone.AlertTriangle size={14} style={{ color:'#f59e0b', flexShrink:0, marginTop:'2px' }}/>
+              <p style={{ fontSize:'0.78rem', color:'var(--texto)', margin:0, lineHeight:'1.4' }}>
+                {calculando
+                  ? 'Verificando meses já concluídos...'
+                  : reabertos?.length
+                    ? `Isso vai reabrir ${reabertos.length} ${reabertos.length===1?'mês já concluído':'meses já concluídos'}: ${reabertos.map(c=>`${nomeMes(c)}/${c.slice(0,4)}`).join(', ')}.`
+                    : 'Nenhum mês já concluído será reaberto por essa mudança.'}
+              </p>
+            </div>
+          )}
         </div>
         <div style={s.modalRodape}>
           <button style={s.btnCanc} onClick={onCancelar}>Cancelar</button>
-          <button style={s.btnSalv} onClick={confirmar} disabled={!selecionado || salvando}>{salvando?'Salvando...':'Salvar'}</button>
+          <button style={s.btnSalv} onClick={confirmar} disabled={!selecionado || salvando || calculando}>{salvando?'Salvando...':'Salvar'}</button>
         </div>
       </div>
     </div>, document.body
@@ -763,6 +841,21 @@ function FormCliente({ cliente, fechar, onSalvo }) {
         <ModalVigenciaMudanca
           onEscolher={(modo) => { setPedindoVigenciaRegime(false); executarSalvar(modo) }}
           onCancelar={()=>setPedindoVigenciaRegime(false)}
+          calcularReabertos={!setorFiscal ? null : async () => {
+            // Modo 'inicio' reescreve o histórico pra uma única entrada — resolverPorVigencia
+            // sempre cai nela, então o valor resolvido de QUALQUER competência já lançada vira
+            // exatamente form.regime, sem precisar simular vigenteDesde/competenciaMaisAntiga.
+            const { data: lancamentos } = await api.get(`/clientes/${cliente._id}/lancamentos/${setorFiscal._id}`)
+            return lancamentos
+              .filter(l => {
+                const regimeAtualResolvido = resolverPorVigencia(cliente.historicoRegime, l.competencia, cliente.regime)
+                const statusAtual = statusDemanda('fiscal', { regime: regimeAtualResolvido, dados: l.dados, camposIsentos: l.camposIsentos, existe: true }, l.competencia)
+                const statusNovo = statusDemanda('fiscal', { regime: form.regime, dados: l.dados, camposIsentos: l.camposIsentos, existe: true }, l.competencia)
+                return statusAtual === 'concluido' && statusNovo === 'pendente'
+              })
+              .map(l => l.competencia)
+              .sort()
+          }}
         />
       )}
     </div>
@@ -1137,14 +1230,23 @@ function CampoValor({ tipo, valor, onChange, disabled }) {
     if (tipo === 'booleano') return <div style={{ ...s.inp, background:'var(--card)', color: valor===false?'var(--erro)':'var(--texto)' }}>{valor===true?'Sim':valor===false?'Não':'—'}</div>
     return <div style={{ ...s.inp, background:'var(--card)', color:'var(--texto)' }}>{(valor===0?'0':valor)||'—'}</div>
   }
+  // Passar pelo campo (blur ou Enter) e deixar vazio grava 0 automaticamente — sem isso, um campo
+  // realmente zerado exigia digitar "0" na mão. Só conta como preenchido quem passou pelo campo:
+  // um campo nunca tocado continua undefined (não vira 0 sozinho).
+  const zerarSeVazio = (v) => (v === undefined || v === null || v === '') && onChange(0)
+  const blurNoEnter = (e) => e.key === 'Enter' && e.target.blur()
   if (tipo === 'moeda') {
     return <input style={s.inp}
-      value={valor ? Number(valor).toLocaleString('pt-BR',{minimumFractionDigits:2}) : ''}
+      value={(valor || valor === 0) ? Number(valor).toLocaleString('pt-BR',{minimumFractionDigits:2}) : ''}
       onChange={e => { const nums = e.target.value.replace(/\D/g,''); onChange(nums ? parseInt(nums,10)/100 : '') }}
+      onBlur={() => zerarSeVazio(valor)}
+      onKeyDown={blurNoEnter}
       placeholder="0,00" />
   }
   if (tipo === 'numero') {
-    return <input style={s.inp} type="number" value={valor ?? ''} onChange={e=>onChange(e.target.value===''?'':Number(e.target.value))} />
+    return <input style={s.inp} type="number" value={valor ?? ''} onChange={e=>onChange(e.target.value===''?'':Number(e.target.value))}
+      onBlur={() => zerarSeVazio(valor)}
+      onKeyDown={blurNoEnter} />
   }
   if (tipo === 'booleano') {
     return (
@@ -1187,8 +1289,14 @@ function BlocoExtratosBancarios({ clienteId, setor, bancos=[], competencia, valo
   const [bancoSelecionado, setBancoSelecionado] = useState('')
   const [nomeOutro, setNomeOutro] = useState('')
   const [salvando, setSalvando] = useState(false)
+  const [confirmandoRemover, setConfirmandoRemover] = useState(null) // bancoId | null
+  const [confirmandoExcluir, setConfirmandoExcluir] = useState(null) // bancoId | null
 
   const bancosAtivos = bancos.filter(b => bancoVigenteEm(b, competencia))
+  // Inativos já introduzidos até esta competência (mesmo gate de adicionadoNaCompetencia do
+  // bancoVigenteEm) — independente de quando exatamente foram desativados, pra sempre dar pra
+  // gerenciar (reativar/excluir) um banco removido a partir de qualquer mês em que ele já existia.
+  const bancosRemovidos = bancos.filter(b => b.ativo === false && (!b.adicionadoNaCompetencia || b.adicionadoNaCompetencia <= competencia))
 
   const adicionar = async () => {
     const nome = bancoSelecionado === 'outro' ? nomeOutro.trim() : BANCOS_SUGERIDOS.find(b=>b.value===bancoSelecionado)?.label
@@ -1208,6 +1316,20 @@ function BlocoExtratosBancarios({ clienteId, setor, bancos=[], competencia, valo
       await api.patch(`/clientes/${clienteId}/bancos/${setor._id}/${bancoId}`, { ativo: false, competencia })
       onBancosAtualizados && onBancosAtualizados()
     } catch (e) { mostrar(e.response?.data?.erro || 'Erro ao remover banco.', 'erro') }
+  }
+
+  const reativar = async (bancoId) => {
+    try {
+      await api.patch(`/clientes/${clienteId}/bancos/${setor._id}/${bancoId}`, { ativo: true, competencia })
+      onBancosAtualizados && onBancosAtualizados()
+    } catch (e) { mostrar(e.response?.data?.erro || 'Erro ao reativar banco.', 'erro') }
+  }
+
+  const excluirDeVez = async (bancoId) => {
+    try {
+      await api.delete(`/clientes/${clienteId}/bancos/${setor._id}/${bancoId}`)
+      onBancosAtualizados && onBancosAtualizados()
+    } catch (e) { mostrar(e.response?.data?.erro || 'Erro ao excluir banco.', 'erro') }
   }
 
   return (
@@ -1231,11 +1353,28 @@ function BlocoExtratosBancarios({ clienteId, setor, bancos=[], competencia, valo
               <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
                 <CampoValor tipo="booleano" valor={valoresExtratos[b.id]} onChange={v=>onChangeExtrato(b.id, v)} disabled={!podeEditar} />
                 {podeEditar && (
-                  <button type="button" onClick={()=>desativar(b.id)} title="Remover banco" style={{ background:'none', border:'none', color:'var(--texto-apagado)', cursor:'pointer', padding:'4px', display:'flex' }}>
+                  <button type="button" onClick={()=>setConfirmandoRemover(b.id)} title="Remover banco" style={{ background:'none', border:'none', color:'var(--texto-apagado)', cursor:'pointer', padding:'4px', display:'flex' }}>
                     <Icone.X size={14}/>
                   </button>
                 )}
               </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {bancosRemovidos.length > 0 && (
+        <div style={{ display:'flex', flexDirection:'column', gap:'8px', marginBottom: podeEditar ? '14px' : 0 }}>
+          <p style={{ fontSize:'0.68rem', fontWeight:'700', color:'var(--texto-apagado)', textTransform:'uppercase', letterSpacing:'0.6px', margin:'0 0 2px' }}>Bancos removidos</p>
+          {bancosRemovidos.map(b => (
+            <div key={b.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:'10px', padding:'10px 14px', background:'var(--input)', border:'1px solid var(--borda)', borderRadius:'10px', opacity:0.6 }}>
+              <span style={{ fontSize:'0.85rem', color:'var(--texto-apagado)' }}>{b.nome}</span>
+              {podeEditar && (
+                <div style={{ display:'flex', gap:'8px' }}>
+                  <button type="button" onClick={()=>reativar(b.id)} style={{ background:'none', border:'1px solid var(--borda)', borderRadius:'6px', color:'var(--verde)', fontSize:'0.72rem', fontWeight:'600', padding:'4px 10px', cursor:'pointer', fontFamily:'var(--fonte-corpo)' }}>Reativar</button>
+                  <button type="button" onClick={()=>setConfirmandoExcluir(b.id)} style={{ background:'none', border:'1px solid var(--borda)', borderRadius:'6px', color:'#f87171', fontSize:'0.72rem', fontWeight:'600', padding:'4px 10px', cursor:'pointer', fontFamily:'var(--fonte-corpo)' }}>Excluir permanentemente</button>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -1267,6 +1406,25 @@ function BlocoExtratosBancarios({ clienteId, setor, bancos=[], competencia, valo
           + Adicionar banco
         </button>
       ))}
+
+      {confirmandoRemover && (
+        <ModalConfirmacao
+          titulo="Remover banco?"
+          mensagem="O banco some da lista deste mês em diante, mas continua nos meses anteriores. Dá pra reativar depois."
+          textoBotao="Remover" perigo
+          onConfirmar={async () => { await desativar(confirmandoRemover); setConfirmandoRemover(null) }}
+          onCancelar={() => setConfirmandoRemover(null)}
+        />
+      )}
+      {confirmandoExcluir && (
+        <ModalConfirmacao
+          titulo="Excluir banco de vez?"
+          mensagem="Isso remove o banco e o histórico de conferência dele em todos os meses. Não dá pra desfazer."
+          textoBotao="Excluir de vez" perigo
+          onConfirmar={async () => { await excluirDeVez(confirmandoExcluir); setConfirmandoExcluir(null) }}
+          onCancelar={() => setConfirmandoExcluir(null)}
+        />
+      )}
     </div>
   )
 }
@@ -1290,6 +1448,8 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
   const [novoLabel, setNovoLabel] = useState('')
   const [novoTipo, setNovoTipo] = useState('moeda')
   const [criando, setCriando] = useState(false)
+  const [confirmandoRemoverCampo, setConfirmandoRemoverCampo] = useState(null) // campoId | null
+  const [confirmandoExcluirCampo, setConfirmandoExcluirCampo] = useState(null) // campoId | null
   const [respondendo, setRespondendo] = useState(false)
   const [editandoSituacao, setEditandoSituacao] = useState(false)
   const [valorVigenciaPendente, setValorVigenciaPendente] = useState(null)
@@ -1300,9 +1460,14 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
   // acesso ao setor, mesma regra de quem preenche a Demanda.
   const temAcessoDocs = usuario?.cargo === 'admin' || usuario?.setores?.some(s => (s._id||s) === setor._id)
 
-  const config = CONFIG_DEMANDA[normalizarNome(setor.nome)]
+  const setorNome = normalizarNome(setor.nome)
+  const config = CONFIG_DEMANDA[setorNome]
   const situacao = configSetor?.situacao
   const camposExtras = configSetor?.camposExtras || []
+  // Campo criado antes desta feature não tem `ativo` gravado — undefined conta como ativo,
+  // só `ativo === false` (gravado explicitamente pela rota de remover) entra em "removidos".
+  const camposExtrasAtivos = camposExtras.filter(c => c.ativo !== false)
+  const camposExtrasRemovidos = camposExtras.filter(c => c.ativo === false)
   // Pro mês atual, a última entrada do histórico já É o valor ao vivo (é o que as rotas de
   // escrita mantêm); pra mês passado, o backend já resolve pro que valia naquela competência.
   const regimeResolvido = lancamento?.regimeResolvido ?? clienteRegime
@@ -1310,6 +1475,12 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
   const blocos = blocosFixosDoSetor(config, { regime: regimeResolvido, situacao: situacaoResolvida, competencia })
 
   const vazio = (v) => v === undefined || v === null || v === ''
+  // Campo removido não some do histórico: numa competência ANTERIOR à que o setor trabalha por
+  // padrão (competenciaPadraoDoSetor — mesma régua já usada pra decidir se pode reeditar
+  // situação/regime), se ele já tinha valor salvo ali, continua aparecendo — só some do
+  // formulário do mês atual (e futuro) em diante, sempre como leitura (nunca reabre pra edição).
+  const ehCompetenciaPassada = competencia < competenciaPadraoDoSetor(setor.nome)
+  const camposExtrasRemovidosComValorAqui = camposExtrasRemovidos.filter(c => ehCompetenciaPassada && !vazio(valores[c.id]))
 
   useEffect(() => {
     setCarregando(true)
@@ -1369,6 +1540,23 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
     finally { setSalvando(false) }
   }
 
+  // "Sem Movimento" (só Fiscal): zera todos os campos de valor do bloco (regime atual) e salva
+  // de uma vez. Monta o objeto e salva ele direto — setValores(zerados) seguido de salvar() não
+  // funcionaria porque salvar() lê `valores` do estado, que não atualiza na mesma execução.
+  const semMovimento = async () => {
+    const campos = blocos.flatMap(b => b.campos).filter(c => c.tipo !== 'calculado')
+    const zerados = { ...valores, ...Object.fromEntries(campos.map(c => [c.id, 0])) }
+    setValores(zerados)
+    setSalvando(true)
+    try {
+      const r = await api.post(`/clientes/${clienteId}/lancamentos/${setor._id}/${competencia}`, { dados: zerados })
+      setLancamento(r.data)
+      setValoresBase(r.data?.dados || {})
+      mostrar('Dados salvos!', 'sucesso')
+    } catch (e) { mostrar(e.response?.data?.erro || 'Erro ao salvar.', 'erro') }
+    finally { setSalvando(false) }
+  }
+
   const criarCampo = async () => {
     if (!novoLabel.trim()) return
     setCriando(true)
@@ -1379,6 +1567,27 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
       onAtualizado && onAtualizado()
     } catch (e) { mostrar(e.response?.data?.erro || 'Erro ao criar campo.', 'erro') }
     finally { setCriando(false) }
+  }
+
+  const removerCampo = async (campoId) => {
+    try {
+      await api.patch(`/clientes/${clienteId}/campos-extras/${setor._id}/${campoId}`, { ativo: false })
+      onAtualizado && onAtualizado()
+    } catch (e) { mostrar(e.response?.data?.erro || 'Erro ao remover campo.', 'erro') }
+  }
+
+  const reativarCampo = async (campoId) => {
+    try {
+      await api.patch(`/clientes/${clienteId}/campos-extras/${setor._id}/${campoId}`, { ativo: true })
+      onAtualizado && onAtualizado()
+    } catch (e) { mostrar(e.response?.data?.erro || 'Erro ao reativar campo.', 'erro') }
+  }
+
+  const excluirCampoDeVez = async (campoId) => {
+    try {
+      await api.delete(`/clientes/${clienteId}/campos-extras/${setor._id}/${campoId}`)
+      onAtualizado && onAtualizado()
+    } catch (e) { mostrar(e.response?.data?.erro || 'Erro ao excluir campo.', 'erro') }
   }
 
   const responderPergunta = async (valor, modoVigencia) => {
@@ -1433,6 +1642,22 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
           <ModalVigenciaMudanca
             onEscolher={async (modo) => { await responderPergunta(valorVigenciaPendente, modo); setValorVigenciaPendente(null); setEditandoSituacao(false) }}
             onCancelar={()=>setValorVigenciaPendente(null)}
+            calcularReabertos={async () => {
+              // Mesmo raciocínio do regime (ver FormCliente): modo 'inicio' faz resolverPorVigencia
+              // cair sempre na entrada nova, então o valor resolvido de QUALQUER competência já
+              // lançada vira exatamente valorVigenciaPendente.
+              const setorNomeNorm = normalizarNome(setor.nome)
+              const { data: lancamentos } = await api.get(`/clientes/${clienteId}/lancamentos/${setor._id}`)
+              return lancamentos
+                .filter(l => {
+                  const situacaoAtualResolvida = resolverPorVigencia(configSetor?.historicoSituacao, l.competencia, situacao)
+                  const statusAtual = statusDemanda(setorNomeNorm, { situacao: situacaoAtualResolvida, dados: l.dados, existe: true }, l.competencia)
+                  const statusNovo = statusDemanda(setorNomeNorm, { situacao: valorVigenciaPendente, dados: l.dados, existe: true }, l.competencia)
+                  return statusAtual === 'concluido' && statusNovo === 'pendente'
+                })
+                .map(l => l.competencia)
+                .sort()
+            }}
           />
         )}
       </div>
@@ -1469,6 +1694,14 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
           {lancamento?.preenchidoPor?.nome && `${!podeEditar ? ' · ' : ''}Preenchido por ${lancamento.preenchidoPor.nome}`}
         </p>
       </div>
+
+      {setorNome === 'fiscal' && podeEditar && (
+        <div style={{ marginBottom:'18px' }}>
+          <button onClick={semMovimento} disabled={salvando} style={{ background:'none', border:'1px solid var(--borda)', borderRadius:'8px', color:'var(--texto-apagado)', padding:'8px 14px', fontFamily:'var(--fonte-corpo)', fontSize:'0.78rem', fontWeight:'600', cursor:'pointer' }}>
+            {salvando ? 'Salvando...' : 'Sem Movimento'}
+          </button>
+        </div>
+      )}
 
       {config?.temBancos && (
         <BlocoExtratosBancarios
@@ -1515,14 +1748,68 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
             </div>
             <p style={{ fontSize:'0.82rem', fontWeight:'700', color:'var(--texto)', margin:0 }}>Campos adicionais</p>
           </div>
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))', gap:'14px' }}>
-            {camposExtras.map(c => (
-              <Campo key={c.id} label={c.label}>
-                <CampoValor tipo={c.tipo} valor={valores[c.id]} onChange={v=>setValor(c.id, v)} disabled={!podeEditar} />
-              </Campo>
-            ))}
-          </div>
+          {(camposExtrasAtivos.length > 0 || camposExtrasRemovidosComValorAqui.length > 0) && (
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))', gap:'14px', marginBottom: camposExtrasRemovidos.length ? '16px' : 0 }}>
+              {camposExtrasAtivos.map(c => (
+                <Campo key={c.id} label={c.label}>
+                  <div style={{ display:'flex', alignItems:'center', gap:'6px' }}>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <CampoValor tipo={c.tipo} valor={valores[c.id]} onChange={v=>setValor(c.id, v)} disabled={!podeEditar} />
+                    </div>
+                    {podeEditar && (
+                      <button type="button" onClick={()=>setConfirmandoRemoverCampo(c.id)} title="Remover campo" style={{ background:'none', border:'none', color:'var(--texto-apagado)', cursor:'pointer', padding:'4px', display:'flex', flexShrink:0 }}>
+                        <Icone.X size={14}/>
+                      </button>
+                    )}
+                  </div>
+                </Campo>
+              ))}
+              {/* Removido, mas essa competência é passada e já tinha valor salvo aqui — mostra só leitura,
+                  sem botão (não reabre pra edição; gerenciar volta/exclusão fica na seção "Campos removidos"). */}
+              {camposExtrasRemovidosComValorAqui.map(c => (
+                <Campo key={c.id} label={c.label}>
+                  <CampoValor tipo={c.tipo} valor={valores[c.id]} onChange={()=>{}} disabled />
+                </Campo>
+              ))}
+            </div>
+          )}
+
+          {camposExtrasRemovidos.length > 0 && (
+            <div style={{ display:'flex', flexDirection:'column', gap:'8px' }}>
+              <p style={{ fontSize:'0.68rem', fontWeight:'700', color:'var(--texto-apagado)', textTransform:'uppercase', letterSpacing:'0.6px', margin:'0 0 2px' }}>Campos removidos</p>
+              {camposExtrasRemovidos.map(c => (
+                <div key={c.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:'10px', padding:'10px 14px', background:'var(--input)', border:'1px solid var(--borda)', borderRadius:'10px', opacity:0.6 }}>
+                  <span style={{ fontSize:'0.85rem', color:'var(--texto-apagado)' }}>{c.label}</span>
+                  {podeEditar && (
+                    <div style={{ display:'flex', gap:'8px' }}>
+                      <button type="button" onClick={()=>reativarCampo(c.id)} style={{ background:'none', border:'1px solid var(--borda)', borderRadius:'6px', color:'var(--verde)', fontSize:'0.72rem', fontWeight:'600', padding:'4px 10px', cursor:'pointer', fontFamily:'var(--fonte-corpo)' }}>Reativar</button>
+                      <button type="button" onClick={()=>setConfirmandoExcluirCampo(c.id)} style={{ background:'none', border:'1px solid var(--borda)', borderRadius:'6px', color:'#f87171', fontSize:'0.72rem', fontWeight:'600', padding:'4px 10px', cursor:'pointer', fontFamily:'var(--fonte-corpo)' }}>Excluir permanentemente</button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
+      )}
+
+      {confirmandoRemoverCampo && (
+        <ModalConfirmacao
+          titulo="Remover campo?"
+          mensagem="O campo some do formulário deste mês em diante, mas os valores já salvos em meses anteriores continuam guardados. Dá pra reativar depois."
+          textoBotao="Remover" perigo
+          onConfirmar={async () => { await removerCampo(confirmandoRemoverCampo); setConfirmandoRemoverCampo(null) }}
+          onCancelar={() => setConfirmandoRemoverCampo(null)}
+        />
+      )}
+      {confirmandoExcluirCampo && (
+        <ModalConfirmacao
+          titulo="Excluir campo de vez?"
+          mensagem="Isso remove o campo e os valores salvos dele em todos os meses. Não dá pra desfazer."
+          textoBotao="Excluir de vez" perigo
+          onConfirmar={async () => { await excluirCampoDeVez(confirmandoExcluirCampo); setConfirmandoExcluirCampo(null) }}
+          onCancelar={() => setConfirmandoExcluirCampo(null)}
+        />
       )}
 
       <div style={{ background:'var(--card)', border:'1px solid var(--borda)', borderRadius:'14px', padding:'14px 18px', marginBottom:'20px' }}>
@@ -2097,4 +2384,4 @@ const s = {
 
 // Reaproveitado pela tela Demandas — mesma lógica de campos configurados por setor/regime/situação,
 // pra não duplicar o critério de "pendente vs concluído"
-export { CONFIG_DEMANDA, blocosFixosDoSetor, normalizarNome, competenciaAtual, competenciaDefasada, competenciaPadraoDoSetor, nomeMes, MESES_NOME, MESES_LABEL, INICIO_DEMANDA_ANO }
+export { CONFIG_DEMANDA, blocosFixosDoSetor, statusDemanda, SUBFILTROS_POR_SETOR, normalizarNome, competenciaAtual, competenciaDefasada, competenciaPadraoDoSetor, nomeMes, MESES_NOME, MESES_LABEL, INICIO_DEMANDA_ANO }

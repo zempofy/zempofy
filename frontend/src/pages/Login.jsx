@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import api from '../services/api'
@@ -22,79 +22,8 @@ export default function Login() {
   const [carregando, setCarregando] = useState(false)
   const [mostrarSenha, setMostrarSenha] = useState(false)
 
-  const canvasRef = useRef(null)
   const paginaRef = useRef(null)
   const turnstileEsqueciRef = useRef(null)
-
-  // Grade de pontos reagindo ao mouse — canvas puro, sem dependência externa
-  useEffect(() => {
-    const canvas = canvasRef.current
-    const pagina = paginaRef.current
-    const ctx = canvas.getContext('2d')
-
-    let w, h, dots = []
-    const espacamento = 34
-    const raioBase = 1.3
-    const raioMax = 2.6
-    const raioInfluencia = 150
-    const mouse = { x: -9999, y: -9999 }
-    let frameId
-
-    const montarGrade = () => {
-      w = pagina.clientWidth
-      h = pagina.clientHeight
-      canvas.width = w * devicePixelRatio
-      canvas.height = h * devicePixelRatio
-      canvas.style.width = w + 'px'
-      canvas.style.height = h + 'px'
-      ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0)
-
-      dots = []
-      for (let y = espacamento / 2; y < h; y += espacamento) {
-        for (let x = espacamento / 2; x < w; x += espacamento) {
-          dots.push({ x, y, alphaAtual: 0.12, raioAtual: raioBase })
-        }
-      }
-    }
-
-    const onMouseMove = (e) => {
-      const rect = pagina.getBoundingClientRect()
-      mouse.x = e.clientX - rect.left
-      mouse.y = e.clientY - rect.top
-    }
-    const onMouseLeave = () => { mouse.x = -9999; mouse.y = -9999 }
-
-    const desenhar = () => {
-      ctx.clearRect(0, 0, w, h)
-      for (const d of dots) {
-        const dist = Math.hypot(d.x - mouse.x, d.y - mouse.y)
-        const influencia = Math.max(0, 1 - dist / raioInfluencia)
-        const alphaAlvo = 0.12 + influencia * 0.75
-        const raioAlvo = raioBase + influencia * (raioMax - raioBase)
-        d.alphaAtual += (alphaAlvo - d.alphaAtual) * 0.15
-        d.raioAtual += (raioAlvo - d.raioAtual) * 0.15
-
-        ctx.beginPath()
-        ctx.arc(d.x, d.y, d.raioAtual, 0, Math.PI * 2)
-        ctx.fillStyle = `rgba(0,177,65,${d.alphaAtual})`
-        ctx.fill()
-      }
-      frameId = requestAnimationFrame(desenhar)
-    }
-
-    montarGrade()
-    desenhar()
-    window.addEventListener('resize', montarGrade)
-    pagina.addEventListener('mousemove', onMouseMove)
-    pagina.addEventListener('mouseleave', onMouseLeave)
-
-    return () => {
-      cancelAnimationFrame(frameId)
-      window.removeEventListener('resize', montarGrade)
-      pagina.removeEventListener('mousemove', onMouseMove)
-      pagina.removeEventListener('mouseleave', onMouseLeave)
-    }
-  }, [])
 
   const enviarEsqueci = async () => {
     if (!emailEsqueci) return
@@ -144,8 +73,6 @@ export default function Login() {
 
   return (
     <div style={styles.pagina} ref={paginaRef} className="fade-in" data-tema="escuro">
-      <canvas ref={canvasRef} style={styles.canvas} />
-
       <img src="/logo.svg" alt="Zempofy" style={styles.logoCanto} />
 
       <div style={styles.centro}>
@@ -301,12 +228,6 @@ const styles = {
     minHeight: '100vh',
     background: 'var(--fundo)',
     overflow: 'hidden',
-  },
-  canvas: {
-    position: 'absolute',
-    inset: 0,
-    width: '100%',
-    height: '100%',
   },
   logoCanto: {
     position: 'absolute',

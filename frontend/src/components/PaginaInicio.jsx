@@ -144,8 +144,8 @@ function InicioTitular({ usuario, setPagina }) {
             <div key={t._id} style={{ display:'flex', alignItems:'flex-start', gap:'8px', padding:'8px 0', borderBottom:'1px solid var(--borda)' }}>
               <div style={{ width:'15px', height:'15px', borderRadius:'4px', border:'1.5px solid var(--borda)', flexShrink:0, marginTop:'2px' }}/>
               <div style={{ flex:1, minWidth:0 }}>
-                <p style={{ fontSize:'0.82rem', color:'var(--texto)', margin:0, fontFamily:'var(--fonte-corpo)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{t.titulo}</p>
-                {t.prazo && <p style={{ fontSize:'0.68rem', color:'#f59e0b', margin:'2px 0 0', fontFamily:'var(--fonte-corpo)' }}>{new Date(t.prazo).toLocaleDateString('pt-BR')}</p>}
+                <p style={{ fontSize:'0.82rem', color:'var(--texto)', margin:0, fontFamily:'var(--fonte-corpo)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{t.descricao}</p>
+                {t.data && <p style={{ fontSize:'0.68rem', color:'#f59e0b', margin:'2px 0 0', fontFamily:'var(--fonte-corpo)' }}>{new Date(t.data).toLocaleDateString('pt-BR')}</p>}
               </div>
             </div>
           ))}
@@ -278,8 +278,8 @@ function InicioColaborador({ usuario, setPagina, temPermissao }) {
           <div key={t._id} style={{ display:'flex', alignItems:'flex-start', gap:'8px', padding:'8px 0', borderBottom:'1px solid var(--borda)' }}>
             <div style={{ width:'15px', height:'15px', borderRadius:'4px', border:'1.5px solid var(--borda)', flexShrink:0, marginTop:'2px' }}/>
             <div style={{ flex:1 }}>
-              <p style={{ fontSize:'0.82rem', color:'var(--texto)', margin:0, fontFamily:'var(--fonte-corpo)' }}>{t.titulo}</p>
-              {t.prazo && <p style={{ fontSize:'0.68rem', color:'#f59e0b', margin:'2px 0 0', fontFamily:'var(--fonte-corpo)' }}>{new Date(t.prazo).toLocaleDateString('pt-BR')}</p>}
+              <p style={{ fontSize:'0.82rem', color:'var(--texto)', margin:0, fontFamily:'var(--fonte-corpo)' }}>{t.descricao}</p>
+              {t.data && <p style={{ fontSize:'0.68rem', color:'#f59e0b', margin:'2px 0 0', fontFamily:'var(--fonte-corpo)' }}>{new Date(t.data).toLocaleDateString('pt-BR')}</p>}
             </div>
           </div>
         ))}

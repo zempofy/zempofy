@@ -23,6 +23,7 @@ const feedbackRoutes = require('./routes/feedback');
 const logRoutes = require('./routes/log');
 const leadRoutes = require('./routes/lead');
 const documentoRoutes = require('./routes/documento');
+const ConfiguracaoSistema = require('./models/ConfiguracaoSistema');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -221,20 +222,35 @@ const enviarResumoPeriodico = async () => {
   } catch(e) { console.error('Job resumo:', e.message); }
 };
 
-// Rodar às 8h todos os dias — checa a cada 5min (em vez de 1h) e trava por dia (em vez de
-// só por hora), pra não depender do timing exato de quando o processo do Render subiu/reiniciou.
-// Sem essa trava, um restart durante a janela das 8h faria o job rodar de novo no mesmo dia.
-let ultimoDiaJobsExecutados = null;
-setInterval(() => {
+// Rodar às 8h (horário de Brasília) todos os dias — checa a cada 5min (em vez de 1h) e trava por
+// dia (em vez de só por hora), pra não depender do timing exato de quando o processo do Render
+// subiu/reiniciou. Trava persistida no banco (não em memória): um restart do processo durante a
+// janela das 8h não pode fazer o job rodar de novo no mesmo dia.
+setInterval(async () => {
   const agora = new Date();
   const hoje = agora.toISOString().slice(0, 10); // YYYY-MM-DD
-  if (agora.getHours() === 8 && ultimoDiaJobsExecutados !== hoje) {
-    ultimoDiaJobsExecutados = hoje;
-    console.log(`⏰ Rodando jobs diários (${hoje})`);
-    verificarOnboardingsParados();
-    verificarTarefasComPrazo();
-    enviarResumoPeriodico();
-  }
+  // Offset fixo (UTC-3, sem horário de verão desde 2019) em vez de agora.getHours() — o Render
+  // roda o processo sem TZ configurada (container em UTC), então getHours() disparava às 8h UTC,
+  // 5h da manhã em Brasília. Calcular direto no código deixa o horário certo independente do
+  // fuso do processo (Render, local, ou qualquer ambiente futuro).
+  const horaBrasilia = (agora.getUTCHours() - 3 + 24) % 24;
+  if (horaBrasilia !== 8) return;
+
+  const config = await ConfiguracaoSistema.findOne({ chave: 'ultimaExecucaoJobsDiarios' });
+  if (config?.valor === hoje) return;
+
+  // Grava a trava antes de disparar os jobs — eles são async e podem demorar,
+  // e não podemos deixar a trava aberta pra outra checagem do intervalo disparar de novo.
+  await ConfiguracaoSistema.findOneAndUpdate(
+    { chave: 'ultimaExecucaoJobsDiarios' },
+    { valor: hoje },
+    { upsert: true }
+  );
+
+  console.log(`⏰ Rodando jobs diários (${hoje})`);
+  verificarOnboardingsParados();
+  verificarTarefasComPrazo();
+  enviarResumoPeriodico();
 }, 300000);
 
 // ── Rotas ──
@@ -453,6 +469,52 @@ mongoose.connect(process.env.MONGODB_URI)
       }
     } catch (err) {
       console.error('⚠️ Erro na migração da lixeira de documentos:', err.message);
+    }
+
+    // ── Migração Fiscal: isentar dos 3 campos novos (irRetido, csllRetido, crf) os
+    // lançamentos que já estavam concluídos ANTES desses campos existirem ──
+    try {
+      const LancamentoSetor = require('./models/LancamentoSetor');
+      const Setor = require('./models/Setor');
+      const Cliente = require('./models/Cliente');
+      const { resolverPorVigencia } = require('./services/historicoVigencia');
+
+      const CAMPOS_NOVOS_FISCAL = ['irRetido', 'csllRetido', 'crf'];
+      // Lista de campos do Lucro Presumido/Real ANTES desta spec — hardcoded aqui de propósito,
+      // não importar de CONFIG_DEMANDA (que já vai estar com os campos novos por essa altura).
+      const CAMPOS_ANTIGOS_LUCRO = [
+        'totalVendas','totalServicos','pis','cofins','irpj','csll','issProprio','issRetido','icmsAntecipado','icmsDifal'
+      ];
+
+      // Multi-tenant: cada empresa tem seu próprio Setor "Fiscal" (documento separado) — um
+      // findOne() sem filtrar por empresa pegaria só o primeiro do banco inteiro e deixaria as
+      // demais empresas com camposIsentos nunca preenchido, reabrindo Fiscal concluído nelas.
+      const setoresFiscal = await Setor.find({ nome: /^fiscal$/i }).select('_id').lean();
+      if (setoresFiscal.length) {
+        const candidatos = await LancamentoSetor.find({
+          setor: { $in: setoresFiscal.map(s => s._id) },
+          camposIsentos: { $exists: false },
+        });
+        let isentados = 0;
+        for (const l of candidatos) {
+          const cliente = await Cliente.findById(l.cliente).select('regime historicoRegime').lean();
+          const regime = resolverPorVigencia(cliente?.historicoRegime, l.competencia, cliente?.regime);
+          if (regime !== 'lucro_presumido' && regime !== 'lucro_real') continue; // Simples não usa esses campos
+          const jaEstavaCompleto = CAMPOS_ANTIGOS_LUCRO.every(id => {
+            const v = l.dados?.[id];
+            return !(v === undefined || v === null || v === '');
+          });
+          if (jaEstavaCompleto) {
+            await LancamentoSetor.updateOne({ _id: l._id }, { $set: { camposIsentos: CAMPOS_NOVOS_FISCAL } });
+            isentados++;
+          } else {
+            await LancamentoSetor.updateOne({ _id: l._id }, { $set: { camposIsentos: [] } });
+          }
+        }
+        if (isentados > 0) console.log(`✅ Migração: ${isentados} lançamento(s) fiscal(is) isentados dos campos novos.`);
+      }
+    } catch (err) {
+      console.error('⚠️ Erro na migração de campos novos do Fiscal:', err.message);
     }
 
     app.listen(PORT, () => console.log(`🚀 Servidor rodando na porta ${PORT}`));
