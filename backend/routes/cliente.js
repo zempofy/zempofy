@@ -410,6 +410,7 @@ router.post('/:id/campos-extras/:setorId', autenticar, async (req, res) => {
       id,
       label: label.trim(),
       tipo: tiposValidos.includes(tipo) ? tipo : 'moeda',
+      ativo: true,
     });
 
     cliente.markModified('configSetores');
@@ -418,6 +419,71 @@ router.post('/:id/campos-extras/:setorId', autenticar, async (req, res) => {
     res.status(201).json(cliente.configSetores[setorNome]);
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao criar campo.' });
+  }
+});
+
+// PATCH /api/clientes/:id/campos-extras/:setorId/:campoId — ativa/desativa um campo adicional
+// (mesmo padrão do banco: não apaga os valores já salvos em LancamentoSetor de meses anteriores,
+// só tira o campo do formulário de preenchimento dali em diante)
+router.patch('/:id/campos-extras/:setorId/:campoId', autenticar, async (req, res) => {
+  try {
+    if (!temAcessoAoSetor(req.usuario, req.params.setorId)) {
+      return res.status(403).json({ erro: 'Você não tem acesso a este setor.' });
+    }
+    const { ativo } = req.body;
+
+    const setor = await Setor.findById(req.params.setorId).select('nome').lean();
+    if (!setor) return res.status(404).json({ erro: 'Setor não encontrado.' });
+    const setorNome = normalizarNome(setor.nome);
+
+    const cliente = await Cliente.findOne({ _id: req.params.id, empresa: req.usuario.empresa._id });
+    if (!cliente) return res.status(404).json({ erro: 'Cliente não encontrado.' });
+    if (cliente.status === 'inativo') return res.status(403).json({ erro: 'Cliente inativo — reative pra poder editar.' });
+
+    const configSetor = garantirConfigSetor(cliente, setorNome);
+    const campo = configSetor.camposExtras?.find(c => c.id === req.params.campoId);
+    if (!campo) return res.status(404).json({ erro: 'Campo não encontrado.' });
+    campo.ativo = !!ativo;
+
+    cliente.markModified('configSetores');
+    await cliente.save();
+
+    res.json(cliente.configSetores[setorNome]);
+  } catch (err) {
+    res.status(500).json({ erro: 'Erro ao atualizar campo.' });
+  }
+});
+
+// DELETE /api/clientes/:id/campos-extras/:setorId/:campoId — exclusão permanente (apaga também os
+// valores salvos em meses anteriores). Só permitida com o campo já inativo, mesmo padrão de
+// "inativar antes de excluir" usado no resto do sistema (Setor/Equipe/Modelos/banco).
+router.delete('/:id/campos-extras/:setorId/:campoId', autenticar, async (req, res) => {
+  try {
+    if (!temAcessoAoSetor(req.usuario, req.params.setorId)) {
+      return res.status(403).json({ erro: 'Você não tem acesso a este setor.' });
+    }
+
+    const setor = await Setor.findById(req.params.setorId).select('nome').lean();
+    if (!setor) return res.status(404).json({ erro: 'Setor não encontrado.' });
+    const setorNome = normalizarNome(setor.nome);
+
+    const cliente = await Cliente.findOne({ _id: req.params.id, empresa: req.usuario.empresa._id });
+    if (!cliente) return res.status(404).json({ erro: 'Cliente não encontrado.' });
+    if (cliente.status === 'inativo') return res.status(403).json({ erro: 'Cliente inativo — reative pra poder editar.' });
+
+    const configSetor = garantirConfigSetor(cliente, setorNome);
+    const campo = configSetor.camposExtras?.find(c => c.id === req.params.campoId);
+    if (!campo) return res.status(404).json({ erro: 'Campo não encontrado.' });
+    if (campo.ativo !== false) return res.status(400).json({ erro: 'Remova o campo antes de excluir de vez.' });
+
+    configSetor.camposExtras = configSetor.camposExtras.filter(c => c.id !== req.params.campoId);
+
+    cliente.markModified('configSetores');
+    await cliente.save();
+
+    res.json(cliente.configSetores[setorNome]);
+  } catch (err) {
+    res.status(500).json({ erro: 'Erro ao excluir campo.' });
   }
 });
 

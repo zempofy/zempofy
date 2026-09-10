@@ -1441,6 +1441,8 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
   const [novoLabel, setNovoLabel] = useState('')
   const [novoTipo, setNovoTipo] = useState('moeda')
   const [criando, setCriando] = useState(false)
+  const [confirmandoRemoverCampo, setConfirmandoRemoverCampo] = useState(null) // campoId | null
+  const [confirmandoExcluirCampo, setConfirmandoExcluirCampo] = useState(null) // campoId | null
   const [respondendo, setRespondendo] = useState(false)
   const [editandoSituacao, setEditandoSituacao] = useState(false)
   const [valorVigenciaPendente, setValorVigenciaPendente] = useState(null)
@@ -1454,6 +1456,10 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
   const config = CONFIG_DEMANDA[normalizarNome(setor.nome)]
   const situacao = configSetor?.situacao
   const camposExtras = configSetor?.camposExtras || []
+  // Campo criado antes desta feature não tem `ativo` gravado — undefined conta como ativo,
+  // só `ativo === false` (gravado explicitamente pela rota de remover) entra em "removidos".
+  const camposExtrasAtivos = camposExtras.filter(c => c.ativo !== false)
+  const camposExtrasRemovidos = camposExtras.filter(c => c.ativo === false)
   // Pro mês atual, a última entrada do histórico já É o valor ao vivo (é o que as rotas de
   // escrita mantêm); pra mês passado, o backend já resolve pro que valia naquela competência.
   const regimeResolvido = lancamento?.regimeResolvido ?? clienteRegime
@@ -1461,6 +1467,12 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
   const blocos = blocosFixosDoSetor(config, { regime: regimeResolvido, situacao: situacaoResolvida, competencia })
 
   const vazio = (v) => v === undefined || v === null || v === ''
+  // Campo removido não some do histórico: numa competência ANTERIOR à que o setor trabalha por
+  // padrão (competenciaPadraoDoSetor — mesma régua já usada pra decidir se pode reeditar
+  // situação/regime), se ele já tinha valor salvo ali, continua aparecendo — só some do
+  // formulário do mês atual (e futuro) em diante, sempre como leitura (nunca reabre pra edição).
+  const ehCompetenciaPassada = competencia < competenciaPadraoDoSetor(setor.nome)
+  const camposExtrasRemovidosComValorAqui = camposExtrasRemovidos.filter(c => ehCompetenciaPassada && !vazio(valores[c.id]))
 
   useEffect(() => {
     setCarregando(true)
@@ -1530,6 +1542,27 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
       onAtualizado && onAtualizado()
     } catch (e) { mostrar(e.response?.data?.erro || 'Erro ao criar campo.', 'erro') }
     finally { setCriando(false) }
+  }
+
+  const removerCampo = async (campoId) => {
+    try {
+      await api.patch(`/clientes/${clienteId}/campos-extras/${setor._id}/${campoId}`, { ativo: false })
+      onAtualizado && onAtualizado()
+    } catch (e) { mostrar(e.response?.data?.erro || 'Erro ao remover campo.', 'erro') }
+  }
+
+  const reativarCampo = async (campoId) => {
+    try {
+      await api.patch(`/clientes/${clienteId}/campos-extras/${setor._id}/${campoId}`, { ativo: true })
+      onAtualizado && onAtualizado()
+    } catch (e) { mostrar(e.response?.data?.erro || 'Erro ao reativar campo.', 'erro') }
+  }
+
+  const excluirCampoDeVez = async (campoId) => {
+    try {
+      await api.delete(`/clientes/${clienteId}/campos-extras/${setor._id}/${campoId}`)
+      onAtualizado && onAtualizado()
+    } catch (e) { mostrar(e.response?.data?.erro || 'Erro ao excluir campo.', 'erro') }
   }
 
   const responderPergunta = async (valor, modoVigencia) => {
@@ -1682,14 +1715,68 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
             </div>
             <p style={{ fontSize:'0.82rem', fontWeight:'700', color:'var(--texto)', margin:0 }}>Campos adicionais</p>
           </div>
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))', gap:'14px' }}>
-            {camposExtras.map(c => (
-              <Campo key={c.id} label={c.label}>
-                <CampoValor tipo={c.tipo} valor={valores[c.id]} onChange={v=>setValor(c.id, v)} disabled={!podeEditar} />
-              </Campo>
-            ))}
-          </div>
+          {(camposExtrasAtivos.length > 0 || camposExtrasRemovidosComValorAqui.length > 0) && (
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))', gap:'14px', marginBottom: camposExtrasRemovidos.length ? '16px' : 0 }}>
+              {camposExtrasAtivos.map(c => (
+                <Campo key={c.id} label={c.label}>
+                  <div style={{ display:'flex', alignItems:'center', gap:'6px' }}>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <CampoValor tipo={c.tipo} valor={valores[c.id]} onChange={v=>setValor(c.id, v)} disabled={!podeEditar} />
+                    </div>
+                    {podeEditar && (
+                      <button type="button" onClick={()=>setConfirmandoRemoverCampo(c.id)} title="Remover campo" style={{ background:'none', border:'none', color:'var(--texto-apagado)', cursor:'pointer', padding:'4px', display:'flex', flexShrink:0 }}>
+                        <Icone.X size={14}/>
+                      </button>
+                    )}
+                  </div>
+                </Campo>
+              ))}
+              {/* Removido, mas essa competência é passada e já tinha valor salvo aqui — mostra só leitura,
+                  sem botão (não reabre pra edição; gerenciar volta/exclusão fica na seção "Campos removidos"). */}
+              {camposExtrasRemovidosComValorAqui.map(c => (
+                <Campo key={c.id} label={c.label}>
+                  <CampoValor tipo={c.tipo} valor={valores[c.id]} onChange={()=>{}} disabled />
+                </Campo>
+              ))}
+            </div>
+          )}
+
+          {camposExtrasRemovidos.length > 0 && (
+            <div style={{ display:'flex', flexDirection:'column', gap:'8px' }}>
+              <p style={{ fontSize:'0.68rem', fontWeight:'700', color:'var(--texto-apagado)', textTransform:'uppercase', letterSpacing:'0.6px', margin:'0 0 2px' }}>Campos removidos</p>
+              {camposExtrasRemovidos.map(c => (
+                <div key={c.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:'10px', padding:'10px 14px', background:'var(--input)', border:'1px solid var(--borda)', borderRadius:'10px', opacity:0.6 }}>
+                  <span style={{ fontSize:'0.85rem', color:'var(--texto-apagado)' }}>{c.label}</span>
+                  {podeEditar && (
+                    <div style={{ display:'flex', gap:'8px' }}>
+                      <button type="button" onClick={()=>reativarCampo(c.id)} style={{ background:'none', border:'1px solid var(--borda)', borderRadius:'6px', color:'var(--verde)', fontSize:'0.72rem', fontWeight:'600', padding:'4px 10px', cursor:'pointer', fontFamily:'var(--fonte-corpo)' }}>Reativar</button>
+                      <button type="button" onClick={()=>setConfirmandoExcluirCampo(c.id)} style={{ background:'none', border:'1px solid var(--borda)', borderRadius:'6px', color:'#f87171', fontSize:'0.72rem', fontWeight:'600', padding:'4px 10px', cursor:'pointer', fontFamily:'var(--fonte-corpo)' }}>Excluir permanentemente</button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
+      )}
+
+      {confirmandoRemoverCampo && (
+        <ModalConfirmacao
+          titulo="Remover campo?"
+          mensagem="O campo some do formulário deste mês em diante, mas os valores já salvos em meses anteriores continuam guardados. Dá pra reativar depois."
+          textoBotao="Remover" perigo
+          onConfirmar={async () => { await removerCampo(confirmandoRemoverCampo); setConfirmandoRemoverCampo(null) }}
+          onCancelar={() => setConfirmandoRemoverCampo(null)}
+        />
+      )}
+      {confirmandoExcluirCampo && (
+        <ModalConfirmacao
+          titulo="Excluir campo de vez?"
+          mensagem="Isso remove o campo e os valores salvos dele em todos os meses. Não dá pra desfazer."
+          textoBotao="Excluir de vez" perigo
+          onConfirmar={async () => { await excluirCampoDeVez(confirmandoExcluirCampo); setConfirmandoExcluirCampo(null) }}
+          onCancelar={() => setConfirmandoExcluirCampo(null)}
+        />
       )}
 
       <div style={{ background:'var(--card)', border:'1px solid var(--borda)', borderRadius:'14px', padding:'14px 18px', marginBottom:'20px' }}>
