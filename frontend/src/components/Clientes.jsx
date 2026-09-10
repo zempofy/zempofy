@@ -299,7 +299,9 @@ const labelRegime = (v) => REGIMES.find(r=>r.value===v)?.label || v
 const labelPorte = (v) => PORTES.find(r=>r.value===v)?.label || v
 const honorarioEfetivo = (cliente) => Number(cliente.honorario) || cliente.servicosContratados?.reduce((a,sv)=>a+(Number(sv.honorarioMensal)||0),0) || 0
 const statusInfo = (v) => STATUS_OPTS.find(s=>s.value===v) || STATUS_OPTS[0]
-const formatMoeda = (v) => v ? `R$ ${Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2})}` : '—'
+// `v ? ... : '—'` trataria 0 como "vazio" e mostraria '—' num valor realmente zerado — mesma
+// pegadinha do `valor ?` no <input> de moeda de CampoValor (ver zerarSeVazio).
+const formatMoeda = (v) => (v || v === 0) ? `R$ ${Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2})}` : '—'
 const formatData = (v) => v ? new Date(v).toLocaleDateString('pt-BR') : '—'
 const isoData = (v) => v ? new Date(v).toISOString().split('T')[0] : ''
 
@@ -1221,14 +1223,23 @@ function CampoValor({ tipo, valor, onChange, disabled }) {
     if (tipo === 'booleano') return <div style={{ ...s.inp, background:'var(--card)', color: valor===false?'var(--erro)':'var(--texto)' }}>{valor===true?'Sim':valor===false?'Não':'—'}</div>
     return <div style={{ ...s.inp, background:'var(--card)', color:'var(--texto)' }}>{(valor===0?'0':valor)||'—'}</div>
   }
+  // Passar pelo campo (blur ou Enter) e deixar vazio grava 0 automaticamente — sem isso, um campo
+  // realmente zerado exigia digitar "0" na mão. Só conta como preenchido quem passou pelo campo:
+  // um campo nunca tocado continua undefined (não vira 0 sozinho).
+  const zerarSeVazio = (v) => (v === undefined || v === null || v === '') && onChange(0)
+  const blurNoEnter = (e) => e.key === 'Enter' && e.target.blur()
   if (tipo === 'moeda') {
     return <input style={s.inp}
-      value={valor ? Number(valor).toLocaleString('pt-BR',{minimumFractionDigits:2}) : ''}
+      value={(valor || valor === 0) ? Number(valor).toLocaleString('pt-BR',{minimumFractionDigits:2}) : ''}
       onChange={e => { const nums = e.target.value.replace(/\D/g,''); onChange(nums ? parseInt(nums,10)/100 : '') }}
+      onBlur={() => zerarSeVazio(valor)}
+      onKeyDown={blurNoEnter}
       placeholder="0,00" />
   }
   if (tipo === 'numero') {
-    return <input style={s.inp} type="number" value={valor ?? ''} onChange={e=>onChange(e.target.value===''?'':Number(e.target.value))} />
+    return <input style={s.inp} type="number" value={valor ?? ''} onChange={e=>onChange(e.target.value===''?'':Number(e.target.value))}
+      onBlur={() => zerarSeVazio(valor)}
+      onKeyDown={blurNoEnter} />
   }
   if (tipo === 'booleano') {
     return (
