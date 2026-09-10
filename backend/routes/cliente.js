@@ -574,6 +574,39 @@ router.patch('/:id/bancos/:setorId/:bancoId', autenticar, async (req, res) => {
   }
 });
 
+// DELETE /api/clientes/:id/bancos/:setorId/:bancoId — exclusão permanente (apaga também o
+// histórico de conferência em meses anteriores). Só permitida com o banco já inativo, mesmo
+// padrão de "inativar antes de excluir" usado no resto do sistema (Setor/Equipe/Modelos).
+router.delete('/:id/bancos/:setorId/:bancoId', autenticar, async (req, res) => {
+  try {
+    if (!temAcessoAoSetor(req.usuario, req.params.setorId)) {
+      return res.status(403).json({ erro: 'Você não tem acesso a este setor.' });
+    }
+
+    const setor = await Setor.findById(req.params.setorId).select('nome').lean();
+    if (!setor) return res.status(404).json({ erro: 'Setor não encontrado.' });
+    const setorNome = normalizarNome(setor.nome);
+
+    const cliente = await Cliente.findOne({ _id: req.params.id, empresa: req.usuario.empresa._id });
+    if (!cliente) return res.status(404).json({ erro: 'Cliente não encontrado.' });
+    if (cliente.status === 'inativo') return res.status(403).json({ erro: 'Cliente inativo — reative pra poder editar.' });
+
+    const configSetor = garantirConfigSetor(cliente, setorNome);
+    const banco = configSetor.bancos?.find(b => b.id === req.params.bancoId);
+    if (!banco) return res.status(404).json({ erro: 'Banco não encontrado.' });
+    if (banco.ativo !== false) return res.status(400).json({ erro: 'Remova o banco antes de excluir de vez.' });
+
+    configSetor.bancos = configSetor.bancos.filter(b => b.id !== req.params.bancoId);
+
+    cliente.markModified('configSetores');
+    await cliente.save();
+
+    res.json(cliente.configSetores[setorNome]);
+  } catch (err) {
+    res.status(500).json({ erro: 'Erro ao excluir banco.' });
+  }
+});
+
 // Reaproveitadas por routes/documento.js — mesmas regras de acesso a setor já usadas pra Demanda
 module.exports = router;
 module.exports.temAcessoAoSetor = temAcessoAoSetor;

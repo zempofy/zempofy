@@ -1282,8 +1282,14 @@ function BlocoExtratosBancarios({ clienteId, setor, bancos=[], competencia, valo
   const [bancoSelecionado, setBancoSelecionado] = useState('')
   const [nomeOutro, setNomeOutro] = useState('')
   const [salvando, setSalvando] = useState(false)
+  const [confirmandoRemover, setConfirmandoRemover] = useState(null) // bancoId | null
+  const [confirmandoExcluir, setConfirmandoExcluir] = useState(null) // bancoId | null
 
   const bancosAtivos = bancos.filter(b => bancoVigenteEm(b, competencia))
+  // Inativos já introduzidos até esta competência (mesmo gate de adicionadoNaCompetencia do
+  // bancoVigenteEm) — independente de quando exatamente foram desativados, pra sempre dar pra
+  // gerenciar (reativar/excluir) um banco removido a partir de qualquer mês em que ele já existia.
+  const bancosRemovidos = bancos.filter(b => b.ativo === false && (!b.adicionadoNaCompetencia || b.adicionadoNaCompetencia <= competencia))
 
   const adicionar = async () => {
     const nome = bancoSelecionado === 'outro' ? nomeOutro.trim() : BANCOS_SUGERIDOS.find(b=>b.value===bancoSelecionado)?.label
@@ -1303,6 +1309,20 @@ function BlocoExtratosBancarios({ clienteId, setor, bancos=[], competencia, valo
       await api.patch(`/clientes/${clienteId}/bancos/${setor._id}/${bancoId}`, { ativo: false, competencia })
       onBancosAtualizados && onBancosAtualizados()
     } catch (e) { mostrar(e.response?.data?.erro || 'Erro ao remover banco.', 'erro') }
+  }
+
+  const reativar = async (bancoId) => {
+    try {
+      await api.patch(`/clientes/${clienteId}/bancos/${setor._id}/${bancoId}`, { ativo: true, competencia })
+      onBancosAtualizados && onBancosAtualizados()
+    } catch (e) { mostrar(e.response?.data?.erro || 'Erro ao reativar banco.', 'erro') }
+  }
+
+  const excluirDeVez = async (bancoId) => {
+    try {
+      await api.delete(`/clientes/${clienteId}/bancos/${setor._id}/${bancoId}`)
+      onBancosAtualizados && onBancosAtualizados()
+    } catch (e) { mostrar(e.response?.data?.erro || 'Erro ao excluir banco.', 'erro') }
   }
 
   return (
@@ -1326,11 +1346,28 @@ function BlocoExtratosBancarios({ clienteId, setor, bancos=[], competencia, valo
               <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
                 <CampoValor tipo="booleano" valor={valoresExtratos[b.id]} onChange={v=>onChangeExtrato(b.id, v)} disabled={!podeEditar} />
                 {podeEditar && (
-                  <button type="button" onClick={()=>desativar(b.id)} title="Remover banco" style={{ background:'none', border:'none', color:'var(--texto-apagado)', cursor:'pointer', padding:'4px', display:'flex' }}>
+                  <button type="button" onClick={()=>setConfirmandoRemover(b.id)} title="Remover banco" style={{ background:'none', border:'none', color:'var(--texto-apagado)', cursor:'pointer', padding:'4px', display:'flex' }}>
                     <Icone.X size={14}/>
                   </button>
                 )}
               </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {bancosRemovidos.length > 0 && (
+        <div style={{ display:'flex', flexDirection:'column', gap:'8px', marginBottom: podeEditar ? '14px' : 0 }}>
+          <p style={{ fontSize:'0.68rem', fontWeight:'700', color:'var(--texto-apagado)', textTransform:'uppercase', letterSpacing:'0.6px', margin:'0 0 2px' }}>Bancos removidos</p>
+          {bancosRemovidos.map(b => (
+            <div key={b.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:'10px', padding:'10px 14px', background:'var(--input)', border:'1px solid var(--borda)', borderRadius:'10px', opacity:0.6 }}>
+              <span style={{ fontSize:'0.85rem', color:'var(--texto-apagado)' }}>{b.nome}</span>
+              {podeEditar && (
+                <div style={{ display:'flex', gap:'8px' }}>
+                  <button type="button" onClick={()=>reativar(b.id)} style={{ background:'none', border:'1px solid var(--borda)', borderRadius:'6px', color:'var(--verde)', fontSize:'0.72rem', fontWeight:'600', padding:'4px 10px', cursor:'pointer', fontFamily:'var(--fonte-corpo)' }}>Reativar</button>
+                  <button type="button" onClick={()=>setConfirmandoExcluir(b.id)} style={{ background:'none', border:'1px solid var(--borda)', borderRadius:'6px', color:'#f87171', fontSize:'0.72rem', fontWeight:'600', padding:'4px 10px', cursor:'pointer', fontFamily:'var(--fonte-corpo)' }}>Excluir permanentemente</button>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -1362,6 +1399,25 @@ function BlocoExtratosBancarios({ clienteId, setor, bancos=[], competencia, valo
           + Adicionar banco
         </button>
       ))}
+
+      {confirmandoRemover && (
+        <ModalConfirmacao
+          titulo="Remover banco?"
+          mensagem="O banco some da lista deste mês em diante, mas continua nos meses anteriores. Dá pra reativar depois."
+          textoBotao="Remover" perigo
+          onConfirmar={async () => { await desativar(confirmandoRemover); setConfirmandoRemover(null) }}
+          onCancelar={() => setConfirmandoRemover(null)}
+        />
+      )}
+      {confirmandoExcluir && (
+        <ModalConfirmacao
+          titulo="Excluir banco de vez?"
+          mensagem="Isso remove o banco e o histórico de conferência dele em todos os meses. Não dá pra desfazer."
+          textoBotao="Excluir de vez" perigo
+          onConfirmar={async () => { await excluirDeVez(confirmandoExcluir); setConfirmandoExcluir(null) }}
+          onCancelar={() => setConfirmandoExcluir(null)}
+        />
+      )}
     </div>
   )
 }
