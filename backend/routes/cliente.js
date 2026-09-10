@@ -6,7 +6,7 @@ const Implantacao = require('../models/Implantacao');
 const LancamentoSetor = require('../models/LancamentoSetor');
 const Setor = require('../models/Setor');
 const { clienteCreateSchema, clienteUpdateSchema, validar } = require('../validacao');
-const { competenciaAtual, resolverPorVigencia, aplicarMudancaComHistorico, buscarCompetenciaMaisAntiga, prepararHistoricoParaMudanca } = require('../services/historicoVigencia');
+const { competenciaAtual, competenciaAtualDoSetor, resolverPorVigencia, aplicarMudancaComHistorico, buscarCompetenciaMaisAntiga, prepararHistoricoParaMudanca } = require('../services/historicoVigencia');
 
 const router = express.Router();
 
@@ -265,7 +265,7 @@ const podeEditarCompetencia = (usuario, setorId, competencia, clienteAtivo, seto
   if (!temAcesso) return false;
   const ehResponsavel = !!responsavelSetor && responsavelSetor.toString() === usuario._id.toString();
   if (usuario.cargo === 'admin' || ehResponsavel) return true;
-  if (setorNome === 'contabil' || competencia >= competenciaAtual()) return true;
+  if (setorNome === 'contabil' || competencia >= competenciaAtualDoSetor(setorNome)) return true;
   return !temDadosSalvos;
 };
 
