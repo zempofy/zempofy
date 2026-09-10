@@ -97,8 +97,9 @@ router.get('/demandas/:setorId/:competencia', autenticar, async (req, res) => {
       .lean();
 
     const lancamentos = await LancamentoSetor.find({ empresa: req.usuario.empresa._id, setor: setorId, competencia })
-      .select('cliente dados').lean();
+      .select('cliente dados camposIsentos').lean();
     const dadosPorCliente = new Map(lancamentos.map(l => [l.cliente.toString(), l.dados || {}]));
+    const isentosPorCliente = new Map(lancamentos.map(l => [l.cliente.toString(), l.camposIsentos || []]));
     // existe: true só quando o lançamento realmente foi salvo pra essa competência (documento
     // encontrado no banco) — diferente de "não existe" (nunca clicou em Salvar), que resulta no
     // mesmo dados:{} por fora mas precisa contar como pendente quando não há campo nenhum pra preencher.
@@ -123,6 +124,7 @@ router.get('/demandas/:setorId/:competencia', autenticar, async (req, res) => {
       regime: resolverPorVigencia(c.historicoRegime, competencia, c.regime),
       situacao: resolverPorVigencia(c.configSetores?.[setorNome]?.historicoSituacao, competencia, c.configSetores?.[setorNome]?.situacao),
       dados: dadosPorCliente.get(c._id.toString()) || {},
+      camposIsentos: isentosPorCliente.get(c._id.toString()) || [],
       existe: existePorCliente.has(c._id.toString()),
       temAnexo: comDocSet.has(c._id.toString()),
     })));

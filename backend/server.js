@@ -471,6 +471,52 @@ mongoose.connect(process.env.MONGODB_URI)
       console.error('⚠️ Erro na migração da lixeira de documentos:', err.message);
     }
 
+    // ── Migração Fiscal: isentar dos 3 campos novos (irRetido, csllRetido, crf) os
+    // lançamentos que já estavam concluídos ANTES desses campos existirem ──
+    try {
+      const LancamentoSetor = require('./models/LancamentoSetor');
+      const Setor = require('./models/Setor');
+      const Cliente = require('./models/Cliente');
+      const { resolverPorVigencia } = require('./services/historicoVigencia');
+
+      const CAMPOS_NOVOS_FISCAL = ['irRetido', 'csllRetido', 'crf'];
+      // Lista de campos do Lucro Presumido/Real ANTES desta spec — hardcoded aqui de propósito,
+      // não importar de CONFIG_DEMANDA (que já vai estar com os campos novos por essa altura).
+      const CAMPOS_ANTIGOS_LUCRO = [
+        'totalVendas','totalServicos','pis','cofins','irpj','csll','issProprio','issRetido','icmsAntecipado','icmsDifal'
+      ];
+
+      // Multi-tenant: cada empresa tem seu próprio Setor "Fiscal" (documento separado) — um
+      // findOne() sem filtrar por empresa pegaria só o primeiro do banco inteiro e deixaria as
+      // demais empresas com camposIsentos nunca preenchido, reabrindo Fiscal concluído nelas.
+      const setoresFiscal = await Setor.find({ nome: /^fiscal$/i }).select('_id').lean();
+      if (setoresFiscal.length) {
+        const candidatos = await LancamentoSetor.find({
+          setor: { $in: setoresFiscal.map(s => s._id) },
+          camposIsentos: { $exists: false },
+        });
+        let isentados = 0;
+        for (const l of candidatos) {
+          const cliente = await Cliente.findById(l.cliente).select('regime historicoRegime').lean();
+          const regime = resolverPorVigencia(cliente?.historicoRegime, l.competencia, cliente?.regime);
+          if (regime !== 'lucro_presumido' && regime !== 'lucro_real') continue; // Simples não usa esses campos
+          const jaEstavaCompleto = CAMPOS_ANTIGOS_LUCRO.every(id => {
+            const v = l.dados?.[id];
+            return !(v === undefined || v === null || v === '');
+          });
+          if (jaEstavaCompleto) {
+            await LancamentoSetor.updateOne({ _id: l._id }, { $set: { camposIsentos: CAMPOS_NOVOS_FISCAL } });
+            isentados++;
+          } else {
+            await LancamentoSetor.updateOne({ _id: l._id }, { $set: { camposIsentos: [] } });
+          }
+        }
+        if (isentados > 0) console.log(`✅ Migração: ${isentados} lançamento(s) fiscal(is) isentados dos campos novos.`);
+      }
+    } catch (err) {
+      console.error('⚠️ Erro na migração de campos novos do Fiscal:', err.message);
+    }
+
     app.listen(PORT, () => console.log(`🚀 Servidor rodando na porta ${PORT}`));
   })
   .catch(err => console.error('❌ Erro ao conectar ao MongoDB:', err));

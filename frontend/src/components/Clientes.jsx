@@ -138,6 +138,9 @@ const CONFIG_DEMANDA = {
         { id:'issRetido', label:'ISS retido', tipo:'moeda' },
         { id:'icmsAntecipado', label:'ICMS antecipação', tipo:'moeda' },
         { id:'icmsDifal', label:'ICMS difal', tipo:'moeda' },
+        { id:'irRetido', label:'IR retido', tipo:'moeda' },
+        { id:'csllRetido', label:'CSLL retido', tipo:'moeda' },
+        { id:'crf', label:'CRF', tipo:'moeda' },
       ],
       lucro_real: [
         { id:'totalVendas', label:'Venda', tipo:'moeda' },
@@ -151,6 +154,9 @@ const CONFIG_DEMANDA = {
         { id:'issRetido', label:'ISS retido', tipo:'moeda' },
         { id:'icmsAntecipado', label:'ICMS antecipação', tipo:'moeda' },
         { id:'icmsDifal', label:'ICMS difal', tipo:'moeda' },
+        { id:'irRetido', label:'IR retido', tipo:'moeda' },
+        { id:'csllRetido', label:'CSLL retido', tipo:'moeda' },
+        { id:'crf', label:'CRF', tipo:'moeda' },
       ],
       // mei: definir campos quando for a vez
     }
@@ -272,6 +278,7 @@ const statusDemanda = (setorNome, item, competencia) => {
     return 'pendente'
   }
   const completo = campos.every(c => {
+    if (item.camposIsentos?.includes(c.id)) return true // isento pra este lançamento específico
     const v = item.dados?.[c.id]
     return !(v === undefined || v === null || v === '')
   })
@@ -842,8 +849,8 @@ function FormCliente({ cliente, fechar, onSalvo }) {
             return lancamentos
               .filter(l => {
                 const regimeAtualResolvido = resolverPorVigencia(cliente.historicoRegime, l.competencia, cliente.regime)
-                const statusAtual = statusDemanda('fiscal', { regime: regimeAtualResolvido, dados: l.dados, existe: true }, l.competencia)
-                const statusNovo = statusDemanda('fiscal', { regime: form.regime, dados: l.dados, existe: true }, l.competencia)
+                const statusAtual = statusDemanda('fiscal', { regime: regimeAtualResolvido, dados: l.dados, camposIsentos: l.camposIsentos, existe: true }, l.competencia)
+                const statusNovo = statusDemanda('fiscal', { regime: form.regime, dados: l.dados, camposIsentos: l.camposIsentos, existe: true }, l.competencia)
                 return statusAtual === 'concluido' && statusNovo === 'pendente'
               })
               .map(l => l.competencia)
