@@ -206,15 +206,18 @@ export default function Demandas() {
               onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(0,177,65,0.3)'}
               onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--borda)'}>
               <span style={{ fontSize: '0.86rem', fontWeight: '600', color: 'var(--texto)', fontFamily: 'var(--fonte-corpo)' }}>{d.nome || '—'}</span>
-              {d._status === 'concluido' ? (
-                <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.72rem', fontWeight: '700', color: 'var(--verde)', fontFamily: 'var(--fonte-corpo)' }}>
-                  <Icone.Check size={12} /> Concluído
-                </span>
-              ) : (
-                <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.72rem', fontWeight: '700', color: '#f59e0b', fontFamily: 'var(--fonte-corpo)' }}>
-                  <Icone.Circle size={8} /> Pendente
-                </span>
-              )}
+              <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                {d.temAnexo && <Icone.Paperclip size={13} style={{ color: 'var(--texto-apagado)' }} title="Tem anexo" />}
+                {d._status === 'concluido' ? (
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.72rem', fontWeight: '700', color: 'var(--verde)', fontFamily: 'var(--fonte-corpo)' }}>
+                    <Icone.Check size={12} /> Concluído
+                  </span>
+                ) : (
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.72rem', fontWeight: '700', color: '#f59e0b', fontFamily: 'var(--fonte-corpo)' }}>
+                    <Icone.Circle size={8} /> Pendente
+                  </span>
+                )}
+              </span>
             </div>
           ))}
         </div>

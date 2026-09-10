@@ -5,6 +5,7 @@ const Cliente = require('../models/Cliente');
 const Implantacao = require('../models/Implantacao');
 const LancamentoSetor = require('../models/LancamentoSetor');
 const Setor = require('../models/Setor');
+const Documento = require('../models/Documento');
 const { clienteCreateSchema, clienteUpdateSchema, validar } = require('../validacao');
 const { competenciaAtual, competenciaAtualDoSetor, resolverPorVigencia, aplicarMudancaComHistorico, buscarCompetenciaMaisAntiga, prepararHistoricoParaMudanca } = require('../services/historicoVigencia');
 
@@ -103,6 +104,18 @@ router.get('/demandas/:setorId/:competencia', autenticar, async (req, res) => {
     // mesmo dados:{} por fora mas precisa contar como pendente quando não há campo nenhum pra preencher.
     const existePorCliente = new Set(lancamentos.map(l => l.cliente.toString()));
 
+    // Busca em lote (não 1 chamada por cliente) quais clientes têm pelo menos um documento
+    // dessa competência/setor — mesmo filtro de "não excluído" usado em documento.js, pra não
+    // contar um documento já mandado pra lixeira como anexo existente.
+    const clientesComDoc = await Documento.distinct('cliente', {
+      empresa: req.usuario.empresa._id,
+      tipo: 'demanda',
+      setor: setorId,
+      competencia,
+      excluido: { $ne: true },
+    });
+    const comDocSet = new Set(clientesComDoc.map(id => id.toString()));
+
     res.json(clientes.map(c => ({
       clienteId: c._id,
       nome: c.razaoSocial || c.nomeFantasia,
@@ -111,6 +124,7 @@ router.get('/demandas/:setorId/:competencia', autenticar, async (req, res) => {
       situacao: resolverPorVigencia(c.configSetores?.[setorNome]?.historicoSituacao, competencia, c.configSetores?.[setorNome]?.situacao),
       dados: dadosPorCliente.get(c._id.toString()) || {},
       existe: existePorCliente.has(c._id.toString()),
+      temAnexo: comDocSet.has(c._id.toString()),
     })));
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao buscar demandas.' });
