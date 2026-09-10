@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import * as XLSX from 'xlsx'
 import api from '../services/api'
 import Icone from './Icones'
 import { useAuth } from '../contexts/AuthContext'
@@ -106,6 +107,23 @@ export default function Demandas() {
     { id: 'concluido', label: 'Concluído' },
   ]
 
+  const exportarExcel = () => {
+    const cabecalho = ['CLIENTE', 'STATUS', 'COMPETÊNCIA']
+    const linhas = filtrados.map(d => ({
+      'CLIENTE': d.nome || '',
+      'STATUS': d._status === 'concluido' ? 'Concluído' : 'Pendente',
+      'COMPETÊNCIA': `${nomeMes(competencia)} ${competencia.slice(0,4)}`,
+    }))
+    const ws = XLSX.utils.json_to_sheet(linhas, { header: cabecalho })
+    cabecalho.forEach((_, i) => {
+      const endereco = XLSX.utils.encode_cell({ r: 0, c: i })
+      if (ws[endereco]) ws[endereco].s = { font: { bold: true } }
+    })
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Demandas')
+    XLSX.writeFile(wb, `demandas-${setorNome}-${competencia}.xlsx`)
+  }
+
   return (
     <div>
       <div style={{ marginBottom: '20px' }}>
@@ -190,6 +208,9 @@ export default function Demandas() {
             style={{ width: '100%', boxSizing: 'border-box', padding: '7px 12px 7px 32px', borderRadius: '8px', border: '1px solid var(--borda)', background: 'var(--input)', color: 'var(--texto)', fontSize: '0.8rem', fontFamily: 'var(--fonte-corpo)' }}
           />
         </div>
+        <button onClick={exportarExcel} style={{ padding: '7px 14px', borderRadius: '8px', fontSize: '0.78rem', fontWeight: '600', cursor: 'pointer', fontFamily: 'var(--fonte-corpo)', border: '1px solid var(--borda)', background: 'none', color: 'var(--texto)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <Icone.Download size={14}/> Exportar
+        </button>
       </div>
 
       {/* Lista */}
