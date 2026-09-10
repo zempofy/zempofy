@@ -2,35 +2,9 @@ import { useState, useEffect, useRef } from 'react'
 import api from '../services/api'
 import Icone from './Icones'
 import { useAuth } from '../contexts/AuthContext'
-import Clientes, { CONFIG_DEMANDA, blocosFixosDoSetor, normalizarNome, competenciaPadraoDoSetor, nomeMes, INICIO_DEMANDA_ANO } from './Clientes'
+import Clientes, { CONFIG_DEMANDA, statusDemanda, normalizarNome, competenciaPadraoDoSetor, nomeMes, INICIO_DEMANDA_ANO } from './Clientes'
 
 const mesmoSetor = (a, b) => (a?._id || a) === (b?._id || b)
-
-// Todos os campos configurados pra esse setor/regime/situação naquele mês (exceto tipo 'calculado',
-// que nunca é salvo — ver spec do campo Faturamento total) preenchidos em `dados` = concluído
-const statusDemanda = (setorNome, item, competencia) => {
-  const config = CONFIG_DEMANDA[setorNome]
-  const blocos = blocosFixosDoSetor(config, { regime: item.regime, situacao: item.situacao, competencia })
-  const campos = blocos.flatMap(b => b.campos).filter(c => c.tipo !== 'calculado')
-  if (campos.length === 0) {
-    // Setor por regime (Fiscal): 0 campos = regime ainda não definido = pendente de verdade.
-    // Setor por situação (DP/Contábil): se a situação já foi respondida mas esse mês específico
-    // não tem nenhum módulo ativo (ex: Contábil trimestral fora de mar/jun/set/dez, ou sem banco
-    // cadastrado), mesmo sem campo pra preencher ainda existe algo a confirmar — só conta como
-    // concluído se o lançamento dessa competência já foi salvo de verdade (alguém clicou em
-    // "Salvar competência"), não automaticamente.
-    if (config?.modulos && item.situacao) return item.existe ? 'concluido' : 'pendente'
-    return 'pendente'
-  }
-  const completo = campos.every(c => {
-    const v = item.dados?.[c.id]
-    return !(v === undefined || v === null || v === '')
-  })
-  // Pergunta booleana marcada como "Não" conta como preenchida, mas ainda precisa de atenção —
-  // campo com pendenteSeNao mantém a competência pendente mesmo com tudo mais respondido.
-  const algumNaoPendente = campos.some(c => c.pendenteSeNao && item.dados?.[c.id] === false)
-  return (completo && !algumNaoPendente) ? 'concluido' : 'pendente'
-}
 
 const mudarCompetencia = (competencia, delta) => {
   const [ano, mes] = competencia.split('-').map(Number)

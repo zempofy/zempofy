@@ -253,6 +253,45 @@ const blocosFixosDoSetor = (config, { regime, situacao, competencia }) => {
   return []
 }
 
+// Todos os campos configurados pra esse setor/regime/situação naquele mês (exceto tipo 'calculado',
+// que nunca é salvo — ver spec do campo Faturamento total) preenchidos em `dados` = concluído.
+// Movida de Demandas.jsx pra cá (e exportada) porque o aviso de "Desde o início" (ModalVigenciaMudanca)
+// também precisa simular esse status pra saber quais competências já concluídas seriam reabertas.
+const statusDemanda = (setorNome, item, competencia) => {
+  const config = CONFIG_DEMANDA[setorNome]
+  const blocos = blocosFixosDoSetor(config, { regime: item.regime, situacao: item.situacao, competencia })
+  const campos = blocos.flatMap(b => b.campos).filter(c => c.tipo !== 'calculado')
+  if (campos.length === 0) {
+    // Setor por regime (Fiscal): 0 campos = regime ainda não definido = pendente de verdade.
+    // Setor por situação (DP/Contábil): se a situação já foi respondida mas esse mês específico
+    // não tem nenhum módulo ativo (ex: Contábil trimestral fora de mar/jun/set/dez, ou sem banco
+    // cadastrado), mesmo sem campo pra preencher ainda existe algo a confirmar — só conta como
+    // concluído se o lançamento dessa competência já foi salvo de verdade (alguém clicou em
+    // "Salvar competência"), não automaticamente.
+    if (config?.modulos && item.situacao) return item.existe ? 'concluido' : 'pendente'
+    return 'pendente'
+  }
+  const completo = campos.every(c => {
+    const v = item.dados?.[c.id]
+    return !(v === undefined || v === null || v === '')
+  })
+  // Pergunta booleana marcada como "Não" conta como preenchida, mas ainda precisa de atenção —
+  // campo com pendenteSeNao mantém a competência pendente mesmo com tudo mais respondido.
+  const algumNaoPendente = campos.some(c => c.pendenteSeNao && item.dados?.[c.id] === false)
+  return (completo && !algumNaoPendente) ? 'concluido' : 'pendente'
+}
+
+// Espelha backend/services/historicoVigencia.js — precisa existir também no frontend pra
+// ModalVigenciaMudanca simular, ANTES de confirmar, qual seria o valor resolvido de cada
+// competência sob o histórico atual (o "depois" do modo 'inicio' não precisa disso: vira
+// sempre o valor novo puro, ver comentário em calcularReabertos).
+const resolverPorVigencia = (historico, competencia, fallback) => {
+  if (!historico?.length) return fallback
+  const ordenado = [...historico].sort((a, b) => a.vigenteDesde.localeCompare(b.vigenteDesde))
+  const validos = ordenado.filter(h => h.vigenteDesde <= competencia)
+  return (validos.at(-1) || ordenado[0]).valor
+}
+
 const MESES_NOME = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
 const nomeMes = (competencia) => MESES_NOME[Number(competencia.slice(5,7))-1]
 
@@ -300,16 +339,34 @@ function InfoLinha({ label, valor }) {
 }
 
 // ── Diálogo de vigência: pergunta a partir de quando uma mudança de regime/situação passa a valer ──
-function ModalVigenciaMudanca({ onEscolher, onCancelar }) {
+// `calcularReabertos` (opcional): async () => ['YYYY-MM', ...] — competências que hoje resolvem
+// pra "concluído" e passariam a "pendente" se o modo 'inicio' for confirmado. Cada chamador
+// (regime no FormCliente, situação no FormularioCompetencia) sabe montar essa simulação com os
+// dados que já tem à mão; o modal só dispara o cálculo quando "Desde o início" é selecionado e
+// mostra o resultado antes do botão final de confirmar.
+function ModalVigenciaMudanca({ onEscolher, onCancelar, calcularReabertos }) {
   const agora = competenciaAtual()
   const mesAtualLabel = `${nomeMes(agora)} de ${agora.slice(0,4)}`
   const [selecionado, setSelecionado] = useState(null)
   const [salvando, setSalvando] = useState(false)
+  const [reabertos, setReabertos] = useState(null) // null = ainda não calculado
+  const [calculando, setCalculando] = useState(false)
 
   const OPCOES = [
     { valor:'agora', titulo:'A partir de agora', sufixo:' (recomendado)', desc:`Os meses já preenchidos continuam exatamente como estavam. Vale a partir da competência atual (${mesAtualLabel}), independente do mês que você está vendo agora.` },
     { valor:'inicio', titulo:'Desde o início', sufixo:'', desc:'Corrige também os meses já preenchidos com essa configuração. Use se a configuração inicial estava errada.' },
   ]
+
+  const selecionar = (valor) => {
+    setSelecionado(valor)
+    if (valor === 'inicio' && calcularReabertos && reabertos === null) {
+      setCalculando(true)
+      calcularReabertos()
+        .then(lista => setReabertos(lista))
+        .catch(() => setReabertos([]))
+        .finally(() => setCalculando(false))
+    }
+  }
 
   const confirmar = async () => {
     if (!selecionado) return
@@ -327,7 +384,7 @@ function ModalVigenciaMudanca({ onEscolher, onCancelar }) {
           {OPCOES.map(op => {
             const marcado = selecionado===op.valor
             return (
-              <button key={op.valor} onClick={()=>setSelecionado(op.valor)} style={{
+              <button key={op.valor} onClick={()=>selecionar(op.valor)} style={{
                 textAlign:'left', padding:'14px 16px', borderRadius:'10px', cursor:'pointer', fontFamily:'var(--fonte-corpo)',
                 border:`1px solid ${marcado?'rgba(0,177,65,0.4)':'var(--borda)'}`,
                 background: marcado?'rgba(0,177,65,0.08)':'var(--card)',
@@ -342,10 +399,22 @@ function ModalVigenciaMudanca({ onEscolher, onCancelar }) {
               </button>
             )
           })}
+          {selecionado === 'inicio' && calcularReabertos && (
+            <div style={{ display:'flex', gap:'8px', alignItems:'flex-start', padding:'10px 14px', borderRadius:'8px', background:'rgba(245,158,11,0.08)', border:'1px solid rgba(245,158,11,0.25)' }}>
+              <Icone.AlertTriangle size={14} style={{ color:'#f59e0b', flexShrink:0, marginTop:'2px' }}/>
+              <p style={{ fontSize:'0.78rem', color:'var(--texto)', margin:0, lineHeight:'1.4' }}>
+                {calculando
+                  ? 'Verificando meses já concluídos...'
+                  : reabertos?.length
+                    ? `Isso vai reabrir ${reabertos.length} ${reabertos.length===1?'mês já concluído':'meses já concluídos'}: ${reabertos.map(c=>`${nomeMes(c)}/${c.slice(0,4)}`).join(', ')}.`
+                    : 'Nenhum mês já concluído será reaberto por essa mudança.'}
+              </p>
+            </div>
+          )}
         </div>
         <div style={s.modalRodape}>
           <button style={s.btnCanc} onClick={onCancelar}>Cancelar</button>
-          <button style={s.btnSalv} onClick={confirmar} disabled={!selecionado || salvando}>{salvando?'Salvando...':'Salvar'}</button>
+          <button style={s.btnSalv} onClick={confirmar} disabled={!selecionado || salvando || calculando}>{salvando?'Salvando...':'Salvar'}</button>
         </div>
       </div>
     </div>, document.body
@@ -763,6 +832,21 @@ function FormCliente({ cliente, fechar, onSalvo }) {
         <ModalVigenciaMudanca
           onEscolher={(modo) => { setPedindoVigenciaRegime(false); executarSalvar(modo) }}
           onCancelar={()=>setPedindoVigenciaRegime(false)}
+          calcularReabertos={!setorFiscal ? null : async () => {
+            // Modo 'inicio' reescreve o histórico pra uma única entrada — resolverPorVigencia
+            // sempre cai nela, então o valor resolvido de QUALQUER competência já lançada vira
+            // exatamente form.regime, sem precisar simular vigenteDesde/competenciaMaisAntiga.
+            const { data: lancamentos } = await api.get(`/clientes/${cliente._id}/lancamentos/${setorFiscal._id}`)
+            return lancamentos
+              .filter(l => {
+                const regimeAtualResolvido = resolverPorVigencia(cliente.historicoRegime, l.competencia, cliente.regime)
+                const statusAtual = statusDemanda('fiscal', { regime: regimeAtualResolvido, dados: l.dados, existe: true }, l.competencia)
+                const statusNovo = statusDemanda('fiscal', { regime: form.regime, dados: l.dados, existe: true }, l.competencia)
+                return statusAtual === 'concluido' && statusNovo === 'pendente'
+              })
+              .map(l => l.competencia)
+              .sort()
+          }}
         />
       )}
     </div>
@@ -1433,6 +1517,22 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
           <ModalVigenciaMudanca
             onEscolher={async (modo) => { await responderPergunta(valorVigenciaPendente, modo); setValorVigenciaPendente(null); setEditandoSituacao(false) }}
             onCancelar={()=>setValorVigenciaPendente(null)}
+            calcularReabertos={async () => {
+              // Mesmo raciocínio do regime (ver FormCliente): modo 'inicio' faz resolverPorVigencia
+              // cair sempre na entrada nova, então o valor resolvido de QUALQUER competência já
+              // lançada vira exatamente valorVigenciaPendente.
+              const setorNomeNorm = normalizarNome(setor.nome)
+              const { data: lancamentos } = await api.get(`/clientes/${clienteId}/lancamentos/${setor._id}`)
+              return lancamentos
+                .filter(l => {
+                  const situacaoAtualResolvida = resolverPorVigencia(configSetor?.historicoSituacao, l.competencia, situacao)
+                  const statusAtual = statusDemanda(setorNomeNorm, { situacao: situacaoAtualResolvida, dados: l.dados, existe: true }, l.competencia)
+                  const statusNovo = statusDemanda(setorNomeNorm, { situacao: valorVigenciaPendente, dados: l.dados, existe: true }, l.competencia)
+                  return statusAtual === 'concluido' && statusNovo === 'pendente'
+                })
+                .map(l => l.competencia)
+                .sort()
+            }}
           />
         )}
       </div>
@@ -2097,4 +2197,4 @@ const s = {
 
 // Reaproveitado pela tela Demandas — mesma lógica de campos configurados por setor/regime/situação,
 // pra não duplicar o critério de "pendente vs concluído"
-export { CONFIG_DEMANDA, blocosFixosDoSetor, normalizarNome, competenciaAtual, competenciaDefasada, competenciaPadraoDoSetor, nomeMes, MESES_NOME, MESES_LABEL, INICIO_DEMANDA_ANO }
+export { CONFIG_DEMANDA, blocosFixosDoSetor, statusDemanda, normalizarNome, competenciaAtual, competenciaDefasada, competenciaPadraoDoSetor, nomeMes, MESES_NOME, MESES_LABEL, INICIO_DEMANDA_ANO }
