@@ -2384,4 +2384,4 @@ const s = {
 
 // Reaproveitado pela tela Demandas — mesma lógica de campos configurados por setor/regime/situação,
 // pra não duplicar o critério de "pendente vs concluído"
-export { CONFIG_DEMANDA, blocosFixosDoSetor, statusDemanda, normalizarNome, competenciaAtual, competenciaDefasada, competenciaPadraoDoSetor, nomeMes, MESES_NOME, MESES_LABEL, INICIO_DEMANDA_ANO }
+export { CONFIG_DEMANDA, blocosFixosDoSetor, statusDemanda, SUBFILTROS_POR_SETOR, normalizarNome, competenciaAtual, competenciaDefasada, competenciaPadraoDoSetor, nomeMes, MESES_NOME, MESES_LABEL, INICIO_DEMANDA_ANO }
