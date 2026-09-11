@@ -125,6 +125,7 @@ router.get('/demandas/:setorId/:competencia', autenticar, async (req, res) => {
       situacao: resolverPorVigencia(c.configSetores?.[setorNome]?.historicoSituacao, competencia, c.configSetores?.[setorNome]?.situacao),
       dados: dadosPorCliente.get(c._id.toString()) || {},
       camposIsentos: isentosPorCliente.get(c._id.toString()) || [],
+      bancos: c.configSetores?.contabil?.bancos || [],
       existe: existePorCliente.has(c._id.toString()),
       temAnexo: comDocSet.has(c._id.toString()),
     })));
