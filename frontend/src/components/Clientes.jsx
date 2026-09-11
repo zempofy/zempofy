@@ -271,6 +271,18 @@ const statusDemanda = (setorNome, item, competencia) => {
   const config = CONFIG_DEMANDA[setorNome]
   const blocos = blocosFixosDoSetor(config, { regime: item.regime, situacao: item.situacao, competencia })
   const campos = blocos.flatMap(b => b.campos).filter(c => c.tipo !== 'calculado')
+
+  // Extratos Bancários (Contábil) vivem fora de `campos` — cada banco é Sim/Não à parte, em
+  // dados.extratos[bancoId]. Contam só pra diferenciar Pendente de Incompleto (pelo menos um
+  // banco já respondido), nunca pra exigir "todos os bancos" em Concluído — isso continua
+  // dependendo só de contabilFeito, senão um cliente já concluído hoje com um banco novo ainda
+  // sem marcar regrediria pra Incompleto do nada (mesmo risco que a Spec 11 evitou pro Fiscal).
+  const bancosVigentes = config?.temBancos ? (item.bancos || []).filter(b => bancoVigenteEm(b, competencia)) : []
+  const algumBancoPreenchido = bancosVigentes.some(b => {
+    const v = item.dados?.extratos?.[b.id]
+    return !(v === undefined || v === null || v === '')
+  })
+
   if (campos.length === 0) {
     // Setor por regime (Fiscal): 0 campos = regime ainda não definido = pendente de verdade.
     // Setor por situação (DP/Contábil): se a situação já foi respondida mas esse mês específico
@@ -279,7 +291,7 @@ const statusDemanda = (setorNome, item, competencia) => {
     // concluído se o lançamento dessa competência já foi salvo de verdade (alguém clicou em
     // "Salvar competência"), não automaticamente.
     if (config?.modulos && item.situacao) return item.existe ? 'concluido' : 'pendente'
-    return 'pendente'
+    return algumBancoPreenchido ? 'incompleto' : 'pendente'
   }
   const camposObrigatorios = campos.filter(c => !item.camposIsentos?.includes(c.id))
   if (camposObrigatorios.length === 0) return 'concluido' // tudo isento, nada exigido deste lançamento
@@ -288,8 +300,8 @@ const statusDemanda = (setorNome, item, competencia) => {
   // campo com pendenteSeNao mantém a competência pendente mesmo com tudo mais respondido.
   const algumNaoPendente = camposObrigatorios.some(c => c.pendenteSeNao && item.dados?.[c.id] === false)
   if (algumNaoPendente) return 'pendente' // resposta explícita ainda pede atenção — não é "faltando dado"
-  if (camposObrigatorios.every(preenchido)) return 'concluido'
-  if (camposObrigatorios.some(preenchido)) return 'incompleto'
+  if (camposObrigatorios.every(preenchido)) return 'concluido' // continua sem exigir banco
+  if (camposObrigatorios.some(preenchido) || algumBancoPreenchido) return 'incompleto'
   return 'pendente'
 }
 
@@ -1656,8 +1668,10 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
               return lancamentos
                 .filter(l => {
                   const situacaoAtualResolvida = resolverPorVigencia(configSetor?.historicoSituacao, l.competencia, situacao)
-                  const statusAtual = statusDemanda(setorNomeNorm, { situacao: situacaoAtualResolvida, dados: l.dados, existe: true }, l.competencia)
-                  const statusNovo = statusDemanda(setorNomeNorm, { situacao: valorVigenciaPendente, dados: l.dados, existe: true }, l.competencia)
+                  // configSetor já É cliente.configSetores[setorNomeNorm] — pra Contábil, é dali que
+                  // vêm os bancos cadastrados (DP não tem bancos; statusDemanda ignora sem config.temBancos).
+                  const statusAtual = statusDemanda(setorNomeNorm, { situacao: situacaoAtualResolvida, dados: l.dados, bancos: configSetor?.bancos, existe: true }, l.competencia)
+                  const statusNovo = statusDemanda(setorNomeNorm, { situacao: valorVigenciaPendente, dados: l.dados, bancos: configSetor?.bancos, existe: true }, l.competencia)
                   return statusAtual === 'concluido' && statusNovo !== 'concluido'
                 })
                 .map(l => l.competencia)
