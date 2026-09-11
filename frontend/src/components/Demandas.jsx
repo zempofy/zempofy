@@ -94,6 +94,7 @@ export default function Demandas() {
 
   const comStatus = demandas.map(d => ({ ...d, _status: statusDemanda(setorNome, d, competencia) }))
   const pendentes = comStatus.filter(d => d._status === 'pendente').length
+  const incompletas = comStatus.filter(d => d._status === 'incompleto').length
   const concluidas = comStatus.filter(d => d._status === 'concluido').length
   const total = comStatus.length
 
@@ -118,6 +119,7 @@ export default function Demandas() {
   const chipsFiltro = [
     { id: 'todas', label: 'Todas' },
     { id: 'pendente', label: 'Pendente' },
+    { id: 'incompleto', label: 'Incompleto' },
     { id: 'concluido', label: 'Concluído' },
   ]
 
@@ -125,7 +127,7 @@ export default function Demandas() {
     const cabecalho = ['CLIENTE', 'STATUS', 'COMPETÊNCIA']
     const linhas = filtrados.map(d => ({
       'CLIENTE': d.nome || '',
-      'STATUS': d._status === 'concluido' ? 'Concluído' : 'Pendente',
+      'STATUS': d._status === 'concluido' ? 'Concluído' : d._status === 'incompleto' ? 'Incompleto' : 'Pendente',
       'COMPETÊNCIA': `${nomeMes(competencia)} ${competencia.slice(0,4)}`,
     }))
     const ws = XLSX.utils.json_to_sheet(linhas, { header: cabecalho })
@@ -193,6 +195,10 @@ export default function Demandas() {
         <div style={{ flex: '1', minWidth: '120px', background: 'var(--card)', border: '1px solid var(--borda)', borderRadius: '12px', padding: '14px 16px' }}>
           <p style={{ fontSize: '1.4rem', fontWeight: '700', color: '#f59e0b', margin: 0, fontFamily: 'var(--fonte-corpo)' }}>{pendentes}</p>
           <p style={{ fontSize: '0.72rem', color: 'var(--texto-apagado)', margin: '2px 0 0' }}>Pendentes</p>
+        </div>
+        <div style={{ flex: '1', minWidth: '120px', background: 'var(--card)', border: '1px solid var(--borda)', borderRadius: '12px', padding: '14px 16px' }}>
+          <p style={{ fontSize: '1.4rem', fontWeight: '700', color: '#3b82f6', margin: 0, fontFamily: 'var(--fonte-corpo)' }}>{incompletas}</p>
+          <p style={{ fontSize: '0.72rem', color: 'var(--texto-apagado)', margin: '2px 0 0' }}>Incompletas</p>
         </div>
         <div style={{ flex: '1', minWidth: '120px', background: 'var(--card)', border: '1px solid var(--borda)', borderRadius: '12px', padding: '14px 16px' }}>
           <p style={{ fontSize: '1.4rem', fontWeight: '700', color: 'var(--verde)', margin: 0, fontFamily: 'var(--fonte-corpo)' }}>{concluidas}</p>
@@ -271,6 +277,10 @@ export default function Demandas() {
                 {d._status === 'concluido' ? (
                   <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.72rem', fontWeight: '700', color: 'var(--verde)', fontFamily: 'var(--fonte-corpo)' }}>
                     <Icone.Check size={12} /> Concluído
+                  </span>
+                ) : d._status === 'incompleto' ? (
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.72rem', fontWeight: '700', color: '#3b82f6', fontFamily: 'var(--fonte-corpo)' }}>
+                    <Icone.Circle size={8} /> Incompleto
                   </span>
                 ) : (
                   <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.72rem', fontWeight: '700', color: '#f59e0b', fontFamily: 'var(--fonte-corpo)' }}>

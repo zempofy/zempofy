@@ -263,6 +263,10 @@ const blocosFixosDoSetor = (config, { regime, situacao, competencia }) => {
 // que nunca é salvo — ver spec do campo Faturamento total) preenchidos em `dados` = concluído.
 // Movida de Demandas.jsx pra cá (e exportada) porque o aviso de "Desde o início" (ModalVigenciaMudanca)
 // também precisa simular esse status pra saber quais competências já concluídas seriam reabertas.
+// Três estados: 'pendente' (nada preenchido ainda, ou pendenteSeNao respondido como "Não" —
+// resposta explícita de "ainda não terminou", diferente de "faltou preencher algo"), 'incompleto'
+// (pelo menos um campo obrigatório preenchido, mas não todos) e 'concluido' (tudo preenchido,
+// nenhum pendenteSeNao como "Não").
 const statusDemanda = (setorNome, item, competencia) => {
   const config = CONFIG_DEMANDA[setorNome]
   const blocos = blocosFixosDoSetor(config, { regime: item.regime, situacao: item.situacao, competencia })
@@ -277,15 +281,16 @@ const statusDemanda = (setorNome, item, competencia) => {
     if (config?.modulos && item.situacao) return item.existe ? 'concluido' : 'pendente'
     return 'pendente'
   }
-  const completo = campos.every(c => {
-    if (item.camposIsentos?.includes(c.id)) return true // isento pra este lançamento específico
-    const v = item.dados?.[c.id]
-    return !(v === undefined || v === null || v === '')
-  })
+  const camposObrigatorios = campos.filter(c => !item.camposIsentos?.includes(c.id))
+  if (camposObrigatorios.length === 0) return 'concluido' // tudo isento, nada exigido deste lançamento
+  const preenchido = c => { const v = item.dados?.[c.id]; return !(v === undefined || v === null || v === '') }
   // Pergunta booleana marcada como "Não" conta como preenchida, mas ainda precisa de atenção —
   // campo com pendenteSeNao mantém a competência pendente mesmo com tudo mais respondido.
-  const algumNaoPendente = campos.some(c => c.pendenteSeNao && item.dados?.[c.id] === false)
-  return (completo && !algumNaoPendente) ? 'concluido' : 'pendente'
+  const algumNaoPendente = camposObrigatorios.some(c => c.pendenteSeNao && item.dados?.[c.id] === false)
+  if (algumNaoPendente) return 'pendente' // resposta explícita ainda pede atenção — não é "faltando dado"
+  if (camposObrigatorios.every(preenchido)) return 'concluido'
+  if (camposObrigatorios.some(preenchido)) return 'incompleto'
+  return 'pendente'
 }
 
 // Espelha backend/services/historicoVigencia.js — precisa existir também no frontend pra
@@ -851,7 +856,7 @@ function FormCliente({ cliente, fechar, onSalvo }) {
                 const regimeAtualResolvido = resolverPorVigencia(cliente.historicoRegime, l.competencia, cliente.regime)
                 const statusAtual = statusDemanda('fiscal', { regime: regimeAtualResolvido, dados: l.dados, camposIsentos: l.camposIsentos, existe: true }, l.competencia)
                 const statusNovo = statusDemanda('fiscal', { regime: form.regime, dados: l.dados, camposIsentos: l.camposIsentos, existe: true }, l.competencia)
-                return statusAtual === 'concluido' && statusNovo === 'pendente'
+                return statusAtual === 'concluido' && statusNovo !== 'concluido'
               })
               .map(l => l.competencia)
               .sort()
@@ -1653,7 +1658,7 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
                   const situacaoAtualResolvida = resolverPorVigencia(configSetor?.historicoSituacao, l.competencia, situacao)
                   const statusAtual = statusDemanda(setorNomeNorm, { situacao: situacaoAtualResolvida, dados: l.dados, existe: true }, l.competencia)
                   const statusNovo = statusDemanda(setorNomeNorm, { situacao: valorVigenciaPendente, dados: l.dados, existe: true }, l.competencia)
-                  return statusAtual === 'concluido' && statusNovo === 'pendente'
+                  return statusAtual === 'concluido' && statusNovo !== 'concluido'
                 })
                 .map(l => l.competencia)
                 .sort()
