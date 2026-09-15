@@ -28,6 +28,15 @@ const resolverPorVigencia = (historico, competencia, fallback) => {
   return (validos.at(-1) || ordenado[0]).valor;
 };
 
+// Espelha bancoVigenteEm do frontend (Clientes.jsx) — usado pela migração da Spec 18 pra saber,
+// por competência passada, quais bancos já existiam e contavam pra exigência de "Concluído".
+const bancoVigenteEmBackend = (banco, competencia) => {
+  if (banco.adicionadoNaCompetencia && competencia < banco.adicionadoNaCompetencia) return false;
+  if (banco.ativo) return true;
+  if (!banco.desativadoNaCompetencia) return false;
+  return competencia < banco.desativadoNaCompetencia;
+};
+
 // Aplica uma mudança de valor com histórico versionado.
 // modo 'inicio': substitui todo o histórico por uma única entrada, valendo retroativamente
 // desde competenciaMaisAntiga (passado e futuro, já que fica sendo a única entrada).
@@ -79,6 +88,7 @@ module.exports = {
   competenciaAtual,
   competenciaAtualDoSetor,
   resolverPorVigencia,
+  bancoVigenteEmBackend,
   aplicarMudancaComHistorico,
   buscarCompetenciaMaisAntiga,
   prepararHistoricoParaMudanca,
