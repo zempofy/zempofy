@@ -964,8 +964,12 @@ function TelaDetalhe({ clienteId, voltar, onAtualizado, abaInicial = 'info', set
     }
   }
 
+  // Tela cheia de "Carregando..." só na primeira vez (ainda sem `dados`) — onAtualizado chama
+  // buscar() de novo a cada ação de banco/campo extra dentro de FormularioCompetencia, e
+  // substituir a tela nessas vezes desmontava o formulário, perdendo qualquer campo (ex: Sim/Não
+  // de outro banco) que a pessoa tinha marcado mas ainda não tinha salvo.
   const buscar = async () => {
-    setCarregando(true)
+    if (!dados) setCarregando(true)
     try { const r=await api.get(`/clientes/${clienteId}`); setDados(r.data) }
     catch { mostrar('Erro ao carregar cliente.','erro') }
     finally { setCarregando(false) }
