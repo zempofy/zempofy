@@ -517,6 +517,26 @@ mongoose.connect(process.env.MONGODB_URI)
       console.error('⚠️ Erro na migração de campos novos do Fiscal:', err.message);
     }
 
+    // ── Migração: reconciliar Setor.membros ↔ Usuario.setores (só soma, nunca tira acesso) ──
+    try {
+      const Setor = require('./models/Setor');
+      const Usuario = require('./models/Usuario');
+
+      const setores = await Setor.find({ ativo: true }).select('membros').lean();
+      await Promise.all(setores.map(s =>
+        Usuario.updateMany({ _id: { $in: s.membros || [] } }, { $addToSet: { setores: s._id } })
+      ));
+
+      const usuarios = await Usuario.find({ setores: { $exists: true, $ne: [] } }).select('setores').lean();
+      await Promise.all(usuarios.map(u =>
+        Setor.updateMany({ _id: { $in: u.setores || [] } }, { $addToSet: { membros: u._id } })
+      ));
+
+      console.log('✅ Migração: Setor.membros e Usuario.setores reconciliados.');
+    } catch (err) {
+      console.error('⚠️ Erro na migração de reconciliação setor/membros:', err.message);
+    }
+
     app.listen(PORT, () => console.log(`🚀 Servidor rodando na porta ${PORT}`));
   })
   .catch(err => console.error('❌ Erro ao conectar ao MongoDB:', err));
