@@ -1245,11 +1245,15 @@ const INICIO_DEMANDA_ANO = 2026
 const MESES_LABEL = ['01 - Janeiro','02 - Fevereiro','03 - Março','04 - Abril','05 - Maio','06 - Junho','07 - Julho','08 - Agosto','09 - Setembro','10 - Outubro','11 - Novembro','12 - Dezembro']
 
 // Renderiza o valor de um campo — editável (input por tipo) ou só leitura
-function CampoValor({ tipo, valor, onChange, disabled, aoTocar }) {
+function CampoValor({ tipo, valor, onChange, disabled, aoTocar, precisaConfirmar }) {
+  // Alerta visual (laranja, mesma cor do contador "Pendentes" de Demandas) pra campo que ainda
+  // precisa de atenção — some na hora que a pessoa passa pelo campo ou preenche, sem precisar
+  // salvar. Isento (camposIsentos) nunca entra aqui — ver precisaConfirmarCampo/Banco.
+  const estiloAlerta = precisaConfirmar ? { borderColor: 'rgba(245,158,11,0.5)', background: 'rgba(245,158,11,0.06)' } : {}
   if (disabled || tipo === 'calculado') {
-    if (tipo === 'moeda' || tipo === 'calculado') return <div style={{ ...s.inp, background:'var(--card)', color:'var(--texto)' }}>{formatMoeda(valor)}</div>
-    if (tipo === 'booleano') return <div style={{ ...s.inp, background:'var(--card)', color: valor===false?'var(--erro)':'var(--texto)' }}>{valor===true?'Sim':valor===false?'Não':'—'}</div>
-    return <div style={{ ...s.inp, background:'var(--card)', color:'var(--texto)' }}>{(valor===0?'0':valor)||'—'}</div>
+    if (tipo === 'moeda' || tipo === 'calculado') return <div style={{ ...s.inp, background:'var(--card)', color:'var(--texto)', ...estiloAlerta }}>{formatMoeda(valor)}</div>
+    if (tipo === 'booleano') return <div style={{ ...s.inp, background:'var(--card)', color: valor===false?'var(--erro)':'var(--texto)', ...estiloAlerta }}>{valor===true?'Sim':valor===false?'Não':'—'}</div>
+    return <div style={{ ...s.inp, background:'var(--card)', color:'var(--texto)', ...estiloAlerta }}>{(valor===0?'0':valor)||'—'}</div>
   }
   // Passar pelo campo (blur ou Enter) e deixar vazio grava 0 automaticamente — sem isso, um campo
   // realmente zerado exigia digitar "0" na mão. Só conta como preenchido quem passou pelo campo:
@@ -1257,7 +1261,7 @@ function CampoValor({ tipo, valor, onChange, disabled, aoTocar }) {
   const zerarSeVazio = (v) => (v === undefined || v === null || v === '') && onChange(0)
   const blurNoEnter = (e) => e.key === 'Enter' && e.target.blur()
   if (tipo === 'moeda') {
-    return <input style={s.inp}
+    return <input style={{ ...s.inp, ...estiloAlerta }}
       value={(valor || valor === 0) ? Number(valor).toLocaleString('pt-BR',{minimumFractionDigits:2}) : ''}
       onChange={e => { const nums = e.target.value.replace(/\D/g,''); onChange(nums ? parseInt(nums,10)/100 : '') }}
       onBlur={() => { zerarSeVazio(valor); aoTocar && aoTocar() }}
@@ -1265,13 +1269,13 @@ function CampoValor({ tipo, valor, onChange, disabled, aoTocar }) {
       placeholder="0,00" />
   }
   if (tipo === 'numero') {
-    return <input style={s.inp} type="number" value={valor ?? ''} onChange={e=>onChange(e.target.value===''?'':Number(e.target.value))}
+    return <input style={{ ...s.inp, ...estiloAlerta }} type="number" value={valor ?? ''} onChange={e=>onChange(e.target.value===''?'':Number(e.target.value))}
       onBlur={() => { zerarSeVazio(valor); aoTocar && aoTocar() }}
       onKeyDown={blurNoEnter} />
   }
   if (tipo === 'booleano') {
     return (
-      <div style={{ display:'flex', gap:'8px' }}>
+      <div style={{ display:'flex', gap:'8px', padding: precisaConfirmar ? '3px' : 0, border: precisaConfirmar ? '1px dashed rgba(245,158,11,0.5)' : 'none', borderRadius: '10px' }}>
         {[{v:true,l:'Sim'},{v:false,l:'Não'}].map(op=>{
           const ativo = valor===op.v
           const corAtiva = op.v===false ? 'var(--erro)' : 'var(--verde)'
@@ -1288,7 +1292,7 @@ function CampoValor({ tipo, valor, onChange, disabled, aoTocar }) {
       </div>
     )
   }
-  return <input style={s.inp} value={valor||''} onChange={e=>onChange(e.target.value)} />
+  return <input style={{ ...s.inp, ...estiloAlerta }} value={valor||''} onChange={e=>onChange(e.target.value)} />
 }
 
 // Um banco aparece numa competência se foi adicionado antes ou durante ela e, se já foi
@@ -1304,7 +1308,7 @@ const bancoVigenteEm = (banco, competencia) => {
 }
 
 // ── Bloco fixo "Extratos Bancários" (Contábil) — sempre visível, bancos persistem mês a mês ──
-function BlocoExtratosBancarios({ clienteId, setor, bancos=[], competencia, valoresExtratos, onChangeExtrato, podeEditar, onBancosAtualizados }) {
+function BlocoExtratosBancarios({ clienteId, setor, bancos=[], competencia, valoresExtratos, onChangeExtrato, podeEditar, onBancosAtualizados, lancamento }) {
   const { mostrar } = useToast()
   const [adicionando, setAdicionando] = useState(false)
   const [bancoSelecionado, setBancoSelecionado] = useState('')
@@ -1318,6 +1322,10 @@ function BlocoExtratosBancarios({ clienteId, setor, bancos=[], competencia, valo
   // bancoVigenteEm) — independente de quando exatamente foram desativados, pra sempre dar pra
   // gerenciar (reativar/excluir) um banco removido a partir de qualquer mês em que ele já existia.
   const bancosRemovidos = bancos.filter(b => b.ativo === false && (!b.adicionadoNaCompetencia || b.adicionadoNaCompetencia <= competencia))
+  // Mesma régua de precisaConfirmarCampo (Spec 19), só que pra banco: isento (Spec 18) nunca
+  // fica laranja, senão é só olhar se ainda não tem Sim/Não respondido.
+  const precisaConfirmarBanco = (b) => !lancamento?.camposIsentos?.includes(`banco:${b.id}`) &&
+    (valoresExtratos[b.id] === undefined || valoresExtratos[b.id] === null || valoresExtratos[b.id] === '')
 
   const adicionar = async () => {
     const nome = bancoSelecionado === 'outro' ? nomeOutro.trim() : BANCOS_SUGERIDOS.find(b=>b.value===bancoSelecionado)?.label
@@ -1372,7 +1380,7 @@ function BlocoExtratosBancarios({ clienteId, setor, bancos=[], competencia, valo
             <div key={b.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:'10px', padding:'10px 14px', background:'var(--input)', border:'1px solid var(--borda)', borderRadius:'10px' }}>
               <span style={{ fontSize:'0.85rem', color:'var(--texto)', fontWeight:'600' }}>{b.nome}</span>
               <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
-                <CampoValor tipo="booleano" valor={valoresExtratos[b.id]} onChange={v=>onChangeExtrato(b.id, v)} disabled={!podeEditar} />
+                <CampoValor tipo="booleano" valor={valoresExtratos[b.id]} onChange={v=>onChangeExtrato(b.id, v)} disabled={!podeEditar} precisaConfirmar={precisaConfirmarBanco(b)} />
                 {podeEditar && (
                   <button type="button" onClick={()=>setConfirmandoRemover(b.id)} title="Remover banco" style={{ background:'none', border:'none', color:'var(--texto-apagado)', cursor:'pointer', padding:'4px', display:'flex' }}>
                     <Icone.X size={14}/>
@@ -1500,6 +1508,14 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
   const blocos = blocosFixosDoSetor(config, { regime: regimeResolvido, situacao: situacaoResolvida, competencia })
 
   const vazio = (v) => v === undefined || v === null || v === ''
+  // Alerta visual (Spec 19) — mesmo critério do statusDemanda pra "precisa de atenção", só que
+  // olhando `valores` da tela (o que a pessoa está vendo agora) em vez de `item.dados` (o que já
+  // foi salvo). Isento (camposIsentos) nunca acende o alerta — genuinamente não precisa de nada.
+  const precisaConfirmarCampo = (c) => {
+    if (lancamento?.camposIsentos?.includes(c.id)) return false
+    if (c.id === 'funcionariosAtivos' && funcionariosAtivosSugerido) return true
+    return vazio(valores[c.id])
+  }
   // Campo removido não some do histórico: numa competência ANTERIOR à que o setor trabalha por
   // padrão (competenciaPadraoDoSetor — mesma régua já usada pra decidir se pode reeditar
   // situação/regime), se ele já tinha valor salvo ali, continua aparecendo — só some do
@@ -1745,6 +1761,7 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
           onChangeExtrato={(bancoId, v) => setValores(vs => ({ ...vs, extratos: { ...(vs.extratos||{}), [bancoId]: v } }))}
           podeEditar={podeEditar}
           onBancosAtualizados={onAtualizado}
+          lancamento={lancamento}
         />
       )}
 
@@ -1766,7 +1783,8 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
               {bloco.campos.map(c => (
                 <Campo key={c.id} label={c.label}>
                   <CampoValor tipo={c.tipo} valor={c.tipo==='calculado' ? c.formula(valores) : valores[c.id]} onChange={v=>setValor(c.id, v)} disabled={!podeEditar}
-                    aoTocar={c.id === 'funcionariosAtivos' ? () => setFuncionariosAtivosSugerido(false) : undefined} />
+                    aoTocar={c.id === 'funcionariosAtivos' ? () => setFuncionariosAtivosSugerido(false) : undefined}
+                    precisaConfirmar={c.tipo!=='calculado' && precisaConfirmarCampo(c)} />
                 </Campo>
               ))}
             </div>
@@ -1788,7 +1806,7 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
                 <Campo key={c.id} label={c.label}>
                   <div style={{ display:'flex', alignItems:'center', gap:'6px' }}>
                     <div style={{ flex:1, minWidth:0 }}>
-                      <CampoValor tipo={c.tipo} valor={valores[c.id]} onChange={v=>setValor(c.id, v)} disabled={!podeEditar} />
+                      <CampoValor tipo={c.tipo} valor={valores[c.id]} onChange={v=>setValor(c.id, v)} disabled={!podeEditar} precisaConfirmar={vazio(valores[c.id])} />
                     </div>
                     {podeEditar && (
                       <button type="button" onClick={()=>setConfirmandoRemoverCampo(c.id)} title="Remover campo" style={{ background:'none', border:'none', color:'var(--texto-apagado)', cursor:'pointer', padding:'4px', display:'flex', flexShrink:0 }}>
