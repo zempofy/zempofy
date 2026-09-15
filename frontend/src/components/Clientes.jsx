@@ -273,15 +273,15 @@ const statusDemanda = (setorNome, item, competencia) => {
   const campos = blocos.flatMap(b => b.campos).filter(c => c.tipo !== 'calculado')
 
   // Extratos Bancários (Contábil) vivem fora de `campos` — cada banco é Sim/Não à parte, em
-  // dados.extratos[bancoId]. Contam só pra diferenciar Pendente de Incompleto (pelo menos um
-  // banco já respondido), nunca pra exigir "todos os bancos" em Concluído — isso continua
-  // dependendo só de contabilFeito, senão um cliente já concluído hoje com um banco novo ainda
-  // sem marcar regrediria pra Incompleto do nada (mesmo risco que a Spec 11 evitou pro Fiscal).
+  // dados.extratos[bancoId]. A partir da Spec 18, todo banco vigente também entra na exigência
+  // de "Concluído" (não só Pendente↔Incompleto) — usa o mesmo `camposIsentos` já existente no
+  // model, com prefixo `banco:` pra não colidir com id de campo comum. Cliente já concluído
+  // antes desta mudança foi isentado pela migração do server.js (só dos bancos que já estavam
+  // faltando), pelo mesmo motivo que a Spec 11 isentou o Fiscal.
   const bancosVigentes = config?.temBancos ? (item.bancos || []).filter(b => bancoVigenteEm(b, competencia)) : []
-  const algumBancoPreenchido = bancosVigentes.some(b => {
-    const v = item.dados?.extratos?.[b.id]
-    return !(v === undefined || v === null || v === '')
-  })
+  const bancoPreenchido = b => { const v = item.dados?.extratos?.[b.id]; return !(v === undefined || v === null || v === '') }
+  const algumBancoPreenchido = bancosVigentes.some(bancoPreenchido)
+  const bancosObrigatorios = bancosVigentes.filter(b => !item.camposIsentos?.includes(`banco:${b.id}`))
 
   if (campos.length === 0) {
     // Setor por regime (Fiscal): 0 campos = regime ainda não definido = pendente de verdade.
@@ -300,7 +300,7 @@ const statusDemanda = (setorNome, item, competencia) => {
   // campo com pendenteSeNao mantém a competência pendente mesmo com tudo mais respondido.
   const algumNaoPendente = camposObrigatorios.some(c => c.pendenteSeNao && item.dados?.[c.id] === false)
   if (algumNaoPendente) return 'pendente' // resposta explícita ainda pede atenção — não é "faltando dado"
-  if (camposObrigatorios.every(preenchido)) return 'concluido' // continua sem exigir banco
+  if (camposObrigatorios.every(preenchido) && bancosObrigatorios.every(bancoPreenchido)) return 'concluido'
   if (camposObrigatorios.some(preenchido) || algumBancoPreenchido) return 'incompleto'
   return 'pendente'
 }
@@ -964,8 +964,12 @@ function TelaDetalhe({ clienteId, voltar, onAtualizado, abaInicial = 'info', set
     }
   }
 
+  // Tela cheia de "Carregando..." só na primeira vez (ainda sem `dados`) — onAtualizado chama
+  // buscar() de novo a cada ação de banco/campo extra dentro de FormularioCompetencia, e
+  // substituir a tela nessas vezes desmontava o formulário, perdendo qualquer campo (ex: Sim/Não
+  // de outro banco) que a pessoa tinha marcado mas ainda não tinha salvo.
   const buscar = async () => {
-    setCarregando(true)
+    if (!dados) setCarregando(true)
     try { const r=await api.get(`/clientes/${clienteId}`); setDados(r.data) }
     catch { mostrar('Erro ao carregar cliente.','erro') }
     finally { setCarregando(false) }
@@ -1241,7 +1245,7 @@ const INICIO_DEMANDA_ANO = 2026
 const MESES_LABEL = ['01 - Janeiro','02 - Fevereiro','03 - Março','04 - Abril','05 - Maio','06 - Junho','07 - Julho','08 - Agosto','09 - Setembro','10 - Outubro','11 - Novembro','12 - Dezembro']
 
 // Renderiza o valor de um campo — editável (input por tipo) ou só leitura
-function CampoValor({ tipo, valor, onChange, disabled }) {
+function CampoValor({ tipo, valor, onChange, disabled, aoTocar }) {
   if (disabled || tipo === 'calculado') {
     if (tipo === 'moeda' || tipo === 'calculado') return <div style={{ ...s.inp, background:'var(--card)', color:'var(--texto)' }}>{formatMoeda(valor)}</div>
     if (tipo === 'booleano') return <div style={{ ...s.inp, background:'var(--card)', color: valor===false?'var(--erro)':'var(--texto)' }}>{valor===true?'Sim':valor===false?'Não':'—'}</div>
@@ -1256,13 +1260,13 @@ function CampoValor({ tipo, valor, onChange, disabled }) {
     return <input style={s.inp}
       value={(valor || valor === 0) ? Number(valor).toLocaleString('pt-BR',{minimumFractionDigits:2}) : ''}
       onChange={e => { const nums = e.target.value.replace(/\D/g,''); onChange(nums ? parseInt(nums,10)/100 : '') }}
-      onBlur={() => zerarSeVazio(valor)}
+      onBlur={() => { zerarSeVazio(valor); aoTocar && aoTocar() }}
       onKeyDown={blurNoEnter}
       placeholder="0,00" />
   }
   if (tipo === 'numero') {
     return <input style={s.inp} type="number" value={valor ?? ''} onChange={e=>onChange(e.target.value===''?'':Number(e.target.value))}
-      onBlur={() => zerarSeVazio(valor)}
+      onBlur={() => { zerarSeVazio(valor); aoTocar && aoTocar() }}
       onKeyDown={blurNoEnter} />
   }
   if (tipo === 'booleano') {
@@ -1472,6 +1476,10 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
   const [valorVigenciaPendente, setValorVigenciaPendente] = useState(null)
   const [qtdDocs, setQtdDocs] = useState(null)
   const listaDocsRef = useRef(null)
+  // Marca se "Funcionários ativos" foi preenchido sozinho (herdado do mês anterior) e ainda não
+  // foi confirmado pela pessoa (passar pelo campo, mesmo sem mudar o número) — enquanto true, o
+  // valor aparece na tela mas não conta como "preenchido de verdade" ao salvar.
+  const [funcionariosAtivosSugerido, setFuncionariosAtivosSugerido] = useState(false)
   // Mais permissivo que a edição de campo de propósito: documento pode ser enviado mesmo numa
   // competência já fechada pra edição (mês passado, só titular edita campo) — só precisa ter
   // acesso ao setor, mesma regra de quem preenche a Demanda.
@@ -1502,6 +1510,7 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
   useEffect(() => {
     setCarregando(true)
     setEditandoSituacao(false)
+    setFuncionariosAtivosSugerido(false)
     api.get(`/clientes/${clienteId}/lancamentos/${setor._id}/${competencia}`)
       .then(r => {
         setLancamento(r.data)
@@ -1522,6 +1531,7 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
               // salva dispara sozinho, comparando a tela com um baseline que nunca teve o valor.
               setValores(vs => vazio(vs.funcionariosAtivos) ? { ...vs, funcionariosAtivos: dadosAnteriores.funcionariosAtivos } : vs)
               setValoresBase(vb => vazio(vb.funcionariosAtivos) ? { ...vb, funcionariosAtivos: dadosAnteriores.funcionariosAtivos } : vb)
+              setFuncionariosAtivosSugerido(true)
             }
           })
           .catch(() => {})
@@ -1548,8 +1558,12 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
 
   const salvar = async () => {
     setSalvando(true)
+    // Sugestão de "Funcionários ativos" nunca confirmada (a pessoa não passou pelo campo) não
+    // vira valor de verdade — senão conta pra completude e o mês seguinte herda de novo, criando
+    // uma corrente que ninguém nunca confirmou de propósito.
+    const dadosParaEnviar = funcionariosAtivosSugerido ? { ...valores, funcionariosAtivos: undefined } : valores
     try {
-      const r = await api.post(`/clientes/${clienteId}/lancamentos/${setor._id}/${competencia}`, { dados: valores })
+      const r = await api.post(`/clientes/${clienteId}/lancamentos/${setor._id}/${competencia}`, { dados: dadosParaEnviar })
       setLancamento(r.data)
       setValoresBase(r.data?.dados || {})
       mostrar('Dados salvos!', 'sucesso')
@@ -1751,7 +1765,8 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
             <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))', gap:'14px' }}>
               {bloco.campos.map(c => (
                 <Campo key={c.id} label={c.label}>
-                  <CampoValor tipo={c.tipo} valor={c.tipo==='calculado' ? c.formula(valores) : valores[c.id]} onChange={v=>setValor(c.id, v)} disabled={!podeEditar} />
+                  <CampoValor tipo={c.tipo} valor={c.tipo==='calculado' ? c.formula(valores) : valores[c.id]} onChange={v=>setValor(c.id, v)} disabled={!podeEditar}
+                    aoTocar={c.id === 'funcionariosAtivos' ? () => setFuncionariosAtivosSugerido(false) : undefined} />
                 </Campo>
               ))}
             </div>

@@ -4,6 +4,7 @@ const { enviarConvite, enviarRedefinicaoSenha } = require('../services/email');
 const { autenticar, apenasAdmin, temPermissao } = require('../middleware/auth');
 const crypto = require('crypto');
 const Usuario = require('../models/Usuario');
+const Setor = require('../models/Setor');
 const { usuarioSchema, validar } = require('../validacao');
 
 const TOKEN_EXPIRA_MS = 3600000; // 1 hora — mesmo prazo usado em esqueci-senha
@@ -100,6 +101,9 @@ router.post('/', autenticar, validar(usuarioSchema), async (req, res) => {
       tokenResetSenha,
       tokenResetExpira,
     });
+    // Mantém Setor.membros em sincronia — o caminho inverso (editar setor em Configurações) já
+    // sempre fez isso, mas criar colaborador escrevia só Usuario.setores.
+    await Setor.updateMany({ _id: { $in: setores } }, { $addToSet: { membros: usuario._id } });
     setImmediate(async () => {
       try {
         const Empresa = require('../models/Empresa');
@@ -137,6 +141,18 @@ router.put('/:id', autenticar, apenasAdmin, async (req, res) => {
     if (permissoes) atualizacao.permissoes = permissoes;
     if (setores !== undefined) atualizacao.setores = setores;
     const usuario = await Usuario.findByIdAndUpdate(req.params.id, atualizacao, { new: true }).select('-senha').populate('setores', 'nome cor');
+    // Mesma lógica de diff já usada em setor.js pro caminho inverso — mantém Setor.membros
+    // em sincronia com o que foi escolhido aqui, em vez de só atualizar Usuario.setores.
+    if (setores !== undefined) {
+      const setoresAntigos = (alvo.setores || []).map(s => s.toString());
+      const setoresNovos = setores.map(s => s.toString());
+      const adicionados = setoresNovos.filter(s => !setoresAntigos.includes(s));
+      const removidos = setoresAntigos.filter(s => !setoresNovos.includes(s));
+      await Promise.all([
+        Setor.updateMany({ _id: { $in: adicionados } }, { $addToSet: { membros: req.params.id } }),
+        Setor.updateMany({ _id: { $in: removidos } }, { $pull: { membros: req.params.id } }),
+      ]);
+    }
     res.json(usuario);
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao editar usuário.' });

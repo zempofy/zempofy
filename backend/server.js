@@ -517,6 +517,62 @@ mongoose.connect(process.env.MONGODB_URI)
       console.error('⚠️ Erro na migração de campos novos do Fiscal:', err.message);
     }
 
+    // ── Migração: reconciliar Setor.membros ↔ Usuario.setores (só soma, nunca tira acesso) ──
+    try {
+      const Setor = require('./models/Setor');
+      const Usuario = require('./models/Usuario');
+
+      const setores = await Setor.find({ ativo: true }).select('membros').lean();
+      await Promise.all(setores.map(s =>
+        Usuario.updateMany({ _id: { $in: s.membros || [] } }, { $addToSet: { setores: s._id } })
+      ));
+
+      const usuarios = await Usuario.find({ setores: { $exists: true, $ne: [] } }).select('setores').lean();
+      await Promise.all(usuarios.map(u =>
+        Setor.updateMany({ _id: { $in: u.setores || [] } }, { $addToSet: { membros: u._id } })
+      ));
+
+      console.log('✅ Migração: Setor.membros e Usuario.setores reconciliados.');
+    } catch (err) {
+      console.error('⚠️ Erro na migração de reconciliação setor/membros:', err.message);
+    }
+
+    // ── Migração: Contábil já concluído antes de bancos virarem exigência — isentar só os
+    // bancos que já estavam faltando, pra não regredir quem já tinha fechado o mês ──
+    try {
+      const LancamentoSetor = require('./models/LancamentoSetor');
+      const Setor = require('./models/Setor');
+      const Cliente = require('./models/Cliente');
+      const { bancoVigenteEmBackend } = require('./services/historicoVigencia');
+
+      const setoresContabil = await Setor.find({ nome: /^cont[aá]bil$/i }).select('_id').lean();
+      if (setoresContabil.length) {
+        const candidatos = await LancamentoSetor.find({
+          setor: { $in: setoresContabil.map(s => s._id) },
+          'dados.contabilFeito': true,
+        });
+        let ajustados = 0;
+        for (const l of candidatos) {
+          const cliente = await Cliente.findById(l.cliente).select('configSetores').lean();
+          const bancos = cliente?.configSetores?.contabil?.bancos || [];
+          const vigentes = bancos.filter(b => bancoVigenteEmBackend(b, l.competencia));
+          const faltando = vigentes.filter(b => {
+            const v = l.dados?.extratos?.[b.id];
+            return v === undefined || v === null || v === '';
+          }).map(b => `banco:${b.id}`);
+          if (faltando.length > 0) {
+            const jaTinha = new Set(l.camposIsentos || []);
+            faltando.forEach(id => jaTinha.add(id));
+            await LancamentoSetor.updateOne({ _id: l._id }, { $set: { camposIsentos: [...jaTinha] } });
+            ajustados++;
+          }
+        }
+        if (ajustados > 0) console.log(`✅ Migração: ${ajustados} competência(s) do Contábil isentadas dos bancos que já estavam faltando.`);
+      }
+    } catch (err) {
+      console.error('⚠️ Erro na migração de bancos obrigatórios do Contábil:', err.message);
+    }
+
     app.listen(PORT, () => console.log(`🚀 Servidor rodando na porta ${PORT}`));
   })
   .catch(err => console.error('❌ Erro ao conectar ao MongoDB:', err));
