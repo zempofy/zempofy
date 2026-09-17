@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import api from '../services/api'
 import Icone from './Icones'
+import { statusDemanda, competenciaDefasada, normalizarNome, CONFIG_DEMANDA, nomeMes } from './Clientes'
 
 const formatData = (d) => {
   if (!d) return ''
@@ -43,6 +44,68 @@ function SecaoHeader({ titulo, icone, onVerTodos }) {
         <p style={{ fontSize:'0.82rem', fontWeight:'600', color:'var(--texto)', margin:0, fontFamily:'var(--fonte-corpo)' }}>{titulo}</p>
       </div>
       {onVerTodos && <button onClick={onVerTodos} style={{ background:'none', border:'none', color:'var(--verde)', fontSize:'0.75rem', fontWeight:'600', cursor:'pointer', fontFamily:'var(--fonte-corpo)' }}>Ver todos →</button>}
+    </div>
+  )
+}
+
+// ── Resumo de Demandas (Spec 22) — barra horizontal empilhada em SVG puro, sem dependência nova
+// (projeto não tem lib de gráfico). Mesma competência de trabalho que Fiscal/DP/Contábil já usam
+// (competenciaDefasada — mês anterior ao civil). Compartilhado entre InicioTitular e
+// InicioColaborador (mesma lógica pros dois, per Spec 22) em vez de duplicar.
+function ResumoDemandas({ usuario, isTitular }) {
+  const [linhas, setLinhas] = useState(null) // null = carregando
+
+  useEffect(() => {
+    const competencia = competenciaDefasada()
+    api.get('/setores').then(r => {
+      const comDemanda = r.data.filter(s => CONFIG_DEMANDA[normalizarNome(s.nome)])
+      const visiveis = isTitular
+        ? comDemanda
+        : comDemanda.filter(s => usuario?.setores?.some(us => (us._id || us).toString() === s._id))
+
+      Promise.all(visiveis.map(s => {
+        const setorNome = normalizarNome(s.nome)
+        return api.get(`/clientes/demandas/${s._id}/${competencia}`)
+          .then(r2 => {
+            const contagem = { pendente: 0, incompleto: 0, concluido: 0 }
+            r2.data.forEach(d => { contagem[statusDemanda(setorNome, d, competencia)]++ })
+            return { setor: s, ...contagem, total: r2.data.length }
+          })
+          .catch(() => ({ setor: s, pendente: 0, incompleto: 0, concluido: 0, total: 0 }))
+      })).then(resultados => setLinhas(resultados.filter(l => l.total > 0)))
+    }).catch(() => setLinhas([]))
+  }, [])
+
+  // Setor sem nenhum cliente configurado pra Demanda não aparece (em vez de barra vazia) — sem
+  // nenhum setor visível, o card inteiro some (em vez de aparecer vazio).
+  if (!linhas || linhas.length === 0) return null
+
+  const competencia = competenciaDefasada()
+
+  return (
+    <div style={{ background:'var(--card)', border:'1px solid var(--borda)', borderRadius:'12px', padding:'16px' }}>
+      <SecaoHeader titulo={`Demandas de ${nomeMes(competencia)}/${competencia.slice(0,4)}`} icone={<Icone.ClipboardList size={14}/>} />
+      <div style={{ display:'flex', flexDirection:'column', gap:'16px' }}>
+        {linhas.map(l => {
+          const { pendente, incompleto, concluido, total } = l
+          const pct = (n) => total ? (n/total)*100 : 0
+          return (
+            <div key={l.setor._id}>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'6px', gap:'8px', flexWrap:'wrap' }}>
+                <p style={{ fontSize:'0.82rem', fontWeight:'600', color:'var(--texto)', margin:0, fontFamily:'var(--fonte-corpo)' }}>{l.setor.nome}</p>
+                <p style={{ fontSize:'0.72rem', color:'var(--texto-apagado)', margin:0, fontFamily:'var(--fonte-corpo)' }}>
+                  {concluido} concluída{concluido===1?'':'s'} · {incompleto} incompleta{incompleto===1?'':'s'} · {pendente} pendente{pendente===1?'':'s'}
+                </p>
+              </div>
+              <svg viewBox="0 0 100 8" width="100%" height="8" preserveAspectRatio="none" style={{ display:'block', borderRadius:'4px', overflow:'hidden' }}>
+                <rect x={0} y={0} width={pct(concluido)} height={8} fill="var(--verde)" />
+                <rect x={pct(concluido)} y={0} width={pct(incompleto)} height={8} fill="#3b82f6" />
+                <rect x={pct(concluido)+pct(incompleto)} y={0} width={pct(pendente)} height={8} fill="#f59e0b" />
+              </svg>
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }
@@ -106,6 +169,9 @@ function InicioTitular({ usuario, setPagina }) {
         <MetricCard icone={<Icone.CheckCircle size={14}/>} label="Tarefas" valor={tarefasPendentes.length} sub="pendentes" cor={tarefasPendentes.length > 5 ? '#f59e0b' : 'var(--texto)'} />
         <MetricCard icone={<Icone.Edit size={14}/>} label="Concluídos" valor={dados.implantacoes.filter(i=>i.status==='concluida').length} sub="onboardings" />
       </div>
+
+      {/* Resumo de Demandas da competência atual */}
+      <ResumoDemandas usuario={usuario} isTitular={true} />
 
       {/* Onboardings + Tarefas */}
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'14px' }}>
@@ -253,6 +319,9 @@ function InicioColaborador({ usuario, setPagina, temPermissao }) {
         <MetricCard icone={<Icone.ClipboardList size={14}/>} label="Onboardings" valor={impsAtivas.length} sub="em andamento" />
         <MetricCard icone={<Icone.CheckCircle size={14}/>} label="Concluídas" valor={tarefas.filter(t=>t.status==='concluida').length} sub="esta semana" cor="var(--verde)" />
       </div>
+
+      {/* Resumo de Demandas da competência atual */}
+      <ResumoDemandas usuario={usuario} isTitular={false} />
 
       {/* Meus setores */}
       {usuario?.setores?.length > 0 && (

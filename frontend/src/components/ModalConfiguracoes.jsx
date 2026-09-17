@@ -487,6 +487,17 @@ function CategoriaGeral({ usuario, isTitular, tema, setTema, fonte, setFonte, on
     finally { setEnviandoFoto(false) }
   }
 
+  // Reversível na hora (é só trocar de novo) — sem confirmação antes.
+  const removerFoto = async () => {
+    setEnviandoFoto(true)
+    try {
+      await api.put('/usuarios/minha-foto', { foto: '' })
+      mostrar('Foto removida.', 'sucesso')
+      onPerfilAtualizado()
+    } catch { mostrar('Erro ao remover foto.', 'erro') }
+    finally { setEnviandoFoto(false) }
+  }
+
   const salvarNomeUsuario = async () => {
     if (!nomeUsuario.trim()) return mostrar('Digite seu nome.', 'aviso')
     setSalvandoNome(true)
@@ -542,9 +553,16 @@ function CategoriaGeral({ usuario, isTitular, tema, setTema, fonte, setFonte, on
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
           <Avatar nome={usuario?.nome} foto={usuario?.avatar} size={52} fontSize={20} />
           <div>
-            <button style={s.btnAddMembro} onClick={escolherFoto} disabled={enviandoFoto}>
-              {enviandoFoto ? 'Enviando...' : 'Trocar foto'}
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <button style={s.btnAddMembro} onClick={escolherFoto} disabled={enviandoFoto}>
+                {enviandoFoto ? 'Enviando...' : 'Trocar foto'}
+              </button>
+              {usuario?.avatar && (
+                <button style={{ background: 'none', border: 'none', color: 'var(--texto-apagado)', cursor: 'pointer', fontFamily: 'var(--fonte-corpo)', fontSize: '0.85rem', padding: 0 }} onClick={removerFoto} disabled={enviandoFoto}>
+                  Remover
+                </button>
+              )}
+            </div>
             <p style={s.hint}>JPG ou PNG, até 1,5 MB.</p>
           </div>
           <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={onArquivoFoto} />

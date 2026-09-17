@@ -307,6 +307,7 @@ const normalizarNome = (str = '') => str.normalize('NFD').replace(/\p{Diacritic}
 const garantirConfigSetor = (cliente, setorNome) => {
   if (!cliente.configSetores) cliente.configSetores = {};
   if (!cliente.configSetores[setorNome]) cliente.configSetores[setorNome] = { situacao: null, camposExtras: [] };
+  if (!cliente.configSetores[setorNome].camposExtras) cliente.configSetores[setorNome].camposExtras = [];
   return cliente.configSetores[setorNome];
 };
 
@@ -435,6 +436,7 @@ router.post('/:id/campos-extras/:setorId', autenticar, async (req, res) => {
 
     res.status(201).json(cliente.configSetores[setorNome]);
   } catch (err) {
+    console.error(err);
     res.status(500).json({ erro: 'Erro ao criar campo.' });
   }
 });
@@ -467,6 +469,7 @@ router.patch('/:id/campos-extras/:setorId/:campoId', autenticar, async (req, res
 
     res.json(cliente.configSetores[setorNome]);
   } catch (err) {
+    console.error(err);
     res.status(500).json({ erro: 'Erro ao atualizar campo.' });
   }
 });
@@ -500,6 +503,7 @@ router.delete('/:id/campos-extras/:setorId/:campoId', autenticar, async (req, re
 
     res.json(cliente.configSetores[setorNome]);
   } catch (err) {
+    console.error(err);
     res.status(500).json({ erro: 'Erro ao excluir campo.' });
   }
 });

@@ -46,14 +46,19 @@ export default function Demandas() {
     }).finally(() => setCarregandoSetores(false))
   }, [])
 
-  useEffect(() => {
+  // Extraído do useEffect (Spec 21) pra poder ser chamado de novo ao fechar o detalhe do cliente
+  // — sem isso, voltar de lá deixava a lista com os dados de antes de entrar (qualquer alteração
+  // feita dentro, banco/campo/Sem Movimento, não refletia sem trocar de setor ou recarregar).
+  const carregarDemandas = () => {
     if (!setorId || !competencia) return
     setCarregando(true)
     api.get(`/clientes/demandas/${setorId}/${competencia}`)
       .then(r => setDemandas(r.data))
       .catch(() => setDemandas([]))
       .finally(() => setCarregando(false))
-  }, [setorId, competencia])
+  }
+
+  useEffect(carregarDemandas, [setorId, competencia])
 
   useEffect(() => {
     if (!setorDropdownAberto && !subFiltroDropdownAberto) return
@@ -73,7 +78,7 @@ export default function Demandas() {
       abaInicial="demanda"
       setorInicial={clienteAberto.setorId}
       competenciaInicial={clienteAberto.competencia}
-      onDetalheAberto={() => setClienteAberto(null)}
+      onDetalheAberto={() => { setClienteAberto(null); carregarDemandas() }}
     />
   }
 
