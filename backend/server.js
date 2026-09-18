@@ -573,6 +573,56 @@ mongoose.connect(process.env.MONGODB_URI)
       console.error('⚠️ Erro na migração de bancos obrigatórios do Contábil:', err.message);
     }
 
+    // ── Migração: completar Fiscal "Sem Movimento" antigos com os campos que faltam ──
+    // Empresas de Lucro Presumido/Real que clicaram em "Sem Movimento" antes da Spec 11 (que
+    // adicionou irRetido/csllRetido/crf) ficaram com o lançamento faltando exatamente esses 3
+    // campos — a migração da Spec 11 deveria ter isentado esses casos, mas algum ficou de fora.
+    // Reconhece "Sem Movimento antigo" pelo padrão dele — todo valor que já existe é exatamente
+    // zero — e completa só o que falta, também com zero. Não toca em lançamento com dado real
+    // (mesmo que tenha campo zerado de propósito misturado com valor diferente de zero).
+    try {
+      const LancamentoSetor = require('./models/LancamentoSetor');
+      const Setor = require('./models/Setor');
+      const Cliente = require('./models/Cliente');
+      const { resolverPorVigencia } = require('./services/historicoVigencia');
+
+      const CAMPOS_FISCAL = {
+        simples_nacional: ['totalVendas','totalServicos','das','issRetido','icmsDifal','icmsAntecipado'],
+        lucro_presumido: ['totalVendas','totalServicos','pis','cofins','irpj','csll','issProprio','issRetido','icmsAntecipado','icmsDifal','irRetido','csllRetido','crf'],
+        lucro_real: ['totalVendas','totalServicos','pis','cofins','irpj','csll','issProprio','issRetido','icmsAntecipado','icmsDifal','irRetido','csllRetido','crf'],
+      };
+
+      // Multi-tenant: mesmo cuidado da migração de camposIsentos do Fiscal (Spec 11) — um
+      // findOne() sem filtrar por empresa pegaria só o primeiro Setor "Fiscal" do banco inteiro e
+      // deixaria os "Sem Movimento" antigos das demais empresas de fora da correção.
+      const setoresFiscal = await Setor.find({ nome: /^fiscal$/i }).select('_id').lean();
+      if (setoresFiscal.length) {
+        const candidatos = await LancamentoSetor.find({ setor: { $in: setoresFiscal.map(s => s._id) } });
+        let corrigidos = 0;
+        for (const l of candidatos) {
+          const valoresAtuais = Object.values(l.dados || {});
+          const tudoZerado = valoresAtuais.length > 0 && valoresAtuais.every(v => v === 0);
+          if (!tudoZerado) continue; // tem dado real (ou não tem nada) — não mexe
+
+          const cliente = await Cliente.findById(l.cliente).select('regime historicoRegime').lean();
+          const regime = resolverPorVigencia(cliente?.historicoRegime, l.competencia, cliente?.regime);
+          const camposDoRegime = CAMPOS_FISCAL[regime];
+          if (!camposDoRegime) continue;
+
+          const faltando = camposDoRegime.filter(id => l.dados?.[id] === undefined);
+          if (faltando.length === 0) continue; // já está completo
+
+          const novosDados = { ...l.dados };
+          faltando.forEach(id => { novosDados[id] = 0 });
+          await LancamentoSetor.updateOne({ _id: l._id }, { $set: { dados: novosDados } });
+          corrigidos++;
+        }
+        if (corrigidos > 0) console.log(`✅ Migração: ${corrigidos} lançamento(s) "Sem Movimento" antigos do Fiscal completados.`);
+      }
+    } catch (err) {
+      console.error('⚠️ Erro na migração de Sem Movimento antigos do Fiscal:', err.message);
+    }
+
     app.listen(PORT, () => console.log(`🚀 Servidor rodando na porta ${PORT}`));
   })
   .catch(err => console.error('❌ Erro ao conectar ao MongoDB:', err));
