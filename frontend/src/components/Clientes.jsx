@@ -459,6 +459,8 @@ function FormCliente({ cliente, fechar, onSalvo }) {
   const [camposComErro, setCamposComErro] = useState([])
   const [setoresList, setSetoresList] = useState([])
   const [pedindoVigenciaRegime, setPedindoVigenciaRegime] = useState(false)
+  const [setoresSalvos, setSetoresSalvos] = useState(() => cliente?._id ? (cliente.setores || []).map(st => st._id || st) : [])
+  const [confirmandoRemoverSetor, setConfirmandoRemoverSetor] = useState(null) // setor | null
 
   const [form, setForm] = useState({
     razaoSocial: cliente?.razaoSocial || '',
@@ -509,6 +511,23 @@ function FormCliente({ cliente, fechar, onSalvo }) {
     ...f,
     setores: f.setores.includes(id) ? f.setores.filter(s=>s!==id) : [...f.setores, id]
   }))
+
+  // Setor já atribuído a um cliente salvo só sai pela rota própria (com confirmação e escopo) —
+  // desmarcar aqui e salvar removia na hora, sem aviso, deixando os lançamentos órfãos no banco.
+  const setoresAtribuidos = setoresList.filter(st => setoresSalvos.includes(st._id))
+  const setoresDisponiveis = setoresList.filter(st => !setoresSalvos.includes(st._id))
+
+  const removerSetor = async (escopo) => {
+    const setor = confirmandoRemoverSetor
+    setConfirmandoRemoverSetor(null)
+    try {
+      await api.delete(`/clientes/${cliente._id}/setores/${setor._id}?escopo=${escopo}`)
+      setSetoresSalvos(ss => ss.filter(id => id !== setor._id))
+      setForm(f => ({ ...f, setores: f.setores.filter(id => id !== setor._id) }))
+      mostrar(escopo === 'todas' ? 'Setor removido e histórico apagado.' : 'Setor removido daqui pra frente.', 'sucesso')
+      onSalvo()
+    } catch (e) { mostrar(e.response?.data?.erro || 'Erro ao remover setor.', 'erro') }
+  }
 
   // ── Busca CNPJ ──
   const buscarCNPJ = async () => {
@@ -732,8 +751,26 @@ function FormCliente({ cliente, fechar, onSalvo }) {
         {/* ── SETORES ── */}
         {setoresList.length > 0 && (
           <Secao titulo="Setores">
+            {/* Já atribuídos (cliente salvo): só saem por aqui, com confirmação e escolha de escopo */}
+            {setoresAtribuidos.length > 0 && (
+              <div style={{ display:'flex', flexWrap:'wrap', gap:'10px' }}>
+                {setoresAtribuidos.map(setor => (
+                  <span key={setor._id} style={{
+                    display:'flex', alignItems:'center', gap:'8px', padding:'7px 10px 7px 14px',
+                    borderRadius:'8px', fontFamily:'var(--fonte-corpo)', fontSize:'0.82rem', fontWeight:'500',
+                    background:'rgba(0,177,65,0.1)', border:'1px solid rgba(0,177,65,0.3)', color:'var(--verde)',
+                  }}>
+                    <div style={{ width:'8px', height:'8px', borderRadius:'50%', background: setor.cor || 'var(--verde)', flexShrink:0 }} />
+                    {setor.nome}
+                    <button type="button" onClick={()=>setConfirmandoRemoverSetor(setor)} title="Remover setor" style={{ background:'none', border:'none', color:'var(--verde)', cursor:'pointer', padding:'2px', display:'flex' }}>
+                      <Icone.X size={12}/>
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
             <div style={{ display:'flex', flexWrap:'wrap', gap:'10px' }}>
-              {setoresList.map(setor => {
+              {setoresDisponiveis.map(setor => {
                 const marcado = form.setores.includes(setor._id)
                 return (
                   <button key={setor._id} onClick={()=>toggleSetor(setor._id)} style={{
@@ -853,6 +890,19 @@ function FormCliente({ cliente, fechar, onSalvo }) {
         <button style={s.btnCanc} onClick={fechar}>Cancelar</button>
         <button style={s.btnSalv} onClick={salvar} disabled={carregando}>{carregando?'Salvando...':cliente?'Salvar alterações':'Cadastrar cliente'}</button>
       </div>
+
+      {confirmandoRemoverSetor && (
+        <ModalConfirmacao
+          perigo
+          titulo={`Remover ${confirmandoRemoverSetor.nome} deste cliente?`}
+          mensagem="Escolha o que fazer com o histórico já lançado. Em 'Remover tudo', todos os lançamentos e documentos desse setor pra esse cliente são apagados e não dá pra desfazer."
+          onCancelar={()=>setConfirmandoRemoverSetor(null)}
+          acoes={[
+            { texto: 'Remover daqui pra frente', onClick: () => removerSetor('frente') },
+            { texto: 'Remover tudo (apaga histórico)', perigo: true, onClick: () => removerSetor('todas') },
+          ]}
+        />
+      )}
 
       {pedindoVigenciaRegime && (
         <ModalVigenciaMudanca

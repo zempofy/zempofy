@@ -233,6 +233,15 @@ router.put('/:id', autenticar, temPermissao('gerenciarClientes'), validar(client
       cliente.historicoRegime = aplicarMudancaComHistorico(historico, dados.regime, modo, competenciaMaisAntiga);
     }
 
+    // Por aqui só dá pra ADICIONAR setor: tirar um setor já atribuído (que apaga a Demanda dele pro
+    // cliente) só pela rota DELETE /:id/setores/:setorId, que exige confirmação de escopo. Sem isso,
+    // uma lista de setores incompleta removia o setor na hora e deixava os lançamentos órfãos.
+    if (dados.setores !== undefined) {
+      const atuais = cliente.setores.map(s => s.toString());
+      const novos = dados.setores.map(s => String(s._id || s)).filter(id => !atuais.includes(id));
+      dados.setores = [...cliente.setores, ...novos];
+    }
+
     Object.assign(cliente, dados);
     await cliente.save();
     registrarLog({ empresa: req.usuario.empresa._id, usuario: req.usuario._id, tipo: 'cliente_editado', categoria: 'cliente', descricao: 'Editou o cliente ' + cliente.razaoSocial });
@@ -263,6 +272,44 @@ router.delete('/:id', autenticar, temPermissao('gerenciarClientes'), async (req,
     res.json({ mensagem: 'Cliente removido.' });
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao remover cliente.' });
+  }
+});
+
+// DELETE /api/clientes/:id/setores/:setorId?escopo=frente|todas — tira o cliente da Demanda de um setor.
+// 'frente': só remove de Cliente.setores (some da Demanda daqui pra frente) — lançamentos, documentos
+// e configSetores ficam intocados no banco, pro caso do setor voltar a ser atribuído depois.
+// 'todas': além disso apaga de vez os lançamentos, os documentos (registro + arquivo no R2) e o
+// configSetores (bancos, campos adicionais, situação) desse cliente/setor.
+router.delete('/:id/setores/:setorId', autenticar, temPermissao('gerenciarClientes'), async (req, res) => {
+  try {
+    const { escopo } = req.query;
+    if (!['frente', 'todas'].includes(escopo)) return res.status(400).json({ erro: 'Escopo inválido.' });
+
+    const cliente = await Cliente.findOne({ _id: req.params.id, empresa: req.usuario.empresa._id });
+    if (!cliente) return res.status(404).json({ erro: 'Cliente não encontrado.' });
+    const setor = await Setor.findOne({ _id: req.params.setorId, empresa: req.usuario.empresa._id }).select('nome').lean();
+    if (!setor) return res.status(404).json({ erro: 'Setor não encontrado.' });
+    const setorNome = normalizarNome(setor.nome);
+
+    cliente.setores = cliente.setores.filter(s => s.toString() !== req.params.setorId);
+
+    if (escopo === 'todas') {
+      const { apagarArquivo } = require('../services/storage');
+      const docs = await Documento.find({ empresa: req.usuario.empresa._id, cliente: cliente._id, tipo: 'demanda', setor: req.params.setorId });
+      for (const doc of docs) {
+        try { await apagarArquivo(doc.chave); } catch (err) { console.error(`⚠️ Falha ao apagar ${doc.chave} no R2:`, err.message); }
+        await doc.deleteOne();
+      }
+      await LancamentoSetor.deleteMany({ empresa: req.usuario.empresa._id, cliente: cliente._id, setor: req.params.setorId });
+      if (cliente.configSetores?.[setorNome]) { delete cliente.configSetores[setorNome]; cliente.markModified('configSetores'); }
+    }
+
+    await cliente.save();
+    registrarLog({ empresa: req.usuario.empresa._id, usuario: req.usuario._id, tipo: 'cliente_editado', categoria: 'cliente', descricao: `Removeu ${cliente.razaoSocial} do setor ${setor.nome} (${escopo === 'todas' ? 'excluindo histórico' : 'mantendo histórico'})` });
+    res.json(cliente);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ erro: 'Erro ao remover setor do cliente.' });
   }
 });
 

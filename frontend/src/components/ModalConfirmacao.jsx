@@ -16,7 +16,9 @@ const IconeAlerta = () => (
   </svg>
 )
 
-export default function ModalConfirmacao({ titulo, mensagem, textoBotao = 'Confirmar', perigo = false, onConfirmar, onCancelar }) {
+// `acoes` (opcional): lista de { texto, perigo, onClick } — quando presente, substitui o botão único
+// de confirmar por uma escolha entre várias ações (ex: escopo de uma remoção), empilhadas.
+export default function ModalConfirmacao({ titulo, mensagem, textoBotao = 'Confirmar', perigo = false, onConfirmar, onCancelar, acoes }) {
   return (
     <Modal onFechar={onCancelar} maxWidth="380px">
       <div style={styles.conteudo}>
@@ -25,6 +27,14 @@ export default function ModalConfirmacao({ titulo, mensagem, textoBotao = 'Confi
         </div>
         <h3 style={styles.titulo}>{titulo}</h3>
         <p style={styles.mensagem}>{mensagem}</p>
+        {acoes ? (
+          <div style={{ ...styles.botoes, flexDirection: 'column' }}>
+            {acoes.map(a => (
+              <button key={a.texto} style={{ ...styles.btnConfirmar, ...(a.perigo ? styles.btnPerigo : styles.btnVerde) }} onClick={a.onClick}>{a.texto}</button>
+            ))}
+            <button style={styles.btnCancelar} onClick={onCancelar}>Cancelar</button>
+          </div>
+        ) : (
         <div style={styles.botoes}>
           <button style={styles.btnCancelar} onClick={onCancelar}>Cancelar</button>
           <button
@@ -34,6 +44,7 @@ export default function ModalConfirmacao({ titulo, mensagem, textoBotao = 'Confi
             {textoBotao}
           </button>
         </div>
+        )}
       </div>
     </Modal>
   )
