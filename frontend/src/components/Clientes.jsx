@@ -995,6 +995,8 @@ function TelaDetalhe({ clienteId, voltar, onAtualizado, abaInicial = 'info', set
   // Só tem acesso à Demanda/Histórico do setor quem está naquele setor (ou é titular) — e o setor precisa ter escopo fechado (CONFIG_DEMANDA)
   const setorTemDemanda = (setor) => {
     if (!CONFIG_DEMANDA[normalizarNome(setor?.nome||'')]) return false
+    // Fiscal: cliente sem regime, ou com regime "outro", não gera Demanda (Spec 25) — DP e Contábil ficam de fora dessa regra
+    if (normalizarNome(setor?.nome||'') === 'fiscal' && (!dados?.regime || dados.regime === 'outro')) return false
     return usuario?.cargo === 'admin' || usuario?.setores?.some(s => (s._id || s).toString() === setor._id)
   }
 

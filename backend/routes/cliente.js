@@ -92,7 +92,11 @@ router.get('/demandas/:setorId/:competencia', autenticar, async (req, res) => {
     if (!setor) return res.status(404).json({ erro: 'Setor não encontrado.' });
     const setorNome = normalizarNome(setor.nome);
 
-    const clientes = await Cliente.find({ empresa: req.usuario.empresa._id, setores: setorId, status: { $ne: 'inativo' } })
+    // Fiscal: cliente sem regime, ou com regime "outro", não gera Demanda (Spec 25) — DP e Contábil
+    // ficam de fora dessa regra. Continua em Cliente.setores, só a Demanda em si não é gerada.
+    const filtroClientes = { empresa: req.usuario.empresa._id, setores: setorId, status: { $ne: 'inativo' } };
+    if (setorNome === 'fiscal') filtroClientes.regime = { $nin: [null, '', 'outro'] };
+    const clientes = await Cliente.find(filtroClientes)
       .select('razaoSocial nomeFantasia regime historicoRegime configSetores status')
       .lean();
 
