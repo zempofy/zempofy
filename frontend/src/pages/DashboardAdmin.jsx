@@ -15,6 +15,8 @@ import Avatar from '../components/Avatar'
 import Implantacao from '../components/Implantacao'
 import Clientes from '../components/Clientes'
 import Demandas from '../components/Demandas'
+import RetiradasSocios from '../components/RetiradasSocios'
+import { podeVerContabil } from '../utils/setores'
 import CRM from '../components/CRM'
 import PaginaInicio from '../components/PaginaInicio'
 import Relatorios from '../components/Relatorios'
@@ -1084,6 +1086,13 @@ function PaginaHistorico() {
       documento_excluido:          { icone: <Icone.Trash size={14} />,      cor: '#f87171', bg: 'rgba(248,113,113,0.12)' },
       documento_restaurado:        { icone: <Icone.Check size={14} />,      cor: '#00b141', bg: 'rgba(0,177,65,0.12)' },
       documento_excluido_permanente: { icone: <Icone.Trash size={14} />,    cor: '#f87171', bg: 'rgba(248,113,113,0.12)' },
+      retiradas_controle_criado:     { icone: <Icone.Plus size={14} />,     cor: '#2dd4bf', bg: 'rgba(45,212,191,0.12)' },
+      retiradas_controle_inativado:  { icone: <Icone.Lock size={14} />,     cor: '#f87171', bg: 'rgba(248,113,113,0.12)' },
+      retiradas_controle_reativado:  { icone: <Icone.Check size={14} />,    cor: '#00b141', bg: 'rgba(0,177,65,0.12)' },
+      retiradas_controle_excluido_permanente: { icone: <Icone.Trash size={14} />, cor: '#f87171', bg: 'rgba(248,113,113,0.12)' },
+      retiradas_socios_atualizados:  { icone: <Icone.Users size={14} />,    cor: '#2dd4bf', bg: 'rgba(45,212,191,0.12)' },
+      retirada_lancada:              { icone: <Icone.Cash size={14} />,     cor: '#2dd4bf', bg: 'rgba(45,212,191,0.12)' },
+      apuracao_trimestre_atualizada: { icone: <Icone.BarChart size={14} />, cor: '#2dd4bf', bg: 'rgba(45,212,191,0.12)' },
     }
     return mapa[tipo] || { icone: <Icone.CheckCircle size={14} />, cor: 'var(--texto-apagado)', bg: 'var(--input)' }
   }
@@ -1097,6 +1106,7 @@ function PaginaHistorico() {
       equipe:     { label: 'Equipe',     cor: '#a78bfa', bg: 'rgba(167,139,250,0.1)' },
       tarefa:     { label: 'Tarefa',     cor: '#00b141', bg: 'rgba(0,177,65,0.1)' },
       documento:  { label: 'Documento',  cor: '#38bdf8', bg: 'rgba(56,189,248,0.1)' },
+      contabil:   { label: 'Contábil',   cor: '#2dd4bf', bg: 'rgba(45,212,191,0.1)' },
     }
     const c = mapa[cat] || { label: cat, cor: 'var(--texto-apagado)', bg: 'var(--input)' }
     return (
@@ -1112,6 +1122,7 @@ function PaginaHistorico() {
     { key: 'cliente',    label: 'Clientes' },
     { key: 'equipe',     label: 'Equipe' },
     { key: 'documento',  label: 'Documentos' },
+    { key: 'contabil',   label: 'Contábil' },
   ]
 
   return (
@@ -1237,6 +1248,11 @@ export default function DashboardAdmin() {
     return () => window.removeEventListener('zempofy:equipe-atualizada', recarregar)
   }, [])
 
+  const mostrarContabil = podeVerContabil(usuario)
+  const itensContabil = [
+    { id: 'contabil-retiradas', label: 'Retiradas', icone: <Icone.Cash size={16} /> },
+  ]
+
   // Sidebar dinâmico — cada item só aparece se tiver permissão
   const menuItens = [
     { id: 'inicio', label: 'Início', icone: <Icone.Home size={16} /> },
@@ -1258,6 +1274,13 @@ export default function DashboardAdmin() {
     // Demandas — sempre visível, sem gate de permissão (preencher a demanda do próprio setor é
     // trabalho operacional do dia a dia, não depende de gerenciar cadastro de cliente)
     { id: 'demandas', label: 'Demandas', icone: <Icone.CalendarCheck size={16} /> },
+
+    // Grupo Contábil — só titular e membros do setor Contábil (mesma regra do apenasContabil no
+    // backend). Novos itens do Contábil (ex: Ativos) entram em itensContabil, sem mexer no resto.
+    ...(mostrarContabil ? [
+      { id: '__sep_contabil', separador: true, label: 'Contábil' },
+      ...itensContabil,
+    ] : []),
 
     // Separador — Pessoal
     { id: '__sep_pessoal', separador: true, label: 'Pessoal' },
@@ -1286,6 +1309,7 @@ export default function DashboardAdmin() {
     if (pagina === 'clientes') return <Clientes detalheInicial={clienteDetalheId} abaInicial="onboardings" onDetalheAberto={()=>setClienteDetalheId(null)}
       onIniciarOnboarding={(cliente)=>{ setClienteParaOnboarding({ id: cliente._id, nome: cliente.razaoSocial||cliente.nomeFantasia||'', cnpj: cliente.cnpj||'' }); setPagina('implantacao') }} />
     if (pagina === 'demandas') return <Demandas />
+    if (pagina === 'contabil-retiradas' && mostrarContabil) return <RetiradasSocios />
     if (pagina === 'chat') return <Chat setPagina={setPagina} />
     if (pagina === 'anotacoes') return <Anotacoes />
     if (pagina === 'mural') return <Mural />

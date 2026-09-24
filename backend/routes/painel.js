@@ -20,6 +20,9 @@ const Mensagem = require('../models/Mensagem');
 const ModeloOnboarding = require('../models/ModeloOnboarding');
 const Setor = require('../models/Setor');
 const Tarefa = require('../models/Tarefa');
+const ControleRetiradas = require('../models/ControleRetiradas');
+const RetiradaMes = require('../models/RetiradaMes');
+const ApuracaoTrimestre = require('../models/ApuracaoTrimestre');
 const { apagarArquivo } = require('../services/storage');
 const { enviarCodigoExclusaoEmpresa } = require('../services/email');
 
@@ -237,6 +240,7 @@ router.delete('/empresas/:id', verificarChave, async (req, res) => {
     const [
       docs, anotacoes, atividades, avisos, clientes, eventos, implantacoes,
       lancamentos, leads, logs, mensagens, modelos, setores, tarefas, usuarios,
+      controlesRetiradas, retiradasMes, apuracoesTrimestre,
     ] = await Promise.all([
       Documento.deleteMany({ empresa: id }),
       Anotacao.deleteMany({ empresa: id }),
@@ -253,6 +257,9 @@ router.delete('/empresas/:id', verificarChave, async (req, res) => {
       Setor.deleteMany({ empresa: id }),
       Tarefa.deleteMany({ empresa: id }),
       Usuario.deleteMany({ empresa: id }),
+      ControleRetiradas.deleteMany({ empresa: id }),
+      RetiradaMes.deleteMany({ empresa: id }),
+      ApuracaoTrimestre.deleteMany({ empresa: id }),
     ]);
 
     // 3) Código usado e, por último, a própria empresa
@@ -267,6 +274,8 @@ router.delete('/empresas/:id', verificarChave, async (req, res) => {
       leads: leads.deletedCount, logs: logs.deletedCount, mensagens: mensagens.deletedCount,
       modelosOnboarding: modelos.deletedCount, setores: setores.deletedCount,
       tarefas: tarefas.deletedCount, usuarios: usuarios.deletedCount,
+      controlesRetiradas: controlesRetiradas.deletedCount, retiradasMes: retiradasMes.deletedCount,
+      apuracoesTrimestre: apuracoesTrimestre.deletedCount,
     };
     console.log(`[painel] Empresa ${nomeEmpresa} (${id}) EXCLUÍDA. Removidos:`, JSON.stringify(removidos));
     if (falhasR2.length) {

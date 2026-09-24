@@ -23,6 +23,7 @@ const feedbackRoutes = require('./routes/feedback');
 const logRoutes = require('./routes/log');
 const leadRoutes = require('./routes/lead');
 const documentoRoutes = require('./routes/documento');
+const retiradasRoutes = require('./routes/retiradas');
 const ConfiguracaoSistema = require('./models/ConfiguracaoSistema');
 
 const app = express();
@@ -272,6 +273,7 @@ app.use('/api/feedback', feedbackRoutes);
 app.use('/api/logs', logRoutes);
 app.use('/api/leads', leadRoutes);
 app.use('/api/documentos', documentoRoutes);
+app.use('/api/contabil/retiradas', retiradasRoutes);
 
 app.get('/', (req, res) => {
   res.json({ mensagem: 'Zempofy API rodando 🚀' });

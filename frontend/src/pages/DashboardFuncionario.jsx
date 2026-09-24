@@ -12,6 +12,8 @@ import Implantacao from '../components/Implantacao'
 import PaginaInicio from '../components/PaginaInicio'
 import Clientes from '../components/Clientes'
 import Demandas from '../components/Demandas'
+import RetiradasSocios from '../components/RetiradasSocios'
+import { podeVerContabil } from '../utils/setores'
 import CRM from '../components/CRM'
 
 // ── Popup com informações da implantação ──
@@ -411,6 +413,11 @@ export default function DashboardFuncionario() {
     return () => window.removeEventListener('zempofy:equipe-atualizada', recarregar)
   }, [])
 
+  const mostrarContabil = podeVerContabil(usuario)
+  const itensContabil = [
+    { id: 'contabil-retiradas', label: 'Retiradas', icone: <Icone.Cash size={16} /> },
+  ]
+
   // Sidebar dinâmico baseado nas permissões do colaborador
   // Verifica se tem algum item na seção Escritório pra mostrar o separador
   const menuItens = [
@@ -426,6 +433,13 @@ export default function DashboardFuncionario() {
 
     // Demandas — sempre visível, sem gate de permissão (mesmo critério do item Clientes acima)
     { id: 'demandas', label: 'Demandas', icone: <Icone.CalendarCheck size={16} /> },
+
+    // Grupo Contábil — só titular e membros do setor Contábil (mesma regra do apenasContabil no
+    // backend). Novos itens do Contábil (ex: Ativos) entram em itensContabil, sem mexer no resto.
+    ...(mostrarContabil ? [
+      { id: '__sep_contabil', separador: true, label: 'Contábil' },
+      ...itensContabil,
+    ] : []),
 
     // Separador Pessoal — sempre visível
     { id: '__sep_pessoal', separador: true, label: 'Pessoal' },
@@ -455,6 +469,7 @@ export default function DashboardFuncionario() {
         {pagina === 'clientes' && <Clientes detalheInicial={clienteDetalheId} abaInicial="onboardings" onDetalheAberto={()=>setClienteDetalheId(null)}
           onIniciarOnboarding={(cliente)=>{ setClienteParaOnboarding({ id: cliente._id, nome: cliente.razaoSocial||cliente.nomeFantasia||'', cnpj: cliente.cnpj||'' }); setPagina('implantacao') }} />}
         {pagina === 'demandas' && <Demandas />}
+        {pagina === 'contabil-retiradas' && mostrarContabil && <RetiradasSocios />}
         {pagina === 'onboarding' && <Implantacao setPagina={setPagina} setClienteDetalheId={setClienteDetalheId} onImplantacaoCriada={carregarDados} />}
         {pagina === 'chat' && <Chat setPagina={setPagina} />}
         {pagina === 'anotacoes' && <Anotacoes />}
