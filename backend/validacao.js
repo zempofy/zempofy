@@ -213,6 +213,70 @@ const setorMembroRemoverSchema = z.object({
   usuarioId: z.string().min(1, 'usuarioId é obrigatório.'),
 }).passthrough();
 
+// ── Contábil › Retiradas de sócios ──
+const COMPETENCIA_REGEX = /^\d{4}-(0[1-9]|1[0-2])$/;
+const competenciaValida = (v) => COMPETENCIA_REGEX.test(v || '');
+
+const valorReais = (msg) => z.number({ error: msg }).min(0, msg);
+
+const socioRetiradaSchema = z.object({
+  _id: z.string().optional(),
+  nome: z.string({ error: 'Nome do sócio é obrigatório.' }).trim().min(1, 'Nome do sócio é obrigatório.'),
+  cpf: z.string().optional().default('').transform(v => v.replace(/\D/g, '')).refine(
+    v => !v || v.length === 11,
+    { message: 'CPF do sócio deve ter 11 dígitos.' }
+  ),
+  percentual: z.number({ error: 'Percentual inválido.' }).min(0, 'Percentual deve ficar entre 0 e 100.').max(100, 'Percentual deve ficar entre 0 e 100.').nullable().optional().default(null),
+  ativo: z.boolean().optional(),
+}).passthrough();
+
+// CPF repetido só conta entre sócios ativos da mesma lista — um sócio inativo pode ter o mesmo CPF
+// de alguém que voltou a ser cadastrado. Exportado porque a rota de edição revalida depois de
+// mesclar com os sócios que não vieram no payload.
+const cpfDuplicadoEntreAtivos = (socios) => {
+  const vistos = new Set();
+  for (const s of socios) {
+    if (s.ativo === false || !s.cpf) continue;
+    if (vistos.has(s.cpf)) return s.cpf;
+    vistos.add(s.cpf);
+  }
+  return null;
+};
+
+const listaSociosRetirada = z.array(socioRetiradaSchema).max(100, 'Sócios demais.').refine(
+  socios => !cpfDuplicadoEntreAtivos(socios),
+  { message: 'Há CPF repetido entre os sócios.' }
+);
+
+const retiradasControleCreateSchema = z.object({
+  clienteId: z.string({ error: 'Escolha a empresa.' }).min(1, 'Escolha a empresa.'),
+  socios: listaSociosRetirada,
+  sincronizarCadastro: z.boolean().optional().default(false),
+}).passthrough();
+
+const retiradasSociosUpdateSchema = z.object({
+  socios: listaSociosRetirada,
+  sincronizarCadastro: z.boolean().optional().default(false),
+}).passthrough();
+
+// A regra "data dentro do mês da competência" depende do parâmetro da URL — fica na rota.
+const retiradaMesSchema = z.object({
+  modo: z.enum(['total', 'detalhado'], { error: 'Modo inválido.' }),
+  valorTotal: valorReais('Valor inválido.').optional().default(0),
+  lancamentos: z.array(z.object({
+    data: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data do lançamento inválida.'),
+    valor: valorReais('Valor do lançamento inválido.'),
+    obs: z.string().max(300, 'Observação muito longa.').optional().default(''),
+  })).max(200, 'Máximo de 200 lançamentos no mês.').optional().default([]),
+}).passthrough();
+
+const apuracaoTrimestreSchema = z.object({
+  lucroApurado: valorReais('Lucro apurado inválido.').nullable(),
+  saldoAnterior: valorReais('Lucros acumulados inválidos.').optional().default(0),
+  tratamentoExcedente: z.enum(['', 'adiantamento', 'a_regularizar', 'rendimento_tributavel', 'outro'], { error: 'Tratamento do excedente inválido.' }).optional().default(''),
+  obsExcedente: z.string().max(1000, 'Observação muito longa.').optional().default(''),
+}).passthrough();
+
 // Middleware: valida req.body contra um schema Zod, retorna 400 com a primeira mensagem de erro
 const validar = (schema) => (req, res, next) => {
   const resultado = schema.safeParse(req.body);
@@ -220,6 +284,19 @@ const validar = (schema) => (req, res, next) => {
     const primeiro = resultado.error.issues[0];
     return res.status(400).json({ erro: primeiro?.message || 'Dados inválidos.' });
   }
+  next();
+};
+
+// Igual ao validar, mas troca req.body pelo resultado já tratado (defaults, CPF só com dígitos etc.).
+// Separado de propósito: aplicar isso no validar mudaria o body das rotas antigas (ex: o default ''
+// do cnpj apagaria o CNPJ numa edição parcial de cliente).
+const validarECorrigir = (schema) => (req, res, next) => {
+  const resultado = schema.safeParse(req.body);
+  if (!resultado.success) {
+    const primeiro = resultado.error.issues[0];
+    return res.status(400).json({ erro: primeiro?.message || 'Dados inválidos.' });
+  }
+  req.body = resultado.data;
   next();
 };
 
@@ -238,5 +315,7 @@ module.exports = {
   modeloOnboardingCreateSchema, modeloOnboardingUpdateSchema,
   muralAvisoSchema, muralAvisoUpdateSchema, muralReagirSchema,
   setorCreateSchema, setorUpdateSchema, setorMembroSchema, setorMembroRemoverSchema,
-  validar,
+  retiradasControleCreateSchema, retiradasSociosUpdateSchema, retiradaMesSchema, apuracaoTrimestreSchema,
+  competenciaValida, cpfDuplicadoEntreAtivos,
+  validar, validarECorrigir,
 };
