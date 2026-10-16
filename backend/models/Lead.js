@@ -7,7 +7,16 @@ const leadSchema = new mongoose.Schema({
   nomeEmpresa: { type: String, default: '', trim: true },
   telefone: { type: String, default: '' },
   email: { type: String, default: '' },
-  etapa: { type: String, enum: ['prospeccao', 'contato', 'reuniao', 'proposta', 'fechado', 'perdido'], default: 'prospeccao' },
+  // Etapa atual — derivada da última entrada de historicoEtapas e mantida em sincronia com ela
+  etapa: { type: String, enum: ['prospeccao', 'contato', 'reuniao', 'proposta', 'negocio_fechado', 'ganho', 'perdido'], default: 'prospeccao' },
+  // Movimentações de etapa (append-only: nunca editar nem apagar entradas). É o que permite o
+  // filtro de mês do CRM mostrar cada lead na etapa em que ele estava no fim daquele mês
+  historicoEtapas: [{
+    etapa: { type: String, required: true },
+    em: { type: Date, required: true },
+    por: { type: mongoose.Schema.Types.ObjectId, ref: 'Usuario', default: null },
+    _id: false,
+  }],
   valor: { type: Number, default: 0 },
   origem: { type: String, default: '' },
   tipoServico: { type: String, default: '' },

@@ -12,9 +12,19 @@ const ETAPAS = [
   { id: 'contato', label: 'Contato feito', cor: '#f59e0b', bg: 'rgba(245,158,11,0.08)' },
   { id: 'reuniao', label: 'Reunião', cor: '#3b82f6', bg: 'rgba(59,130,246,0.08)' },
   { id: 'proposta', label: 'Proposta enviada', cor: '#8b5cf6', bg: 'rgba(139,92,246,0.08)' },
-  { id: 'fechado', label: 'Fechado', cor: '#00b141', bg: 'rgba(0,177,65,0.08)' },
+  { id: 'negocio_fechado', label: 'Negócio fechado', cor: '#14b8a6', bg: 'rgba(20,184,166,0.08)' },
+  { id: 'ganho', label: 'Ganho', cor: '#00b141', bg: 'rgba(0,177,65,0.08)' },
   { id: 'perdido', label: 'Perdido', cor: '#f87171', bg: 'rgba(248,113,113,0.08)' },
 ]
+
+// Filtro de mês: o quadro mostra cada lead na etapa em que estava no fim do mês (etapaNoMes, vem do backend)
+const NOMES_MES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
+const mesAtual = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}` }
+const somarMeses = (mes, n) => { const [a, m] = mes.split('-').map(Number); const d = new Date(a, m-1+n, 1); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}` }
+const nomeDoMes = (mes) => { const [a, m] = mes.split('-').map(Number); return `${NOMES_MES[m-1]} ${a}` }
+const ultimos24Meses = () => Array.from({ length: 24 }, (_, i) => somarMeses(mesAtual(), -i))
+const etapaDoLead = (lead) => lead.etapaNoMes || lead.etapa
+const formatData = (d) => d ? new Date(d).toLocaleDateString('pt-BR') : ''
 
 const formatMoeda = (v) => `R$ ${Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}/mês`
 const mascaraTel = (v) => { const d=v.replace(/\D/g,'').slice(0,11); return d.length<=10?d.replace(/(\d{2})(\d{4})(\d)/,'($1) $2-$3'):d.replace(/(\d{2})(\d{5})(\d)/,'($1) $2-$3') }
@@ -32,25 +42,29 @@ const s = {
   erro: { color:'#FCA5A5', fontSize:'0.8rem', background:'rgba(239,68,68,0.1)', padding:'8px 12px', borderRadius:'8px', fontFamily:'var(--fonte-corpo)', margin:0 },
   btnCancelar: { background:'none', border:'1px solid var(--borda)', borderRadius:'8px', color:'var(--texto-apagado)', padding:'9px 18px', fontFamily:'var(--fonte-corpo)', fontSize:'0.85rem', cursor:'pointer' },
   btnSalvar: { background:'var(--gradiente-verde)', color:'#fff', border:'none', borderRadius:'8px', padding:'9px 18px', fontFamily:'var(--fonte-corpo)', fontWeight:'600', fontSize:'0.85rem', cursor:'pointer' },
+  select: { background:'var(--input)', border:'1px solid var(--borda)', borderRadius:'8px', padding:'8px 10px', color:'var(--texto)', fontSize:'0.82rem', fontFamily:'var(--fonte-corpo)', colorScheme:'dark', cursor:'pointer' },
+  btnSeta: { background:'var(--input)', border:'1px solid var(--borda)', borderRadius:'8px', width:'32px', height:'34px', display:'flex', alignItems:'center', justifyContent:'center', color:'var(--texto)', fontSize:'1.1rem', lineHeight:1, fontFamily:'var(--fonte-corpo)', padding:0 },
 }
 
 function Campo({ label, children }) {
   return <div><label style={s.label}>{label}</label>{children}</div>
 }
 
-function CardLead({ lead, onClick, onDragStart, onDragEnd, isTitular, mobile }) {
+function CardLead({ lead, onClick, onDragStart, onDragEnd, isTitular, arrastavel }) {
+  // Ganho/Perdido mostram a data em que o lead foi movido pra coluna (canto inferior direito)
+  const dataMovido = ['ganho','perdido'].includes(lead.etapaNoMes) ? formatData(lead.movidoEm) : ''
   return (
     <div
-      draggable={!mobile}
-      onDragStart={!mobile ? (e) => { e.dataTransfer.setData('leadId', lead._id); onDragStart && onDragStart() } : undefined}
-      onDragEnd={!mobile ? onDragEnd : undefined}
+      draggable={arrastavel}
+      onDragStart={arrastavel ? (e) => { e.dataTransfer.setData('leadId', lead._id); onDragStart && onDragStart() } : undefined}
+      onDragEnd={arrastavel ? onDragEnd : undefined}
       onClick={() => onClick(lead)}
       style={{ background:'var(--card)', border:'1px solid var(--borda)', borderRadius:'10px', padding:'12px 14px', cursor:'pointer', transition:'border-color 0.12s, opacity 0.15s', position:'relative' }}
       onMouseEnter={e=>e.currentTarget.style.borderColor='rgba(0,177,65,0.3)'}
       onMouseLeave={e=>e.currentTarget.style.borderColor='var(--borda)'}
     >
-      {/* Handle de drag — só desktop */}
-      {!mobile && (
+      {/* Handle de drag — só desktop e mês corrente */}
+      {arrastavel && (
         <div style={{ position:'absolute', top:'8px', right:'10px', color:'var(--borda)', cursor:'grab', display:'flex', flexDirection:'column', gap:'2px', padding:'2px' }}
           title="Arrastar para outra etapa"
           onMouseEnter={e=>e.currentTarget.style.color='var(--texto-apagado)'}
@@ -64,7 +78,7 @@ function CardLead({ lead, onClick, onDragStart, onDragEnd, isTitular, mobile }) 
         </div>
       )}
 
-      <div style={{ marginBottom:'8px', paddingRight: mobile ? '0' : '16px' }}>
+      <div style={{ marginBottom:'8px', paddingRight: arrastavel ? '16px' : '0' }}>
         <p style={{ fontSize:'0.85rem', fontWeight:'600', color:'var(--texto)', margin:0, fontFamily:'var(--fonte-corpo)' }}>{lead.nomeEmpresa || lead.nome}</p>
         <p style={{ fontSize:'0.75rem', color:'var(--texto-apagado)', margin:'2px 0 0', fontFamily:'var(--fonte-corpo)' }}>{lead.nome}</p>
       </div>
@@ -72,17 +86,21 @@ function CardLead({ lead, onClick, onDragStart, onDragEnd, isTitular, mobile }) 
         <span style={{ fontSize:'0.72rem', fontWeight:'600', color:'var(--verde)' }}>{formatMoeda(lead.valor)}</span>
         {lead.origem && <span style={{ fontSize:'0.65rem', color:'var(--texto-apagado)', background:'var(--input)', padding:'1px 7px', borderRadius:'4px', border:'1px solid var(--borda)' }}>{lead.origem}</span>}
       </div>
-      {isTitular && (
-        <p style={{ fontSize:'0.65rem', color:'var(--texto-apagado)', margin:'6px 0 0', fontFamily:'var(--fonte-corpo)', opacity:0.7 }}>
-          por {lead.criadoPor?.nome || '—'}
-        </p>
+      {(isTitular || dataMovido) && (
+        <div style={{ display:'flex', flexWrap:'wrap', justifyContent:'space-between', alignItems:'baseline', columnGap:'8px', margin:'6px 0 0', fontSize:'0.65rem', color:'var(--texto-apagado)', fontFamily:'var(--fonte-corpo)', opacity:0.7 }}>
+          {isTitular && <span>por {lead.criadoPor?.nome || '—'}</span>}
+          {dataMovido && <span style={{ marginLeft:'auto', whiteSpace:'nowrap' }}>{dataMovido}</span>}
+        </div>
       )}
     </div>
   )
 }
 
-function DetalheDrawer({ lead, fechar, onMoverEtapa, isTitular, podeGerenciar, onEditar, onExcluir, onIniciarOnboarding }) {
-  const etapa = ETAPAS.find(e => e.id === lead.etapa)
+function DetalheDrawer({ lead, fechar, onMoverEtapa, isTitular, podeGerenciar, somenteLeitura, onEditar, onExcluir, onIniciarOnboarding }) {
+  // Badge = etapa no mês filtrado; se o lead já andou depois disso, mostra também a etapa atual
+  const etapa = ETAPAS.find(e => e.id === etapaDoLead(lead))
+  const etapaAtual = ETAPAS.find(e => e.id === lead.etapa)
+  const mostrarEtapaAtual = lead.etapaNoMes && lead.etapaNoMes !== lead.etapa
   return (
     <div style={{ position:'fixed', inset:0, zIndex:9999, display:'flex' }} onClick={fechar}>
       <div style={{ flex:1, background:'rgba(0,0,0,0.4)' }} />
@@ -92,6 +110,11 @@ function DetalheDrawer({ lead, fechar, onMoverEtapa, isTitular, podeGerenciar, o
             <p style={{ fontSize:'1rem', fontWeight:'700', color:'var(--texto)', margin:0, fontFamily:'var(--fonte-corpo)' }}>{lead.nomeEmpresa || lead.nome}</p>
             <p style={{ fontSize:'0.8rem', color:'var(--texto-apagado)', margin:'3px 0 0', fontFamily:'var(--fonte-corpo)' }}>{lead.nome}</p>
             <span style={{ fontSize:'0.68rem', fontWeight:'600', padding:'2px 8px', borderRadius:'5px', background:etapa?.bg, color:etapa?.cor, display:'inline-block', marginTop:'6px' }}>{etapa?.label}</span>
+            {mostrarEtapaAtual && (
+              <p style={{ fontSize:'0.72rem', color:'var(--texto-apagado)', margin:'6px 0 0', fontFamily:'var(--fonte-corpo)' }}>
+                Etapa atual: <span style={{ color:etapaAtual?.cor, fontWeight:'600' }}>{etapaAtual?.label}</span>
+              </p>
+            )}
           </div>
           <div style={{ display:'flex', gap:'6px', flexShrink:0 }}>
             {podeGerenciar && (
@@ -116,6 +139,7 @@ function DetalheDrawer({ lead, fechar, onMoverEtapa, isTitular, podeGerenciar, o
               { icone: <Icone.Mail size={14}/>, label:'E-mail', valor: lead.email || '—' },
               { icone: <Icone.Zap size={14}/>, label:'Origem', valor: lead.origem || '—' },
               { icone: <Icone.Clock size={14}/>, label:'Adicionado em', valor: lead.criadoEm ? new Date(lead.criadoEm).toLocaleDateString('pt-BR') : '—' },
+              ...(lead.movidoEm ? [{ icone: <Icone.Clock size={14}/>, label:`Movido para ${etapa?.label} em`, valor: formatData(lead.movidoEm) }] : []),
               { icone: <Icone.FileText size={14}/>, label:'Tipo de serviço', valor: lead.tipoServico || '—' },
               ...(isTitular ? [{ icone: <Icone.Users size={14}/>, label:'Criado por', valor: lead.criadoPor?.nome || '—' }] : []),
             ].map((item,i) => (
@@ -134,7 +158,7 @@ function DetalheDrawer({ lead, fechar, onMoverEtapa, isTitular, podeGerenciar, o
             </div>
           )}
 
-          {podeGerenciar && lead.etapa !== 'fechado' && (
+          {podeGerenciar && !somenteLeitura && lead.etapa !== 'ganho' && (
             <div>
               <p style={{ fontSize:'0.65rem', fontWeight:'700', color:'var(--texto-apagado)', textTransform:'uppercase', letterSpacing:'0.8px', margin:'0 0 10px', fontFamily:'var(--fonte-corpo)' }}>Mover para etapa</p>
               <div style={{ display:'flex', flexDirection:'column', gap:'6px' }}>
@@ -151,9 +175,9 @@ function DetalheDrawer({ lead, fechar, onMoverEtapa, isTitular, podeGerenciar, o
             </div>
           )}
 
-          {lead.etapa === 'fechado' && (
+          {lead.etapa === 'ganho' && (
             <div style={{ background:'rgba(0,177,65,0.06)', border:'1px solid rgba(0,177,65,0.2)', borderRadius:'10px', padding:'14px 16px' }}>
-              <p style={{ fontSize:'0.78rem', color:'var(--verde)', fontWeight:'600', margin:'0 0 8px', fontFamily:'var(--fonte-corpo)' }}>Lead fechado!</p>
+              <p style={{ fontSize:'0.78rem', color:'var(--verde)', fontWeight:'600', margin:'0 0 8px', fontFamily:'var(--fonte-corpo)' }}>Lead ganho!</p>
               <p style={{ fontSize:'0.75rem', color:'var(--texto-apagado)', margin:'0 0 12px', fontFamily:'var(--fonte-corpo)' }}>Este lead está pronto para iniciar o onboarding.</p>
               <button onClick={()=>onIniciarOnboarding(lead)} style={{ background:'var(--gradiente-verde)', color:'#fff', border:'none', borderRadius:'8px', padding:'8px 16px', fontFamily:'var(--fonte-corpo)', fontWeight:'600', fontSize:'0.82rem', cursor:'pointer', display:'flex', alignItems:'center', gap:'6px', width:'100%', justifyContent:'center' }}>
                 <Icone.ClipboardList size={14}/> Iniciar onboarding
@@ -269,16 +293,42 @@ export default function CRM({ onIniciarOnboarding }) {
   const [formAberto, setFormAberto] = useState(false)
   const [editandoLead, setEditandoLead] = useState(null)
   const [excluindoLead, setExcluindoLead] = useState(null)
+  const [mes, setMes] = useState(mesAtual)
+  const [colaboradorFiltro, setColaboradorFiltro] = useState('todos') // só titular
+  const [usuarios, setUsuarios] = useState([])
+  // Contador de requisições: troca rápida de mês não deixa uma resposta antiga sobrescrever a nova
+  const reqAtual = useRef(0)
+
+  const mesPassado = mes < mesAtual()
+  const arrastavel = !mobile && !mesPassado
 
   const carregar = async () => {
+    const id = ++reqAtual.current
     setCarregando(true)
     try {
-      const r = await api.get('/leads')
+      const params = { mes }
+      if (isTitular && colaboradorFiltro !== 'todos') params.colaborador = colaboradorFiltro
+      const r = await api.get('/leads', { params })
+      if (id !== reqAtual.current) return
       setLeads(r.data)
-    } catch { mostrar('Erro ao carregar leads.', 'erro') }
-    finally { setCarregando(false) }
+    } catch (e) {
+      if (id !== reqAtual.current) return
+      mostrar(e.response?.data?.erro || 'Erro ao carregar leads.', 'erro')
+    } finally {
+      if (id === reqAtual.current) setCarregando(false)
+    }
   }
-  useEffect(() => { carregar() }, [])
+  useEffect(() => { carregar() }, [mes, colaboradorFiltro])
+
+  useEffect(() => {
+    if (!isTitular) return
+    api.get('/usuarios', { params: { incluirInativos: true } })
+      .then(r => setUsuarios([...r.data].sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR'))))
+      .catch(() => {})
+  }, [isTitular])
+
+  const colaboradorSelecionado = usuarios.find(u => u._id === colaboradorFiltro)
+  const meses = ultimos24Meses()
 
   const podeGerenciar = (lead) => isTitular || lead.criadoPor?._id === usuario?.id
 
@@ -295,6 +345,7 @@ export default function CRM({ onIniciarOnboarding }) {
     e.preventDefault()
     const leadId = e.dataTransfer.getData('leadId')
     setDragSobre(null); setDragging(false)
+    if (!arrastavel) return
     const lead = leads.find(l => l._id === leadId)
     if (!lead || lead.etapa === etapaId || !podeGerenciar(lead)) return
     try {
@@ -315,7 +366,7 @@ export default function CRM({ onIniciarOnboarding }) {
 
   const leadsFiltrados = leads.filter(l => {
     const matchBusca = !busca || (l.nomeEmpresa||'').toLowerCase().includes(busca.toLowerCase()) || l.nome.toLowerCase().includes(busca.toLowerCase())
-    const matchEtapa = !etapaFiltro || l.etapa === etapaFiltro
+    const matchEtapa = !etapaFiltro || etapaDoLead(l) === etapaFiltro
     return matchBusca && matchEtapa
   })
 
@@ -325,7 +376,7 @@ export default function CRM({ onIniciarOnboarding }) {
         <div>
           <h1 style={{ fontSize:'1.5rem', fontWeight:'700', color:'var(--texto)', margin:'0 0 4px', letterSpacing:'-0.03em', fontFamily:'var(--fonte-corpo)' }}>CRM</h1>
           <p style={{ fontSize:'0.82rem', color:'var(--texto-apagado)', margin:0, fontFamily:'var(--fonte-corpo)' }}>
-            {isTitular ? 'Visualizando todos os leads da equipe' : 'Visualizando seus leads'}
+            {!isTitular ? 'Visualizando seus leads' : colaboradorSelecionado ? `Visualizando leads de ${colaboradorSelecionado.nome}` : 'Visualizando todos os leads da equipe'}
           </p>
         </div>
         <button onClick={()=>{ setEditandoLead(null); setFormAberto(true) }} style={{ background:'var(--gradiente-verde)', color:'#fff', border:'none', borderRadius:'10px', padding:'10px 20px', fontFamily:'var(--fonte-corpo)', fontWeight:'600', fontSize:'0.875rem', cursor:'pointer', display:'flex', alignItems:'center', gap:'6px' }}>
@@ -333,13 +384,38 @@ export default function CRM({ onIniciarOnboarding }) {
         </button>
       </div>
 
-      {/* Resumo */}
+      {/* Mês + colaborador */}
+      <div style={{ display:'flex', gap:'10px', marginBottom:'16px', flexWrap:'wrap', alignItems:'center' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:'6px' }}>
+          <button onClick={()=>setMes(m=>somarMeses(m,-1))} disabled={mes <= meses[meses.length-1]} title="Mês anterior"
+            style={{ ...s.btnSeta, opacity: mes <= meses[meses.length-1] ? 0.4 : 1, cursor: mes <= meses[meses.length-1] ? 'default' : 'pointer' }}>‹</button>
+          <select value={mes} onChange={e=>setMes(e.target.value)} style={s.select}>
+            {meses.map(m => <option key={m} value={m}>{nomeDoMes(m)}</option>)}
+          </select>
+          <button onClick={()=>setMes(m=>somarMeses(m,1))} disabled={!mesPassado} title="Próximo mês"
+            style={{ ...s.btnSeta, opacity: mesPassado ? 1 : 0.4, cursor: mesPassado ? 'pointer' : 'default' }}>›</button>
+        </div>
+        {isTitular && (
+          <select value={colaboradorFiltro} onChange={e=>setColaboradorFiltro(e.target.value)} style={{ ...s.select, maxWidth:'260px' }}>
+            <option value="todos">Todos os colaboradores</option>
+            {usuarios.map(u => <option key={u._id} value={u._id}>{u.nome}{u.ativo === false ? ' (inativo)' : ''}</option>)}
+          </select>
+        )}
+        {mesPassado && (
+          <span style={{ fontSize:'0.72rem', color:'var(--texto-apagado)', fontFamily:'var(--fonte-corpo)', display:'flex', alignItems:'center', gap:'5px' }}>
+            <Icone.Clock size={12}/> Mês encerrado — somente visualização
+          </span>
+        )}
+      </div>
+
+      {/* Resumo (leads do mês carregado, pela etapa em que estavam no mês) */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(150px, 1fr))', gap:'12px', marginBottom:'20px' }}>
         {[
           { label:'Total de leads', valor: leads.length, cor:'var(--texto)' },
-          { label:'Em negociação', valor: leads.filter(l=>!['fechado','perdido'].includes(l.etapa)).length, cor:'#3b82f6' },
-          { label:'Fechados', valor: leads.filter(l=>l.etapa==='fechado').length, cor:'var(--verde)' },
-          { label:'Perdidos', valor: leads.filter(l=>l.etapa==='perdido').length, cor:'#f87171' },
+          { label:'Em negociação', valor: leads.filter(l=>['prospeccao','contato','reuniao','proposta'].includes(etapaDoLead(l))).length, cor:'#3b82f6' },
+          { label:'Negócio fechado', valor: leads.filter(l=>etapaDoLead(l)==='negocio_fechado').length, cor:'#14b8a6' },
+          { label:'Ganhos', valor: leads.filter(l=>etapaDoLead(l)==='ganho').length, cor:'var(--verde)' },
+          { label:'Perdidos', valor: leads.filter(l=>etapaDoLead(l)==='perdido').length, cor:'#f87171' },
         ].map((item,i) => (
           <div key={i} style={{ background:'var(--card)', border:'1px solid var(--borda)', borderRadius:'12px', padding:'14px 18px' }}>
             <p style={{ fontSize:'0.72rem', color:'var(--texto-apagado)', margin:'0 0 6px', textTransform:'uppercase', letterSpacing:'0.8px', fontFamily:'var(--fonte-corpo)', fontWeight:'600' }}>{item.label}</p>
@@ -361,8 +437,8 @@ export default function CRM({ onIniciarOnboarding }) {
         </div>
       </div>
 
-      {/* Dica drag — só desktop */}
-      {!mobile && (
+      {/* Dica drag — só desktop e mês corrente */}
+      {arrastavel && (
         <p style={{ fontSize:'0.72rem', color:'var(--texto-apagado)', margin:'0 0 12px', fontFamily:'var(--fonte-corpo)', display:'flex', alignItems:'center', gap:'5px' }}>
           <Icone.Edit size={12}/> Arraste os cards pelos pontinhos para mover entre etapas
         </p>
@@ -372,16 +448,16 @@ export default function CRM({ onIniciarOnboarding }) {
       {carregando ? (
         <p style={{ color:'var(--texto-apagado)' }}>Carregando...</p>
       ) : (
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(6, minmax(150px, 1fr))', gap:'12px', overflowX:'auto', paddingBottom:'16px', alignItems:'start' }}>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(7, minmax(150px, 1fr))', gap:'12px', overflowX:'auto', paddingBottom:'16px', alignItems:'start' }}>
           {ETAPAS.map(etapa => {
-            const leadsEtapa = leadsFiltrados.filter(l=>l.etapa===etapa.id)
+            const leadsEtapa = leadsFiltrados.filter(l=>etapaDoLead(l)===etapa.id)
             const sobreDrop = dragSobre === etapa.id
             return (
               <div
                 key={etapa.id}
-                onDragOver={!mobile ? (e)=>{ e.preventDefault(); setDragSobre(etapa.id) } : undefined}
-                onDragLeave={!mobile ? ()=>setDragSobre(null) : undefined}
-                onDrop={!mobile ? (e)=>onDrop(etapa.id, e) : undefined}
+                onDragOver={arrastavel ? (e)=>{ e.preventDefault(); setDragSobre(etapa.id) } : undefined}
+                onDragLeave={arrastavel ? ()=>setDragSobre(null) : undefined}
+                onDrop={arrastavel ? (e)=>onDrop(etapa.id, e) : undefined}
                 style={{ display:'flex', flexDirection:'column', gap:'8px', transition:'all 0.15s', minWidth:0 }}
               >
                 <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'8px 12px', borderRadius:'8px', background: sobreDrop ? etapa.bg : 'var(--card)', border:`1px solid ${sobreDrop ? etapa.cor+'50' : 'var(--borda)'}`, transition:'all 0.15s' }}>
@@ -403,7 +479,7 @@ export default function CRM({ onIniciarOnboarding }) {
                         onDragStart={()=>setDragging(true)}
                         onDragEnd={()=>{ setDragging(false); setDragSobre(null) }}
                         isTitular={isTitular}
-                        mobile={mobile}
+                        arrastavel={arrastavel}
                       />
                     ))
                   )}
@@ -421,6 +497,7 @@ export default function CRM({ onIniciarOnboarding }) {
           onMoverEtapa={moverEtapa}
           isTitular={isTitular}
           podeGerenciar={podeGerenciar(leadSelecionado)}
+          somenteLeitura={mesPassado}
           onEditar={()=>{ setEditandoLead(leadSelecionado); setFormAberto(true) }}
           onExcluir={()=>setExcluindoLead(leadSelecionado)}
           onIniciarOnboarding={(lead)=>{ setLeadSelecionado(null); onIniciarOnboarding && onIniciarOnboarding(lead) }}
@@ -431,7 +508,12 @@ export default function CRM({ onIniciarOnboarding }) {
         <FormLead
           lead={editandoLead}
           fechar={()=>setFormAberto(false)}
-          onSalvo={()=>{ carregar(); if (leadSelecionado) setLeadSelecionado(null) }}
+          onSalvo={()=>{
+            if (leadSelecionado) setLeadSelecionado(null)
+            // Lead novo nasce hoje: se estava olhando um mês passado, volta pro mês atual (o efeito recarrega)
+            if (!editandoLead && mesPassado) setMes(mesAtual())
+            else carregar()
+          }}
         />
       )}
 

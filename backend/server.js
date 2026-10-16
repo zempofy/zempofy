@@ -625,6 +625,24 @@ mongoose.connect(process.env.MONGODB_URI)
       console.error('⚠️ Erro na migração de Sem Movimento antigos do Fiscal:', err.message);
     }
 
+    // ── Migração CRM: etapa "fechado" vira "ganho" + histórico inicial de etapas ──
+    // Nesta ordem: primeiro renomeia, depois cria o histórico (pra ele já nascer com "ganho").
+    // Lead existente é tratado como se estivesse na etapa atual desde a criação. As duas etapas só
+    // pegam o que ainda não foi migrado, então reiniciar o servidor não reprocessa nada.
+    try {
+      const Lead = require('./models/Lead');
+      const renomeados = await Lead.updateMany({ etapa: 'fechado' }, { $set: { etapa: 'ganho' } });
+      if (renomeados.modifiedCount > 0) console.log(`✅ Migração: ${renomeados.modifiedCount} lead(s) movido(s) de "fechado" para "ganho".`);
+
+      const semHistorico = await Lead.updateMany(
+        { $or: [{ historicoEtapas: { $exists: false } }, { historicoEtapas: { $size: 0 } }] },
+        [{ $set: { historicoEtapas: [{ etapa: '$etapa', em: { $ifNull: ['$criadoEm', { $toDate: '$_id' }] }, por: null }] } }]
+      );
+      if (semHistorico.modifiedCount > 0) console.log(`✅ Migração: histórico de etapas inicial criado em ${semHistorico.modifiedCount} lead(s).`);
+    } catch (err) {
+      console.error('⚠️ Erro na migração de etapas do CRM:', err.message);
+    }
+
     app.listen(PORT, () => console.log(`🚀 Servidor rodando na porta ${PORT}`));
   })
   .catch(err => console.error('❌ Erro ao conectar ao MongoDB:', err));
