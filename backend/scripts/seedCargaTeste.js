@@ -179,12 +179,16 @@ async function main() {
   console.log(`Tarefas avulsas criadas: ${tarefasAvulsas.length}`);
 
   // ── 5) Leads de CRM ──
-  const leads = Array.from({ length: 35 }, (_, i) => ({
-    empresa: empresa._id, criadoPor: usuario._id,
-    nome: `Contato ${i + 1}`, nomeEmpresa: `${aleatorio(['Prospect', 'Lead', 'Oportunidade'])} ${i + 1} Ltda`,
-    etapa: aleatorio(['prospeccao', 'contato', 'reuniao', 'proposta', 'fechado', 'perdido']),
-    valor: Math.round(Math.random() * 5000), tipoServico: aleatorio(['Fiscal', 'Contábil', 'DP', 'Completo']),
-  }));
+  const leads = Array.from({ length: 35 }, (_, i) => {
+    const etapa = aleatorio(['prospeccao', 'contato', 'reuniao', 'proposta', 'negocio_fechado', 'ganho', 'perdido']);
+    const criadoEm = new Date();
+    return {
+      empresa: empresa._id, criadoPor: usuario._id,
+      nome: `Contato ${i + 1}`, nomeEmpresa: `${aleatorio(['Prospect', 'Lead', 'Oportunidade'])} ${i + 1} Ltda`,
+      etapa, criadoEm, historicoEtapas: [{ etapa, em: criadoEm, por: usuario._id }],
+      valor: Math.round(Math.random() * 5000), tipoServico: aleatorio(['Fiscal', 'Contábil', 'DP', 'Completo']),
+    };
+  });
   await Lead.insertMany(leads);
   console.log(`Leads de CRM criados: ${leads.length}`);
 

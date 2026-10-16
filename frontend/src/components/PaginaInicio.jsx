@@ -253,7 +253,8 @@ function InicioTitular({ usuario, setPagina }) {
               { id:'contato', label:'Contato', cor:'#f59e0b' },
               { id:'reuniao', label:'Reunião', cor:'#3b82f6' },
               { id:'proposta', label:'Proposta', cor:'#8b5cf6' },
-              { id:'fechado', label:'Fechado', cor:'#00b141' },
+              { id:'negocio_fechado', label:'Negócio fechado', cor:'#14b8a6' },
+              { id:'ganho', label:'Ganho', cor:'#00b141' },
             ].map(e => ({ ...e, valor: dados.leads.filter(l => l.etapa === e.id).length }))
             const maxValor = Math.max(1, ...etapasFunil.map(e => e.valor))
             return dados.leads.length === 0 ? (
