@@ -46,8 +46,10 @@ const s = {
   inputBusca: { background:'var(--input)', border:'1px solid var(--borda)', borderRadius:'8px', padding:'0 12px', height:'34px', color:'var(--texto)', fontSize:'0.85rem', fontFamily:'var(--fonte-corpo)', boxSizing:'border-box', colorScheme:'dark' },
   // Mesmo visual dos botões de filtro da tela de Clientes (verde translúcido quando ativo)
   btnFiltrar: { display:'flex', alignItems:'center', gap:'6px', height:'34px', boxSizing:'border-box', padding:'0 14px', borderRadius:'8px', fontSize:'0.78rem', fontWeight:'600', fontFamily:'var(--fonte-corpo)', cursor:'pointer', whiteSpace:'nowrap', border:'1px solid var(--borda)', background:'var(--input)', color:'var(--texto)' },
-  btnFiltrarAtivo: { border:'1px solid rgba(0,177,65,0.3)', background:'rgba(0,177,65,0.08)', color:'var(--verde)' },
-  rotuloFiltro: { fontSize:'0.65rem', fontWeight:'700', color:'var(--texto-apagado)', textTransform:'uppercase', letterSpacing:'0.8px', fontFamily:'var(--fonte-corpo)' },
+  btnFiltrarAtivo: { border:'1px solid var(--verde)', background:'rgba(0,177,65,0.08)', color:'var(--verde)' },
+  linhaFiltro: { display:'flex', flexWrap:'wrap', alignItems:'flex-start', gap:'8px 14px' },
+  rotuloFiltro: { width:'92px', flexShrink:0, height:'30px', display:'flex', alignItems:'center', fontSize:'0.65rem', fontWeight:'700', color:'var(--texto-apagado)', textTransform:'uppercase', letterSpacing:'0.8px', fontFamily:'var(--fonte-corpo)' },
+  chip: { height:'30px', boxSizing:'border-box', padding:'0 12px', borderRadius:'7px', fontSize:'0.75rem', fontWeight:'600', cursor:'pointer', fontFamily:'var(--fonte-corpo)' },
   btnSeta: { background:'var(--input)', border:'1px solid var(--borda)', borderRadius:'8px', width:'32px', height:'34px', display:'flex', alignItems:'center', justifyContent:'center', color:'var(--texto)', fontSize:'1.1rem', lineHeight:1, fontFamily:'var(--fonte-corpo)', padding:0 },
 }
 
@@ -418,7 +420,6 @@ export default function CRM({ onIniciarOnboarding }) {
         <div style={{ flex:'1 0 auto', maxWidth:'100%', display:'flex', flexWrap:'wrap', alignItems:'center', justifyContent:'space-between', gap:'8px 10px' }}>
           <button onClick={()=>setFiltrosAbertos(v=>!v)} style={{ ...s.btnFiltrar, ...(filtrosAbertos || qtdFiltros ? s.btnFiltrarAtivo : {}) }}>
             {qtdFiltros ? `Filtrar · ${qtdFiltros}` : 'Filtrar'}
-            <Icone.ChevronDown size={13} style={{ transition:'transform 0.15s', transform: filtrosAbertos ? 'rotate(180deg)' : 'none' }}/>
           </button>
           {/* Em tela muito estreita (celular) o mês desce pra linha de baixo, alinhado à direita */}
           <div style={{ display:'flex', alignItems:'center', gap:'6px', marginLeft:'auto' }}>
@@ -441,28 +442,37 @@ export default function CRM({ onIniciarOnboarding }) {
 
       {/* Painel de filtros: fechar não desfaz os filtros (o contador no botão mostra que continuam valendo) */}
       {filtrosAbertos && (
-        <div style={{ display:'flex', flexWrap:'wrap', alignItems:'center', gap:'14px', padding:'12px 14px', border:'1px solid var(--borda)', borderRadius:'10px', background:'var(--card)', marginBottom:'16px' }}>
-          <div style={{ display:'flex', alignItems:'center', gap:'8px', flexWrap:'wrap' }}>
+        // Uma linha por grupo: rótulo de largura fixa + conteúdo. Em tela estreita o conteúdo desce
+        // pra baixo do rótulo (grupos empilhados)
+        <div style={{ display:'flex', flexDirection:'column', gap:'12px', padding:'14px 16px', border:'1px solid var(--borda)', borderRadius:'10px', background:'var(--card)', marginBottom:'16px' }}>
+          <div style={s.linhaFiltro}>
             <span style={s.rotuloFiltro}>Etapa</span>
-            {ETAPAS.map(e=>(
-              <button key={e.id} onClick={()=>setEtapaFiltro(etapaFiltro===e.id?null:e.id)} style={{ padding:'7px 12px', borderRadius:'7px', fontSize:'0.75rem', fontWeight:'600', cursor:'pointer', fontFamily:'var(--fonte-corpo)', border:`1px solid ${etapaFiltro===e.id?e.cor+'50':'var(--borda)'}`, background:etapaFiltro===e.id?e.bg:'var(--input)', color:etapaFiltro===e.id?e.cor:'var(--texto-apagado)' }}>
-                {e.label}
-              </button>
-            ))}
-          </div>
-          {isTitular && (
-            <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
-              <span style={s.rotuloFiltro}>Colaborador</span>
-              <select value={colaboradorFiltro} onChange={e=>setColaboradorFiltro(e.target.value)} style={{ ...s.select, maxWidth:'260px' }}>
-                <option value="todos">Todos os colaboradores</option>
-                {usuarios.map(u => <option key={u._id} value={u._id}>{u.nome}{u.ativo === false ? ' (inativo)' : ''}</option>)}
-              </select>
+            <div style={{ flex:'1 1 280px', display:'flex', flexWrap:'wrap', gap:'6px' }}>
+              <button onClick={()=>setEtapaFiltro(null)} style={{ ...s.chip, border:`1px solid ${!etapaFiltro?'rgba(0,177,65,0.3)':'var(--borda)'}`, background:!etapaFiltro?'rgba(0,177,65,0.08)':'var(--input)', color:!etapaFiltro?'var(--verde)':'var(--texto-apagado)' }}>Todos</button>
+              {ETAPAS.map(e=>(
+                <button key={e.id} onClick={()=>setEtapaFiltro(etapaFiltro===e.id?null:e.id)} style={{ ...s.chip, border:`1px solid ${etapaFiltro===e.id?e.cor+'50':'var(--borda)'}`, background:etapaFiltro===e.id?e.bg:'var(--input)', color:etapaFiltro===e.id?e.cor:'var(--texto-apagado)' }}>
+                  {e.label}
+                </button>
+              ))}
             </div>
-          )}
-          {qtdFiltros > 0 && (
-            <button onClick={limparFiltros} style={{ marginLeft:'auto', background:'none', border:'none', color:'var(--texto-apagado)', fontSize:'0.78rem', fontWeight:'600', fontFamily:'var(--fonte-corpo)', cursor:'pointer', padding:'4px 2px', textDecoration:'underline', textUnderlineOffset:'3px' }}>
-              Limpar filtros
-            </button>
+          </div>
+          {(isTitular || qtdFiltros > 0) && (
+            <div style={s.linhaFiltro}>
+              <span style={s.rotuloFiltro}>{isTitular ? 'Colaborador' : ''}</span>
+              <div style={{ flex:'1 1 280px', display:'flex', flexWrap:'wrap', alignItems:'center', gap:'8px 12px' }}>
+                {isTitular && (
+                  <select value={colaboradorFiltro} onChange={e=>setColaboradorFiltro(e.target.value)} style={{ ...s.select, maxWidth:'100%' }}>
+                    <option value="todos">Todos os colaboradores</option>
+                    {usuarios.map(u => <option key={u._id} value={u._id}>{u.nome}{u.ativo === false ? ' (inativo)' : ''}</option>)}
+                  </select>
+                )}
+                {qtdFiltros > 0 && (
+                  <button onClick={limparFiltros} style={{ marginLeft:'auto', background:'none', border:'none', color:'var(--texto-apagado)', fontSize:'0.78rem', fontWeight:'600', fontFamily:'var(--fonte-corpo)', cursor:'pointer', padding:'4px 2px', textDecoration:'underline', textUnderlineOffset:'3px' }}>
+                    Limpar filtros
+                  </button>
+                )}
+              </div>
+            </div>
           )}
         </div>
       )}
@@ -479,8 +489,8 @@ export default function CRM({ onIniciarOnboarding }) {
         <p style={{ color:'var(--texto-apagado)' }}>Carregando...</p>
       ) : (
         // Largura fixa: cabeçalhos e cards têm o mesmo tamanho em qualquer tela; tela menor rola na horizontal.
-        // 7 × 180px + 6 × 10px = 1320px = área útil do Layout (max-width 1400px − 40px de padding de cada lado)
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(7, 180px)', justifyContent:'start', gap:'10px', overflowX:'auto', paddingBottom:'16px', alignItems:'start' }}>
+        // 7 × 176px + 6 × 12px = 1304px, cabe na área útil do Layout (1320px = max-width 1400px − 40px de padding de cada lado)
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(7, 176px)', justifyContent:'start', gap:'12px', overflowX:'auto', paddingBottom:'16px', alignItems:'start' }}>
           {ETAPAS.map(etapa => {
             const leadsEtapa = leadsFiltrados.filter(l=>etapaDoLead(l)===etapa.id)
             const sobreDrop = dragSobre === etapa.id
