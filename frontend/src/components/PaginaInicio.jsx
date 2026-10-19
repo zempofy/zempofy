@@ -48,8 +48,8 @@ function SecaoHeader({ titulo, icone, onVerTodos }) {
   )
 }
 
-// ── Resumo de Demandas (Spec 22) — barra horizontal empilhada em SVG puro, sem dependência nova
-// (projeto não tem lib de gráfico). Mesma competência de trabalho que Fiscal/DP/Contábil já usam
+// ── Resumo de Demandas (Spec 22) — um bloco por setor com rosca em SVG puro (RoscaDemandas,
+// abaixo), sem dependência nova (projeto não tem lib de gráfico). Mesma competência de trabalho que Fiscal/DP/Contábil já usam
 // (competenciaDefasada — mês anterior ao civil). Compartilhado entre InicioTitular e
 // InicioColaborador (mesma lógica pros dois, per Spec 22) em vez de duplicar.
 function ResumoDemandas({ usuario, isTitular }) {
@@ -83,28 +83,107 @@ function ResumoDemandas({ usuario, isTitular }) {
   const competencia = competenciaDefasada()
 
   return (
-    <div style={{ background:'var(--card)', border:'1px solid var(--borda)', borderRadius:'12px', padding:'16px' }}>
+    <div className="rd-card" style={{ background:'var(--card)', border:'1px solid var(--borda)', borderRadius:'12px', padding:'16px' }}>
+      <style>{CSS_ROSCA}</style>
       <SecaoHeader titulo={`Demandas de ${nomeMes(competencia)}/${competencia.slice(0,4)}`} icone={<Icone.ClipboardList size={14}/>} />
-      <div style={{ display:'flex', flexDirection:'column', gap:'16px' }}>
+      <div className="rd-grade">
         {linhas.map(l => {
           const { pendente, incompleto, concluido, total } = l
-          const pct = (n) => total ? (n/total)*100 : 0
           return (
-            <div key={l.setor._id}>
-              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'6px', gap:'8px', flexWrap:'wrap' }}>
-                <p style={{ fontSize:'0.82rem', fontWeight:'600', color:'var(--texto)', margin:0, fontFamily:'var(--fonte-corpo)' }}>{l.setor.nome}</p>
-                <p style={{ fontSize:'0.72rem', color:'var(--texto-apagado)', margin:0, fontFamily:'var(--fonte-corpo)' }}>
-                  {concluido} concluída{concluido===1?'':'s'} · {incompleto} incompleta{incompleto===1?'':'s'} · {pendente} pendente{pendente===1?'':'s'}
-                </p>
+            <div key={l.setor._id} className="rd-bloco">
+              <p style={{ fontSize:'13px', fontWeight:'600', lineHeight:1.3, color:'var(--texto)', margin:0, fontFamily:'var(--fonte-corpo)' }}>{l.setor.nome}</p>
+              <p style={{ fontSize:'11px', lineHeight:1.4, color:'var(--texto-apagado)', margin:'0 0 12px', fontFamily:'var(--fonte-corpo)' }}>{total} {total === 1 ? 'demanda' : 'demandas'}</p>
+              <div style={{ display:'flex', alignItems:'center', gap:'14px' }}>
+                <RoscaDemandas concluido={concluido} incompleto={incompleto} pendente={pendente} />
+                <div style={{ display:'flex', flexDirection:'column', gap:'6px' }}>
+                  <ItemLegenda n={concluido} rotulo="Concluídas" cor={COR_CONCLUIDO} />
+                  <ItemLegenda n={incompleto} rotulo="Incompletas" cor={COR_INCOMPLETO} />
+                  <ItemLegenda n={pendente} rotulo="Pendentes" cor={COR_PENDENTE} />
+                </div>
               </div>
-              <svg viewBox="0 0 100 8" width="100%" height="8" preserveAspectRatio="none" style={{ display:'block', borderRadius:'4px', overflow:'hidden' }}>
-                <rect x={0} y={0} width={pct(concluido)} height={8} fill="var(--verde)" />
-                <rect x={pct(concluido)} y={0} width={pct(incompleto)} height={8} fill="#3b82f6" />
-                <rect x={pct(concluido)+pct(incompleto)} y={0} width={pct(pendente)} height={8} fill="#f59e0b" />
-              </svg>
             </div>
           )
         })}
+      </div>
+    </div>
+  )
+}
+
+// ── Rosca do card de Demandas (spec_rosca_demandas_inicio.md; referência visual em
+// referencia_rosca_demandas.html). SVG puro, sem lib de gráfico. Cores do bloco por tema que não
+// têm variável equivalente no index.css ficam aqui (--rd-*); fundo do bloco e sombra reaproveitam
+// --card-hover e --sombra-card. Grade usa container query: 1 coluna quando o conteúdo do próprio
+// card tem < 670px (a referência usa 640, mas aí entre 640 e ~663 a legenda vaza do bloco: rosca
+// 92 + 14 + legenda ~77 + padding 28 = 211px por bloco × 3 + 2 gaps de 12).
+const COR_CONCLUIDO = '#00b141'
+const COR_INCOMPLETO = '#3b82f6'
+const COR_PENDENTE = '#f59e0b'
+
+const CSS_ROSCA = `
+  :root, [data-tema="escuro"] {
+    --rd-borda: #2e2e33; --rd-borda-hover: #3f3f46; --rd-anel: #2e2e34;
+    --rd-sombra-hover: 0 2px 6px rgba(0,0,0,.45), 0 8px 20px rgba(0,0,0,.28);
+    --rd-brilho: drop-shadow(0 0 6px rgba(0,177,65,.35));
+  }
+  [data-tema="claro"] {
+    --rd-borda: #e4e4e7; --rd-borda-hover: #d4d4d8; --rd-anel: #e4e4e7;
+    --rd-sombra-hover: 0 2px 6px rgba(0,0,0,.08), 0 8px 20px rgba(0,0,0,.08);
+    --rd-brilho: drop-shadow(0 0 5px rgba(0,177,65,.25));
+  }
+  .rd-card { container-type: inline-size; }
+  .rd-grade { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+  @container (max-width: 669px) { .rd-grade { grid-template-columns: minmax(0, 1fr); } }
+  .rd-bloco { background: var(--card-hover); border: 1px solid var(--rd-borda); border-radius: 12px; padding: 14px; min-width: 0; box-shadow: var(--sombra-card); transition: border-color .15s, box-shadow .15s; }
+  .rd-bloco:hover { border-color: var(--rd-borda-hover); box-shadow: var(--rd-sombra-hover); }
+  @keyframes rd-cresce { from { stroke-dasharray: 0 var(--rd-c); } }
+  .rd-seg { animation: rd-cresce .9s ease-out both; }
+  .rd-verde { filter: var(--rd-brilho); }
+`
+
+// Nunca "0%" com alguma concluída, nunca "100%" com alguma não concluída
+const pctConcluido = (concluido, total) => {
+  if (!total || concluido === 0) return 0
+  const p = Math.round(concluido / total * 100)
+  if (p === 0) return 1
+  if (p === 100 && concluido < total) return 99
+  return p
+}
+
+// Começa às 12h, sentido horário, pontas retas; ~3px de folga entre trechos só quando há mais de
+// uma cor. A animação é CSS e só roda quando o SVG monta (re-render não repete).
+function RoscaDemandas({ concluido, incompleto, pendente }) {
+  const tam = 92, esp = 10, r = (tam - esp) / 2, c = 2 * Math.PI * r, m = tam / 2
+  const total = concluido + incompleto + pendente
+  const segs = [[concluido, COR_CONCLUIDO, true], [incompleto, COR_INCOMPLETO, false], [pendente, COR_PENDENTE, false]].filter(s => s[0] > 0)
+  const folga = segs.length > 1 ? 3 : 0
+  const pct = pctConcluido(concluido, total)
+  let acum = 0
+  return (
+    <svg width={tam} height={tam} viewBox={`0 0 ${tam} ${tam}`} style={{ flex:'none', display:'block' }} role="img" aria-label={`${pct}% concluído`}>
+      <circle cx={m} cy={m} r={r} fill="none" stroke="var(--rd-anel)" strokeWidth={esp} />
+      {segs.map(([n, cor, verde]) => {
+        const len = c * n / total, tr = Math.max(len - folga, 0.5)
+        const offset = -acum
+        acum += len
+        return (
+          <circle key={cor} className={verde ? 'rd-seg rd-verde' : 'rd-seg'} cx={m} cy={m} r={r} fill="none" stroke={cor} strokeWidth={esp} strokeLinecap="butt"
+            transform={`rotate(-90 ${m} ${m})`}
+            style={{ '--rd-c': c.toFixed(2), strokeDasharray: `${tr.toFixed(2)} ${(c - tr).toFixed(2)}`, strokeDashoffset: offset.toFixed(2) }} />
+        )
+      })}
+      <text x={m} y={m - 7} textAnchor="middle" dominantBaseline="central" fontFamily="Plus Jakarta Sans, sans-serif" fontSize="21" fontWeight="600" style={{ fill:'var(--texto)' }}>{pct}%</text>
+      <text x={m} y={m + 13} textAnchor="middle" dominantBaseline="central" fontFamily="Plus Jakarta Sans, sans-serif" fontSize="11" style={{ fill:'var(--texto-apagado)' }}>concluído</text>
+    </svg>
+  )
+}
+
+function ItemLegenda({ n, rotulo, cor }) {
+  return (
+    <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
+      <span style={{ width:'3px', height:'28px', borderRadius:'2px', flex:'none', background:cor }} />
+      <div>
+        <div style={{ fontSize:'16px', fontWeight:'600', lineHeight:1.15, color:'var(--texto)', fontFamily:'var(--fonte-corpo)' }}>{n}</div>
+        <div style={{ fontSize:'11px', lineHeight:1.25, color:'var(--texto-apagado)', fontFamily:'var(--fonte-corpo)' }}>{rotulo}</div>
       </div>
     </div>
   )
