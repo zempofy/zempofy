@@ -3,6 +3,12 @@ import { createPortal } from 'react-dom'
 import api from '../services/api'
 import Icone from './Icones'
 import { useToast } from './Toast'
+import { useAuth } from '../contexts/AuthContext'
+
+// Dicas da bolinha da atividade (as mesmas frases que o servidor devolve quando recusa — Spec E)
+const DICA_RESPONSAVEL = 'Só o responsável pela atividade pode concluí-la.'
+const DICA_BLOQUEADA = 'Esta etapa será liberada quando a anterior for concluída.'
+const DICA_TRAVADA = 'Esta atividade já liberou a próxima etapa e não pode ser reaberta aqui.'
 
 
 // ── Balão de tour ──
@@ -48,8 +54,12 @@ function Balao({ alvo, titulo, texto, passo, total, onProximo, onFechar, posicao
 }
 
 // ── Mapa mental horizontal da implantação ──
-function DetalheImplantacao({ implantacao: inicial, voltar, onAtualizado, setPagina, setDetalheClienteId }) {
+function DetalheImplantacao({ implantacao: inicial, voltar, onAtualizado, onTarefasAlteradas, setPagina, setDetalheClienteId }) {
   const [implantacao, setImplantacao] = useState(inicial)
+  const { usuario } = useAuth()
+  const [ocupadas, setOcupadas] = useState({}) // itens da etapa com clique em andamento (evita clique duplo)
+  const cliquesEmAndamento = useRef(0) // cliques em atividades diferentes ao mesmo tempo: no fim, busca o estado real
+  const houveSobreposicao = useRef(false)
   const [etapaSelecionada, setEtapaSelecionada] = useState(
     () => inicial.etapas.find(e => e.status === 'em_andamento') || inicial.etapas[0]
   )
@@ -104,6 +114,54 @@ function DetalheImplantacao({ implantacao: inicial, voltar, onAtualizado, setPag
     const total = implantacao.etapas.length
     const conc = implantacao.etapas.filter(e => e.status === 'concluida').length
     return total > 0 ? Math.round((conc / total) * 100) : 0
+  }
+
+  // Quem pode clicar na bolinha: mesma regra do servidor (titular em qualquer atividade; colaborador só nas dele).
+  // Reabrir trava depois que a etapa terminou (já liberou a próxima) ou o onboarding inteiro concluiu.
+  const situacaoBolinha = (etapa, item) => {
+    const feita = item.status === 'concluida'
+    if (etapa.status === 'bloqueada') return { pode: false, dica: DICA_BLOQUEADA }
+    if (feita && (etapa.status === 'concluida' || implantacao.status === 'concluida')) return { pode: false, dica: DICA_TRAVADA }
+    const resp = item.tarefa?.responsavel
+    const respId = resp?._id || resp
+    const ehResponsavel = !!respId && String(respId) === String(usuario?._id || usuario?.id)
+    if (usuario?.cargo !== 'admin' && !ehResponsavel) return { pode: false, dica: DICA_RESPONSAVEL }
+    return { pode: true, dica: feita ? 'Reabrir atividade' : 'Marcar como concluída' }
+  }
+
+  const alternarAtividade = async (etapa, item) => {
+    if (ocupadas[item._id] || !situacaoBolinha(etapa, item).pode) return
+    const concluir = item.status !== 'concluida'
+    const antes = implantacao
+    // Muda na hora; se o servidor recusar ou falhar, volta
+    setImplantacao(imp => ({ ...imp, etapas: imp.etapas.map(e => e._id !== etapa._id ? e : {
+      ...e, tarefas: e.tarefas.map(t => t._id !== item._id ? t : { ...t, status: concluir ? 'concluida' : 'pendente' }),
+    }) }))
+    setOcupadas(o => ({ ...o, [item._id]: true }))
+    cliquesEmAndamento.current += 1
+    if (cliquesEmAndamento.current > 1) houveSobreposicao.current = true
+    try {
+      const r = await api.patch(`/implantacoes/${implantacao._id}/tarefas/${etapa._id}/${item._id}/${concluir ? 'concluir' : 'desmarcar'}`)
+      const { efeitos, ...atualizada } = r.data
+      setImplantacao(atualizada) // a etapa vista continua a mesma (etapaExibida sai do id selecionado)
+      if (efeitos?.onboardingConcluido) toast('Onboarding concluído.', 'sucesso')
+      else if (efeitos?.etapaConcluida && efeitos?.etapaLiberada) toast(`Etapa ${efeitos.etapaConcluida} concluída. ${efeitos.etapaLiberada} liberado.`, 'sucesso')
+      else if (efeitos?.etapaConcluida) toast(`Etapa ${efeitos.etapaConcluida} concluída.`, 'sucesso')
+      else toast(concluir ? 'Atividade concluída.' : 'Atividade reaberta.', 'sucesso')
+      onAtualizado?.()
+      onTarefasAlteradas?.() // Tarefas e o selo de pendentes do menu
+    } catch (err) {
+      const dados = err.response?.data
+      // Servidor manda o estado real quando recusa (ex: outra pessoa já tinha mexido) — senão, volta ao de antes
+      setImplantacao(dados?.implantacao || antes)
+      toast(dados?.erro || 'Não foi possível atualizar a atividade. Tente de novo.', dados?.codigo === 'ja_atualizada' ? 'aviso' : 'erro')
+      if (dados?.codigo === 'ja_atualizada') { onAtualizado?.(); onTarefasAlteradas?.() }
+    } finally {
+      setOcupadas(o => { const n = { ...o }; delete n[item._id]; return n })
+      cliquesEmAndamento.current -= 1
+      // As respostas de cliques sobrepostos podem chegar fora de ordem: o último a terminar recarrega do servidor
+      if (cliquesEmAndamento.current === 0 && houveSobreposicao.current) { houveSobreposicao.current = false; recarregar() }
+    }
   }
 
   const etapaExibida = implantacao.etapas.find(e => e._id === etapaSelecionada._id) || etapaSelecionada
@@ -296,19 +354,28 @@ function DetalheImplantacao({ implantacao: inicial, voltar, onAtualizado, setPag
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 {etapaExibida.tarefas.map(tarefaEtapa => {
                   const feita = tarefaEtapa.status === 'concluida'
+                  const { pode, dica } = situacaoBolinha(etapaExibida, tarefaEtapa)
+                  const ocupada = !!ocupadas[tarefaEtapa._id]
                   return (
                     <div key={tarefaEtapa._id} style={{ ...s.tarefaItem, opacity: feita ? 0.65 : 1 }}>
-                      <div style={{
-                        ...s.tarefaCheck,
-                        background: feita ? '#2DAA59' : 'transparent',
-                        borderColor: feita ? '#2DAA59' : 'rgba(255,255,255,0.15)',
-                      }}>
-                        {feita && (
-                          <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round">
-                            <polyline points="1.5 5 4 7.5 8.5 2.5"/>
-                          </svg>
-                        )}
-                      </div>
+                      {/* Bolinha: área de clique de 36×36 (não a linha inteira, pra ninguém concluir sem querer) */}
+                      <button type="button" title={dica} aria-label={dica} aria-disabled={!pode || ocupada}
+                        onClick={() => alternarAtividade(etapaExibida, tarefaEtapa)}
+                        style={{ ...s.tarefaBolinhaAlvo, cursor: pode && !ocupada ? 'pointer' : 'default' }}>
+                        <span style={{
+                          ...s.tarefaCheck,
+                          background: feita ? '#2DAA59' : 'transparent',
+                          borderColor: feita ? '#2DAA59' : 'var(--texto-apagado)',
+                          borderStyle: !feita && !pode ? 'dashed' : 'solid',
+                          opacity: !feita && !pode ? 0.45 : (ocupada ? 0.6 : 1),
+                        }}>
+                          {feita && (
+                            <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round">
+                              <polyline points="1.5 5 4 7.5 8.5 2.5"/>
+                            </svg>
+                          )}
+                        </span>
+                      </button>
                       <span style={{
                         ...s.tarefaTexto,
                         textDecoration: feita ? 'line-through' : 'none',
@@ -507,6 +574,7 @@ export default function Implantacao({ setPagina, setClienteDetalheId, nomeNovoOn
         implantacao={detalheSelecionado}
         voltar={() => { setDetalheSelecionado(null); buscar() }}
         onAtualizado={buscar}
+        onTarefasAlteradas={onImplantacaoCriada}
         setPagina={setPagina}
         setClienteDetalheId={setClienteDetalheId}
       />
@@ -784,9 +852,14 @@ const s = {
   painelTitulo: { fontSize: '0.95rem', fontWeight: '600', color: 'var(--texto)', fontFamily: 'var(--fonte-corpo)' },
   badgeBloqueado: { fontSize: '0.72rem', color: 'var(--texto-apagado)', background: 'var(--input)', padding: '3px 10px', borderRadius: '99px', border: '1px solid var(--borda)', marginLeft: 'auto', fontFamily: 'var(--fonte-corpo)' },
   tarefaItem: {
-    display: 'flex', alignItems: 'center', gap: '10px',
+    display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap',
     background: 'var(--input)', border: '1px solid var(--borda)',
-    borderRadius: '10px', padding: '11px 14px',
+    borderRadius: '10px', padding: '6px 14px 6px 4px',
+  },
+  tarefaBolinhaAlvo: {
+    width: '36px', height: '36px', flexShrink: 0, padding: 0, margin: 0,
+    background: 'none', border: 'none', borderRadius: '50%',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
   },
   tarefaCheck: {
     width: '17px', height: '17px', borderRadius: '50%',
@@ -794,8 +867,8 @@ const s = {
     display: 'flex', alignItems: 'center', justifyContent: 'center',
     transition: 'all 0.15s'
   },
-  tarefaTexto: { fontSize: '0.875rem', flex: 1, fontFamily: 'var(--fonte-corpo)', transition: 'all 0.15s' },
-  tarefaResp: { fontSize: '0.72rem', color: 'var(--texto-apagado)', fontFamily: 'var(--fonte-corpo)', whiteSpace: 'nowrap' },
+  tarefaTexto: { fontSize: '0.875rem', flex: '1 1 160px', minWidth: 0, overflowWrap: 'anywhere', fontFamily: 'var(--fonte-corpo)', transition: 'all 0.15s' },
+  tarefaResp: { fontSize: '0.72rem', color: 'var(--texto-apagado)', fontFamily: 'var(--fonte-corpo)', whiteSpace: 'nowrap', marginLeft: 'auto' },
   vazio: { color: 'var(--texto-apagado)', fontSize: '0.9rem', textAlign: 'center', marginTop: '40px' },
   vazioBox: { textAlign: 'center', marginTop: '60px' },
   // Modal

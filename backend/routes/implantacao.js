@@ -11,13 +11,14 @@ const { enviarOnboardingCriado, enviarEtapaDesbloqueada } = require('../services
 const { pularEtapasVaziasEmCadeia } = require('../services/implantacao');
 const Cliente = require('../models/Cliente');
 const { abrirVigenciaAoConcluir } = require('../services/ciclosCliente');
+const { alterarAtividade, ErroAtividade, MENSAGENS } = require('../services/atividadeOnboarding');
 const { implantacaoCreateSchema, validar } = require('../validacao');
 
 const router = express.Router();
 
 const populateImplantacao = (q) => q
   .populate('etapas.setor', 'nome cor')
-  .populate('etapas.tarefas.tarefa', 'descricao responsavel')
+  .populate({ path: 'etapas.tarefas.tarefa', select: 'descricao responsavel', populate: { path: 'responsavel', select: 'nome' } })
   .populate('etapas.tarefas.concluidaPor', 'nome')
   .populate('modelo', 'nome')
   .populate('criadoPor', 'nome');
@@ -289,82 +290,46 @@ router.post('/', autenticar, temPermissao('criarImplantacoes'), validar(implanta
   }
 });
 
-// PATCH /api/implantacoes/:id/tarefas/:etapaId/:tarefaId/concluir
-router.patch('/:id/tarefas/:etapaId/:tarefaId/concluir', autenticar, async (req, res) => {
+// PATCH /api/implantacoes/:id/tarefas/:etapaId/:tarefaId/concluir e /desmarcar — a bolinha da atividade na tela de
+// Implantação. :tarefaId é o item da etapa. Passa pela MESMA regra da tela de Tarefas (services/atividadeOnboarding.js):
+// permissão no servidor, tarefa + onboarding juntos, liberação de etapa, e-mail e vigência. Devolve a implantação
+// atualizada + `efeitos` (nomes da etapa concluída/liberada e se o onboarding terminou) pra tela avisar sem recarregar.
+const alterarPelaBolinha = (concluir) => async (req, res) => {
   try {
-    const implantacao = await ImplantacaoModel.findOne({
-      _id: req.params.id,
-      empresa: req.usuario.empresa._id
-    });
+    const implantacao = await ImplantacaoModel.findOne({ _id: req.params.id, empresa: req.usuario.empresa._id }).lean();
     if (!implantacao) return res.status(404).json({ erro: 'Implantação não encontrada.' });
+    const etapa = implantacao.etapas.find(e => String(e._id) === req.params.etapaId);
+    const item = etapa?.tarefas.find(t => String(t._id) === req.params.tarefaId);
+    if (!item?.tarefa) return res.status(404).json({ erro: 'Atividade não encontrada.' });
 
-    const etapa = implantacao.etapas.id(req.params.etapaId);
-    if (!etapa) return res.status(404).json({ erro: 'Etapa não encontrada.' });
-
-    const tarefaEtapa = etapa.tarefas.id(req.params.tarefaId);
-    if (!tarefaEtapa) return res.status(404).json({ erro: 'Tarefa não encontrada.' });
-
-    tarefaEtapa.status = 'concluida';
-    tarefaEtapa.concluidaEm = new Date();
-    tarefaEtapa.concluidaPor = req.usuario._id;
-
-    // Verifica se todas as tarefas da etapa foram concluídas
-    const todasConcluidas = etapa.tarefas.every(t => t.status === 'concluida');
-    if (todasConcluidas) {
-      etapa.status = 'concluida';
-      etapa.concluidaEm = new Date();
-
-      // Desbloqueia a próxima etapa
-      const proxima = implantacao.etapas.find(e => e.ordem === etapa.ordem + 1);
-      if (proxima) {
-        proxima.status = 'em_andamento';
-        proxima.iniciadaEm = new Date();
-        pularEtapasVaziasEmCadeia(implantacao);
-      } else {
-        // Era a última etapa, implantação concluída!
-        implantacao.status = 'concluida';
-        implantacao.concluidaEm = new Date();
-      }
+    let r;
+    try {
+      r = await alterarAtividade({ usuario: req.usuario, tarefaId: item.tarefa, concluir });
+    } catch (err) {
+      if (!(err instanceof ErroAtividade)) throw err;
+      const atual = await populateImplantacao(ImplantacaoModel.findById(implantacao._id)).lean();
+      return res.status(err.status).json({ erro: err.message, codigo: err.codigo, implantacao: atual });
     }
-
-    await implantacao.save();
     const populada = await populateImplantacao(ImplantacaoModel.findById(implantacao._id)).lean();
-    res.json(populada);
-  } catch (err) {
-    res.status(500).json({ erro: 'Erro ao concluir tarefa.' });
-  }
-});
+    if (r.semMudanca) return res.status(409).json({ erro: MENSAGENS.jaAtualizada, codigo: 'ja_atualizada', implantacao: populada });
 
-// PATCH /api/implantacoes/:id/tarefas/:etapaId/:tarefaId/desmarcar
-router.patch('/:id/tarefas/:etapaId/:tarefaId/desmarcar', autenticar, async (req, res) => {
-  try {
-    const implantacao = await ImplantacaoModel.findOne({
-      _id: req.params.id,
-      empresa: req.usuario.empresa._id
+    const nomeSetor = (id) => populada.etapas.find(e => String(e.setor?._id || e.setor) === String(id))?.setor?.nome || null;
+    const ef = r.efeitos || {};
+    res.json({
+      ...populada,
+      efeitos: {
+        etapaConcluida: ef.etapaConcluida ? nomeSetor(ef.etapaConcluida) : null,
+        etapaLiberada: ef.etapaLiberada ? nomeSetor(ef.etapaLiberada.setor) : null,
+        onboardingConcluido: !!ef.onboardingConcluido,
+      },
     });
-    if (!implantacao) return res.status(404).json({ erro: 'Implantação não encontrada.' });
-
-    const etapa = implantacao.etapas.id(req.params.etapaId);
-    const tarefaEtapa = etapa?.tarefas.id(req.params.tarefaId);
-    if (!etapa || !tarefaEtapa) return res.status(404).json({ erro: 'Tarefa não encontrada.' });
-
-    tarefaEtapa.status = 'pendente';
-    tarefaEtapa.concluidaEm = undefined;
-    tarefaEtapa.concluidaPor = undefined;
-
-    // Se a etapa estava concluída, reabre
-    if (etapa.status === 'concluida') {
-      etapa.status = 'em_andamento';
-      etapa.concluidaEm = undefined;
-    }
-
-    await implantacao.save();
-    const populada = await populateImplantacao(ImplantacaoModel.findById(implantacao._id)).lean();
-    res.json(populada);
   } catch (err) {
-    res.status(500).json({ erro: 'Erro ao desmarcar tarefa.' });
+    console.error(err);
+    res.status(500).json({ erro: concluir ? 'Erro ao concluir a atividade.' : 'Erro ao reabrir a atividade.' });
   }
-});
+};
+router.patch('/:id/tarefas/:etapaId/:tarefaId/concluir', autenticar, alterarPelaBolinha(true));
+router.patch('/:id/tarefas/:etapaId/:tarefaId/desmarcar', autenticar, alterarPelaBolinha(false));
 
 // DELETE /api/implantacoes/:id — exclui a implantação e todas as tarefas geradas por ela
 router.delete('/:id', autenticar, temPermissao('gerenciarOnboarding'), async (req, res) => {

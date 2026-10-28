@@ -43,6 +43,8 @@ implantacaoSchema.pre('save', function (next) {
 });
 implantacaoSchema.post('save', async function (doc) {
   if (!doc.$locals?.concluiuAgora) return;
+  // services/atividadeOnboarding.js abre a vigência ele mesmo, depois de a transação confirmar
+  if (doc.$locals.vigenciaPeloChamador) { doc.$locals.concluiuAgora = false; return; }
   doc.$locals.concluiuAgora = false;
   try {
     await require('../services/ciclosCliente').abrirVigenciaAoConcluir(doc);
