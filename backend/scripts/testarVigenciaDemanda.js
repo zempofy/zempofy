@@ -9,6 +9,7 @@ const assert = require('assert');
 const path = require('path');
 const { pathToFileURL } = require('url');
 const V = require('../services/vigenciaDemanda');
+const { entradasAoConcluir, mesDeInicioDaImplantacao } = require('../services/vigenciaOnboarding');
 
 let ok = 0, falhas = 0;
 const teste = (nome, fn) => {
@@ -173,6 +174,41 @@ teste('garantirVigenciaPadrao / removerVigenciaDoSetor em documento', () => {
   assert.strictEqual(V.garantirVigenciaPadrao(doc), false);
   V.removerVigenciaDoSetor(doc, 'a');
   igual(doc.vigenciaDemanda.map(v => v.setor), ['b']);
+});
+
+console.log('Onboarding (Spec B, seção 2) — S2 a S5 montados pelo evento real de conclusão');
+const concluir = (inicioServicos, concluidaEm, setores = [FISCAL.id]) =>
+  entradasAoConcluir([], setores, mesDeInicioDaImplantacao({ inicioServicos: inicioServicos && new Date(inicioServicos), concluidaEm: new Date(concluidaEm) }));
+const clienteDe = (entradas) => ({ status: 'ativo', regime: 'simples_nacional', vigenciaDemanda: entradas });
+teste('S2  onboarding em andamento: cliente criado sem vigência → nenhuma competência', () => {
+  igual(comDemanda(clienteDe([]), FISCAL), []);
+  // setores pendentes de onboarding não ganham "desde sempre" na migração/edição
+  igual(V.entradasQueFaltam({ status: 'ativo', setores: [FISCAL.id, DP.id], vigenciaDemanda: [] }, new Set([FISCAL.id])), [{ setor: DP.id, periodos: [{ inicio: null, fim: null }] }]);
+});
+teste('S3  concluído em 20/11/2026 com início 01/11/2026 → 2026-11 em diante', () => {
+  const c = clienteDe(concluir('2026-11-01', '2026-11-20T15:00:00Z').entradas);
+  igual(comDemanda(c, FISCAL), esperado('2026-11', null));
+  assert.ok(!existe(c, FISCAL, '2026-10'));
+});
+teste('S4  concluído em 20/11/2026 com início 01/09/2026 → 2026-09 em diante', () => {
+  igual(comDemanda(clienteDe(concluir('2026-09-01', '2026-11-20T15:00:00Z').entradas), FISCAL), esperado('2026-09', null));
+});
+teste('S5  concluído em 05/11/2026 com início 01/01/2027 → 2027-01 em diante', () => {
+  const c = clienteDe(concluir('2027-01-01', '2026-11-05T15:00:00Z').entradas);
+  igual(comDemanda(c, FISCAL), esperado('2027-01', null));
+  assert.ok(!existe(c, FISCAL, '2026-12'));
+});
+teste('sem data de início: mês da conclusão em Brasília (01/12 01:00 UTC ainda é novembro)', () => {
+  igual(mesDeInicioDaImplantacao({ inicioServicos: null, concluidaEm: new Date('2026-12-01T01:00:00Z') }), '2026-11');
+});
+teste('concluir duas vezes não duplica; setor que o cliente já tinha aberto não muda', () => {
+  const a = concluir('2026-11-01', '2026-11-20T15:00:00Z', [FISCAL.id, DP.id]);
+  const b = entradasAoConcluir(a.entradas, [FISCAL.id, DP.id], '2026-11');
+  assert.deepStrictEqual(b.abertos, []);
+  igual(b.entradas, a.entradas);
+  const c = entradasAoConcluir([{ setor: FISCAL.id, periodos: [{ inicio: null, fim: null }] }], [FISCAL.id, DP.id], '2026-11');
+  igual(c.entradas[0].periodos, [{ inicio: null, fim: null }]);
+  assert.deepStrictEqual(c.abertos, [DP.id]);
 });
 
 console.log('Espelho do frontend responde igual ao backend');

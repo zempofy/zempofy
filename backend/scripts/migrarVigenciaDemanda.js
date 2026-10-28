@@ -27,6 +27,9 @@ Clientes lidos .................................. ${s.clientes}
 Pares cliente/setor (setores atribuídos) ........ ${s.pares}
   já tinham vigência (nada a fazer) ............. ${s.jaTinham}
   ${APLICAR ? 'gravados' : 'seriam gravados'} "desde sempre, em aberto" ...... ${s.desdeSempre}  (em ${s.clientesAtualizados} cliente(s))
-  ficam sem período (cliente inativo) ........... ${s.semPeriodoInativos}`);
+  ficam sem período (cliente inativo) ........... ${s.semPeriodoInativos}
+  ficam sem período (onboarding em andamento) ... ${s.semPeriodoOnboarding}
+Clientes de onboarding em andamento que perdem
+  o "desde sempre" até concluir ................. ${s.onboardingAjustados}  (${s.periodosRemovidos} período(s))`);
   await mongoose.disconnect();
 })().catch(e => { console.error(e.message); process.exit(1); });

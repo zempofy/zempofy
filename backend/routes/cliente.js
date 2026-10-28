@@ -9,7 +9,7 @@ const Documento = require('../models/Documento');
 const { clienteCreateSchema, clienteUpdateSchema, validar } = require('../validacao');
 const { competenciaAtual, competenciaAtualDoSetor, resolverPorVigencia, aplicarMudancaComHistorico, buscarCompetenciaMaisAntiga, prepararHistoricoParaMudanca } = require('../services/historicoVigencia');
 
-const { listarClientesComDemanda, garantirVigenciaPadrao, removerVigenciaDoSetor } = require('../services/vigenciaDemanda');
+const { listarClientesComDemanda, garantirVigenciaPadrao, removerVigenciaDoSetor, setoresDeOnboardingEmAndamento } = require('../services/vigenciaDemanda');
 
 const router = express.Router();
 
@@ -196,7 +196,9 @@ router.post('/', autenticar, temPermissao('gerenciarClientes'), validar(clienteC
       empresa: req.usuario.empresa._id,
       criadoPor: req.usuario._id,
     });
-    garantirVigenciaPadrao(cliente); // setores escolhidos no cadastro entram com demanda desde sempre (Spec A)
+    // Setores escolhidos no cadastro entram com demanda desde sempre (Spec A). Cliente criado pelo onboarding nasce sem
+    // vigência: ela só abre quando o onboarding conclui (Spec B, seção 2 — services/vigenciaOnboarding.js).
+    if (!viaOnboarding) garantirVigenciaPadrao(cliente);
     await cliente.save();
     registrarLog({ empresa: req.usuario.empresa._id, usuario: req.usuario._id, tipo: 'cliente_criado', categoria: 'cliente', descricao: 'Cadastrou o cliente ' + razaoSocial.trim(), meta: { nome: razaoSocial } });
     res.status(201).json(cliente);
@@ -251,8 +253,9 @@ router.put('/:id', autenticar, temPermissao('gerenciarClientes'), validar(client
     }
 
     Object.assign(cliente, dados);
-    // Setor novo, ou cliente reativado sem vigência: entra com demanda desde sempre (Spec A)
-    garantirVigenciaPadrao(cliente);
+    // Setor novo, ou cliente reativado sem vigência: entra com demanda desde sempre (Spec A) — menos os setores de um
+    // onboarding em andamento, que só abrem quando ele conclui (Spec B, seção 2)
+    garantirVigenciaPadrao(cliente, await setoresDeOnboardingEmAndamento(cliente));
     await cliente.save();
     registrarLog({ empresa: req.usuario.empresa._id, usuario: req.usuario._id, tipo: 'cliente_editado', categoria: 'cliente', descricao: 'Editou o cliente ' + cliente.razaoSocial });
     res.json(cliente);

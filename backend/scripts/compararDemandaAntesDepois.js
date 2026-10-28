@@ -4,7 +4,9 @@
 //
 // Pra cada setor e cada competência dos últimos 24 meses e dos próximos 12, compara a lista de clientes
 // com demanda pela regra ANTIGA (setor atribuído + não inativo + Fiscal com regime) com a da regra NOVA
-// (a mesma função que a tela de Demandas usa). Resultado esperado: zero diferenças.
+// (a mesma função que a tela de Demandas usa). Resultado esperado: zero diferenças, EXCETO clientes com onboarding
+// em andamento naquele setor — esses saem de propósito (regra de onboarding do Spec B, seção 2) e são listados à parte
+// como "esperadas". Qualquer outra diferença é inesperada e faz o script terminar com erro.
 //
 // Uso (dentro de backend/):
 //   node scripts/compararDemandaAntesDepois.js                 # todas as empresas do banco
@@ -15,7 +17,7 @@ const mongoose = require('mongoose');
 const Cliente = require('../models/Cliente');
 const Setor = require('../models/Setor');
 const Empresa = require('../models/Empresa');
-const { listarClientesComDemanda, normalizarNome } = require('../services/vigenciaDemanda');
+const { listarClientesComDemanda, normalizarNome, setoresDeOnboardingEmAndamento } = require('../services/vigenciaDemanda');
 
 const empresaArg = process.argv.find(a => a.startsWith('--empresa='));
 
@@ -39,7 +41,16 @@ const listaAntiga = async (empresaId, setorId, setorNome) => {
   const empresas = await Empresa.find(filtroEmpresa).select('nome').lean();
   console.log(`Banco: ${banco} | ${empresas.length} empresa(s) | competências ${COMPETENCIAS[0]} a ${COMPETENCIAS.at(-1)} (${COMPETENCIAS.length})\n`);
 
-  let comparacoes = 0, diferencas = 0, setoresLidos = 0;
+  let comparacoes = 0, diferencas = 0, setoresLidos = 0, esperadas = 0;
+  const pendentesCache = new Map(); // clienteId -> Set(setores de onboarding em andamento)
+  const pendentesDe = async (id) => {
+    if (!pendentesCache.has(id)) {
+      const c = await Cliente.findById(id).select('empresa cnpj').lean();
+      pendentesCache.set(id, c ? await setoresDeOnboardingEmAndamento(c) : new Set());
+    }
+    return pendentesCache.get(id);
+  };
+  const esperadasPorCliente = new Map(); // "nome / setor" -> nº de meses
   const linhas = [];
   for (const empresa of empresas) {
     const setores = await Setor.find({ empresa: empresa._id }).select('nome').lean();
@@ -54,8 +65,18 @@ const listaAntiga = async (empresaId, setorId, setorNome) => {
         const idsNovos = new Set(nova.map(c => String(c._id)));
         comparacoes++;
         menor = Math.min(menor, idsNovos.size); maior = Math.max(maior, idsNovos.size);
-        const faltando = [...idsAntigos].filter(id => !idsNovos.has(id));
+        let faltando = [...idsAntigos].filter(id => !idsNovos.has(id));
         const sobrando = [...idsNovos].filter(id => !idsAntigos.has(id));
+        // Sumiu porque está com onboarding em andamento neste setor: diferença esperada
+        const filtrados = [];
+        for (const id of faltando) {
+          if ((await pendentesDe(id)).has(String(setor._id))) {
+            esperadas++;
+            const chave = `${nomes.get(id) || id} / ${setor.nome}`;
+            esperadasPorCliente.set(chave, (esperadasPorCliente.get(chave) || 0) + 1);
+          } else filtrados.push(id);
+        }
+        faltando = filtrados;
         if (faltando.length || sobrando.length) {
           diferencas++; difSetor++;
           const resumo = (ids) => ids.slice(0, 5).map(id => nomes.get(id) || id).join('; ') + (ids.length > 5 ? ` … (+${ids.length - 5})` : '');
@@ -66,8 +87,12 @@ const listaAntiga = async (empresaId, setorId, setorNome) => {
     }
   }
   if (linhas.length) console.table(linhas);
-  console.log(`\nSetores comparados: ${setoresLidos}   |   comparações setor×competência: ${comparacoes}   |   com diferença: ${diferencas}`);
-  console.log(diferencas === 0 ? 'RESULTADO: zero diferenças.' : 'RESULTADO: HÁ DIFERENÇAS — ver acima.');
+  if (esperadasPorCliente.size) {
+    console.log('\nDiferenças ESPERADAS (cliente com onboarding em andamento no setor — sem demanda até concluir):');
+    for (const [chave, n] of esperadasPorCliente) console.log(`  ${chave}: fora em ${n} competência(s)`);
+  }
+  console.log(`\nSetores comparados: ${setoresLidos}   |   comparações setor×competência: ${comparacoes}   |   com diferença inesperada: ${diferencas}   |   ausências esperadas (onboarding): ${esperadas}`);
+  console.log(diferencas === 0 ? 'RESULTADO: zero diferenças inesperadas.' : 'RESULTADO: HÁ DIFERENÇAS INESPERADAS — ver acima.');
   await mongoose.disconnect();
   process.exit(diferencas === 0 ? 0 : 1);
 })().catch(e => { console.error(e.message); process.exit(1); });

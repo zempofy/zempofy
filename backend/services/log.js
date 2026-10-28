@@ -16,6 +16,7 @@ const CATEGORIAS = {
   cliente_editado:             'cliente',
   cliente_excluido:            'cliente',
   clientes_importados:         'cliente',
+  vigencia_alterada:           'cliente', // vigência de demanda (aqui: onboarding concluído abre a demanda do cliente)
   membro_adicionado:           'equipe',
   membro_removido:             'equipe',
   membro_reativado:            'equipe',

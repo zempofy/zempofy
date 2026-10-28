@@ -34,4 +34,21 @@ const implantacaoSchema = new mongoose.Schema({
   ultimoAlertaParado: { type: Date, default: null }
 });
 
+// Concluir o onboarding abre a vigência de demanda do cliente (Spec B, seção 2). O gatilho fica no model porque a
+// conclusão acontece em mais de um lugar (concluir tarefa, sincronização por Tarefa, pulo de etapas vazias).
+// Implantação nova (isNew) é tratada pela própria rota de criação, que só liga o cliente depois de salvar.
+implantacaoSchema.pre('save', function (next) {
+  this.$locals.concluiuAgora = this.status === 'concluida' && !this.isNew && this.isModified('status');
+  next();
+});
+implantacaoSchema.post('save', async function (doc) {
+  if (!doc.$locals?.concluiuAgora) return;
+  doc.$locals.concluiuAgora = false;
+  try {
+    await require('../services/vigenciaOnboarding').abrirVigenciaAoConcluir(doc);
+  } catch (err) {
+    console.error('⚠️ Erro ao abrir a vigência de demanda na conclusão do onboarding:', err.message);
+  }
+});
+
 module.exports = mongoose.model('Implantacao', implantacaoSchema);
