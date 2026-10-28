@@ -10,6 +10,7 @@ const Usuario = require('../models/Usuario');
 const { enviarOnboardingCriado, enviarEtapaDesbloqueada } = require('../services/email');
 const { pularEtapasVaziasEmCadeia } = require('../services/implantacao');
 const Cliente = require('../models/Cliente');
+const { entradaDesdeSempre, entradasQueFaltam } = require('../services/vigenciaDemanda');
 const { implantacaoCreateSchema, validar } = require('../validacao');
 
 const router = express.Router();
@@ -192,6 +193,9 @@ router.post('/', autenticar, temPermissao('criarImplantacoes'), validar(implanta
           porte: '',
           regime: '',
           setores: setoresIds,
+          // Spec A: o cliente do onboarding continua aparecendo nas Demandas como hoje (desde sempre).
+          // A regra nova do onboarding (sem demanda até concluir) é do Spec B.
+          vigenciaDemanda: setoresIds.map(entradaDesdeSempre),
           origem: 'onboarding',
           servicosContratados: [],
           socios: [],
@@ -204,7 +208,11 @@ router.post('/', autenticar, temPermissao('criarImplantacoes'), validar(implanta
         const setoresAtuais = clienteExistente.setores?.map(s => s.toString()) || [];
         const novoSetores = [...new Set([...setoresAtuais, ...setoresIds])];
         if (novoSetores.length > setoresAtuais.length) {
-          await Cliente.updateOne({ _id: clienteExistente._id }, { $set: { setores: novoSetores } });
+          const faltam = entradasQueFaltam({ status: clienteExistente.status, setores: novoSetores, vigenciaDemanda: clienteExistente.vigenciaDemanda });
+          await Cliente.updateOne({ _id: clienteExistente._id }, {
+            $set: { setores: novoSetores },
+            ...(faltam.length ? { $push: { vigenciaDemanda: { $each: faltam } } } : {}),
+          });
         }
       }
 

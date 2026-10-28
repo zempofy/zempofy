@@ -9,6 +9,8 @@ const Documento = require('../models/Documento');
 const { clienteCreateSchema, clienteUpdateSchema, validar } = require('../validacao');
 const { competenciaAtual, competenciaAtualDoSetor, resolverPorVigencia, aplicarMudancaComHistorico, buscarCompetenciaMaisAntiga, prepararHistoricoParaMudanca } = require('../services/historicoVigencia');
 
+const { listarClientesComDemanda, garantirVigenciaPadrao, removerVigenciaDoSetor } = require('../services/vigenciaDemanda');
+
 const router = express.Router();
 
 // Existe alguma Implantacao vinculada a este cliente que ainda não terminou?
@@ -92,13 +94,12 @@ router.get('/demandas/:setorId/:competencia', autenticar, async (req, res) => {
     if (!setor) return res.status(404).json({ erro: 'Setor não encontrado.' });
     const setorNome = normalizarNome(setor.nome);
 
-    // Fiscal: cliente sem regime, ou com regime "outro", não gera Demanda (Spec 25) — DP e Contábil
-    // ficam de fora dessa regra. Continua em Cliente.setores, só a Demanda em si não é gerada.
-    const filtroClientes = { empresa: req.usuario.empresa._id, setores: setorId, status: { $ne: 'inativo' } };
-    if (setorNome === 'fiscal') filtroClientes.regime = { $nin: [null, '', 'outro'] };
-    const clientes = await Cliente.find(filtroClientes)
-      .select('razaoSocial nomeFantasia regime historicoRegime configSetores status')
-      .lean();
+    // Quem decide se o cliente tem Demanda nesta competência é a vigência (services/vigenciaDemanda.js):
+    // períodos do cliente no setor + regra adicional do setor (Fiscal: sem regime ou "outro" não gera).
+    const clientes = await listarClientesComDemanda({
+      empresaId: req.usuario.empresa._id, setorId, setorNome, competencia,
+      campos: 'razaoSocial nomeFantasia historicoRegime configSetores',
+    });
 
     const lancamentos = await LancamentoSetor.find({ empresa: req.usuario.empresa._id, setor: setorId, competencia })
       .select('cliente dados camposIsentos').lean();
@@ -165,6 +166,7 @@ router.get('/:id', autenticar, async (req, res) => {
 // POST /api/clientes
 router.post('/', autenticar, temPermissao('gerenciarClientes'), validar(clienteCreateSchema), async (req, res) => {
   const { razaoSocial, cnpj, regime, porte, servicosContratados } = req.body;
+  delete req.body.vigenciaDemanda; // vigência só o servidor grava
   if (!razaoSocial?.trim()) return res.status(400).json({ erro: 'Razão social é obrigatória.' });
   const tipoPessoa = tipoPessoaDoDocumento(cnpj);
   // Clientes criados via onboarding (origem: 'onboarding') não exigem todos os campos.
@@ -186,7 +188,7 @@ router.post('/', autenticar, temPermissao('gerenciarClientes'), validar(clienteC
         return res.json(existente);
       }
     }
-    const cliente = await Cliente.create({
+    const cliente = new Cliente({
       ...req.body,
       razaoSocial: razaoSocial.trim(),
       tipoPessoa,
@@ -194,6 +196,8 @@ router.post('/', autenticar, temPermissao('gerenciarClientes'), validar(clienteC
       empresa: req.usuario.empresa._id,
       criadoPor: req.usuario._id,
     });
+    garantirVigenciaPadrao(cliente); // setores escolhidos no cadastro entram com demanda desde sempre (Spec A)
+    await cliente.save();
     registrarLog({ empresa: req.usuario.empresa._id, usuario: req.usuario._id, tipo: 'cliente_criado', categoria: 'cliente', descricao: 'Cadastrou o cliente ' + razaoSocial.trim(), meta: { nome: razaoSocial } });
     res.status(201).json(cliente);
   } catch (err) {
@@ -204,7 +208,7 @@ router.post('/', autenticar, temPermissao('gerenciarClientes'), validar(clienteC
 // PUT /api/clientes/:id
 router.put('/:id', autenticar, temPermissao('gerenciarClientes'), validar(clienteUpdateSchema), async (req, res) => {
   try {
-    const { empresa, criadoPor, _id, criadoEm, modoVigenciaRegime, ...dados } = req.body;
+    const { empresa, criadoPor, _id, criadoEm, modoVigenciaRegime, vigenciaDemanda, ...dados } = req.body;
     if (dados.cnpj !== undefined) dados.tipoPessoa = tipoPessoaDoDocumento(dados.cnpj);
 
     const cliente = await Cliente.findOne({ _id: req.params.id, empresa: req.usuario.empresa._id });
@@ -247,6 +251,8 @@ router.put('/:id', autenticar, temPermissao('gerenciarClientes'), validar(client
     }
 
     Object.assign(cliente, dados);
+    // Setor novo, ou cliente reativado sem vigência: entra com demanda desde sempre (Spec A)
+    garantirVigenciaPadrao(cliente);
     await cliente.save();
     registrarLog({ empresa: req.usuario.empresa._id, usuario: req.usuario._id, tipo: 'cliente_editado', categoria: 'cliente', descricao: 'Editou o cliente ' + cliente.razaoSocial });
     res.json(cliente);
@@ -296,6 +302,7 @@ router.delete('/:id/setores/:setorId', autenticar, temPermissao('gerenciarClient
     const setorNome = normalizarNome(setor.nome);
 
     cliente.setores = cliente.setores.filter(s => s.toString() !== req.params.setorId);
+    removerVigenciaDoSetor(cliente, req.params.setorId); // sem o setor, a demanda some (Spec A: igual a antes)
 
     if (escopo === 'todas') {
       const { apagarArquivo } = require('../services/storage');
@@ -779,7 +786,7 @@ router.post('/importar', autenticar, temPermissao('gerenciarClientes'), async (r
             continue;
           }
         }
-        await Cliente.create({
+        const novo = new Cliente({
           ...c,
           tipoPessoa,
           historicoRegime: c.regime ? [{ valor: c.regime, vigenteDesde: competenciaAtual() }] : [],
@@ -788,7 +795,10 @@ router.post('/importar', autenticar, temPermissao('gerenciarClientes'), async (r
           status: c.status || 'ativo',
           servicosContratados: [],
           socios: c.socios || [],
+          vigenciaDemanda: [], // vigência só o servidor grava
         });
+        garantirVigenciaPadrao(novo);
+        await novo.save();
         resultados.importados++;
       } catch (err) {
         resultados.erros.push(`${c.razaoSocial}: ${err.message}`);

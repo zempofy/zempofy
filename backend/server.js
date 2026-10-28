@@ -25,6 +25,7 @@ const leadRoutes = require('./routes/lead');
 const documentoRoutes = require('./routes/documento');
 const retiradasRoutes = require('./routes/retiradas');
 const ConfiguracaoSistema = require('./models/ConfiguracaoSistema');
+const { entradaDesdeSempre, entradasQueFaltam, migrarVigencia } = require('./services/vigenciaDemanda');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -406,6 +407,7 @@ mongoose.connect(process.env.MONGODB_URI)
             porte: '',
             regime: '',
             setores: setoresIds,
+            vigenciaDemanda: setoresIds.map(entradaDesdeSempre), // Spec A: igual a antes
             origem: 'onboarding',
             servicosContratados: [],
             socios: [],
@@ -419,7 +421,11 @@ mongoose.connect(process.env.MONGODB_URI)
           const setoresAtuais = existe.setores?.map(s => s.toString()) || [];
           const novoSetores = [...new Set([...setoresAtuais, ...setoresIds])];
           if (novoSetores.length > setoresAtuais.length) {
-            await Cliente.updateOne({ _id: existe._id }, { $set: { setores: novoSetores } });
+            const faltam = entradasQueFaltam({ status: existe.status, setores: novoSetores, vigenciaDemanda: existe.vigenciaDemanda });
+            await Cliente.updateOne({ _id: existe._id }, {
+              $set: { setores: novoSetores },
+              ...(faltam.length ? { $push: { vigenciaDemanda: { $each: faltam } } } : {}),
+            });
           }
         }
       }
@@ -641,6 +647,17 @@ mongoose.connect(process.env.MONGODB_URI)
       if (semHistorico.modifiedCount > 0) console.log(`✅ Migração: histórico de etapas inicial criado em ${semHistorico.modifiedCount} lead(s).`);
     } catch (err) {
       console.error('⚠️ Erro na migração de etapas do CRM:', err.message);
+    }
+
+    // ── Migração: vigência da demanda por cliente e setor (Spec A — REGRAS_DEMANDA.md) ──
+    // Ativo/encerramento ganha "desde sempre, em aberto" em cada setor atribuído; inativo fica sem
+    // período. Idempotente (só grava onde ainda não há vigência) e só soma: não altera setores,
+    // lançamentos, documentos nem status. Roda por último pra pegar também o que as migrações acima criaram.
+    try {
+      const m = await migrarVigencia();
+      if (m.desdeSempre > 0) console.log(`✅ Migração: vigência de demanda gravada em ${m.desdeSempre} par(es) cliente/setor (${m.clientesAtualizados} cliente(s)).`);
+    } catch (err) {
+      console.error('⚠️ Erro na migração da vigência de demanda:', err.message);
     }
 
     app.listen(PORT, () => console.log(`🚀 Servidor rodando na porta ${PORT}`));
