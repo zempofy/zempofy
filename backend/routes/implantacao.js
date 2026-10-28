@@ -10,7 +10,7 @@ const Usuario = require('../models/Usuario');
 const { enviarOnboardingCriado, enviarEtapaDesbloqueada } = require('../services/email');
 const { pularEtapasVaziasEmCadeia } = require('../services/implantacao');
 const Cliente = require('../models/Cliente');
-const { entradaDesdeSempre, entradasQueFaltam } = require('../services/vigenciaDemanda');
+const { abrirVigenciaAoConcluir } = require('../services/ciclosCliente');
 const { implantacaoCreateSchema, validar } = require('../validacao');
 
 const router = express.Router();
@@ -193,9 +193,9 @@ router.post('/', autenticar, temPermissao('criarImplantacoes'), validar(implanta
           porte: '',
           regime: '',
           setores: setoresIds,
-          // Spec A: o cliente do onboarding continua aparecendo nas Demandas como hoje (desde sempre).
-          // A regra nova do onboarding (sem demanda até concluir) é do Spec B.
-          vigenciaDemanda: setoresIds.map(entradaDesdeSempre),
+          // Sem vigência: enquanto o onboarding está em andamento os setores dele não geram demanda. A vigência
+          // abre quando o onboarding é concluído (models/Implantacao.js → ciclosCliente.abrirVigenciaAoConcluir).
+          vigenciaDemanda: [],
           origem: 'onboarding',
           servicosContratados: [],
           socios: [],
@@ -207,12 +207,9 @@ router.post('/', autenticar, temPermissao('criarImplantacoes'), validar(implanta
         // Atualizar setores do cliente existente
         const setoresAtuais = clienteExistente.setores?.map(s => s.toString()) || [];
         const novoSetores = [...new Set([...setoresAtuais, ...setoresIds])];
+        // Setor novo entra na lista sem vigência (só abre ao concluir o onboarding); os que o cliente já tinha seguem como estão
         if (novoSetores.length > setoresAtuais.length) {
-          const faltam = entradasQueFaltam({ status: clienteExistente.status, setores: novoSetores, vigenciaDemanda: clienteExistente.vigenciaDemanda });
-          await Cliente.updateOne({ _id: clienteExistente._id }, {
-            $set: { setores: novoSetores },
-            ...(faltam.length ? { $push: { vigenciaDemanda: { $each: faltam } } } : {}),
-          });
+          await Cliente.updateOne({ _id: clienteExistente._id }, { $set: { setores: novoSetores } });
         }
       }
 
@@ -222,6 +219,12 @@ router.post('/', autenticar, temPermissao('criarImplantacoes'), validar(implanta
       if (!implantacao.cliente || implantacao.cliente.toString() !== clienteVinculadoId.toString()) {
         await ImplantacaoModel.updateOne({ _id: implantacao._id }, { $set: { cliente: clienteVinculadoId } });
       }
+    }
+
+    // Implantação que já nasce concluída (nenhuma etapa com tarefa): o cliente entra nas demandas de imediato
+    if (implantacao.status === 'concluida') {
+      try { await abrirVigenciaAoConcluir(await ImplantacaoModel.findById(implantacao._id).lean()); }
+      catch (e) { console.error('⚠️ Erro ao abrir a vigência de demanda:', e.message); }
     }
 
     // Dispara e-mails em background (não bloqueia a resposta)

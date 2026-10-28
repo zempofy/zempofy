@@ -1087,6 +1087,8 @@ function PaginaHistorico() {
       documento_restaurado:        { icone: <Icone.Check size={14} />,      cor: '#00b141', bg: 'rgba(0,177,65,0.12)' },
       documento_excluido_permanente: { icone: <Icone.Trash size={14} />,    cor: '#f87171', bg: 'rgba(248,113,113,0.12)' },
       documento_bloqueado:         { icone: <Icone.AlertTriangle size={14} />, cor: '#fbbf24', bg: 'rgba(251,191,36,0.12)' },
+      arquivos_limpeza_pendente:   { icone: <Icone.AlertTriangle size={14} />, cor: '#f87171', bg: 'rgba(248,113,113,0.12)' },
+      vigencia_alterada:           { icone: <Icone.Calendar size={14} />, cor: '#60a5fa', bg: 'rgba(96,165,250,0.12)' },
       retiradas_controle_criado:     { icone: <Icone.Plus size={14} />,     cor: '#2dd4bf', bg: 'rgba(45,212,191,0.12)' },
       retiradas_controle_inativado:  { icone: <Icone.Lock size={14} />,     cor: '#f87171', bg: 'rgba(248,113,113,0.12)' },
       retiradas_controle_reativado:  { icone: <Icone.Check size={14} />,    cor: '#00b141', bg: 'rgba(0,177,65,0.12)' },

@@ -21,20 +21,33 @@ export const regraDoSetorPermite = (cliente, setorNome) => {
   return true
 }
 
-// TRANSIÇÃO (Spec A, some no Spec B): inativo continua sem demanda em mês nenhum, lendo o status.
+// Só a vigência e a regra do setor decidem; o status do cliente não entra ("inativo" fecha os períodos).
 export const existeDemanda = ({ cliente, setorId, setorNome, competencia }) => {
-  if (!cliente || cliente.status === 'inativo') return false
+  if (!cliente) return false
   if (!regraDoSetorPermite(cliente, setorNome)) return false
   return periodosDoSetor(cliente, setorId).some(p => periodoCobre(p, competencia))
 }
 
-// Pasta de ano/mês da aba do setor aparece quando há demanda naquele mês ou já existe lançamento
-// salvo (um mês preenchido nunca some da lista). TRANSIÇÃO (Spec A): cliente inativo segue vendo
-// todas as pastas do setor, somente leitura, como sempre foi — o Spec B troca isso pelo histórico real.
-export const pastaVisivel = ({ cliente, setor, competencia, temLancamento = false }) => {
-  if (temLancamento) return true
-  if (existeDemanda({ cliente, setorId: setor._id, setorNome: setor.nome, competencia })) return true
-  return cliente?.status === 'inativo'
-    && regraDoSetorPermite(cliente, setor.nome)
-    && (cliente.setores || []).some(s => String(s._id || s) === String(setor._id))
+// A competência está dentro de algum período do setor? (a aba do cliente mostra "Fora da vigência" quando não)
+export const competenciaNaVigencia = (cliente, setorId, competencia) =>
+  periodosDoSetor(cliente, setorId).some(p => periodoCobre(p, competencia))
+
+const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
+export const rotuloMes = (competencia) => (competencia ? `${MESES[Number(competencia.slice(5, 7)) - 1]}/${competencia.slice(0, 4)}` : '')
+
+export const mesAnterior = (competencia) => {
+  const [a, m] = competencia.split('-').map(Number)
+  const d = new Date(Date.UTC(a, m - 2, 1))
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`
 }
+
+// Texto da vigência do setor pra mostrar na aba (um item por período):
+// "desde sempre, em aberto" · "desde sempre até Outubro/2026" · "de Março/2026 em diante" · "de Março/2026 até Outubro/2026"
+const descreverPeriodo = (p) => {
+  if (!p.inicio && !p.fim) return 'desde sempre, em aberto'
+  if (!p.inicio) return `desde sempre até ${rotuloMes(p.fim)}`
+  if (!p.fim) return `de ${rotuloMes(p.inicio)} em diante`
+  return `de ${rotuloMes(p.inicio)} até ${rotuloMes(p.fim)}`
+}
+export const descreverPeriodos = (periodos) =>
+  [...periodos].sort((a, b) => (a.inicio || '').localeCompare(b.inicio || '')).map(descreverPeriodo)

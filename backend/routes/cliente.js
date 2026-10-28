@@ -9,7 +9,8 @@ const Documento = require('../models/Documento');
 const { clienteCreateSchema, clienteUpdateSchema, validar } = require('../validacao');
 const { competenciaAtual, competenciaAtualDoSetor, resolverPorVigencia, aplicarMudancaComHistorico, buscarCompetenciaMaisAntiga, prepararHistoricoParaMudanca } = require('../services/historicoVigencia');
 
-const { listarClientesComDemanda, garantirVigenciaPadrao, removerVigenciaDoSetor } = require('../services/vigenciaDemanda');
+const V = require('../services/vigenciaDemanda');
+const ciclos = require('../services/ciclosCliente');
 
 const router = express.Router();
 
@@ -96,7 +97,7 @@ router.get('/demandas/:setorId/:competencia', autenticar, async (req, res) => {
 
     // Quem decide se o cliente tem Demanda nesta competência é a vigência (services/vigenciaDemanda.js):
     // períodos do cliente no setor + regra adicional do setor (Fiscal: sem regime ou "outro" não gera).
-    const clientes = await listarClientesComDemanda({
+    const clientes = await V.listarClientesComDemanda({
       empresaId: req.usuario.empresa._id, setorId, setorNome, competencia,
       campos: 'razaoSocial nomeFantasia historicoRegime configSetores',
     });
@@ -147,6 +148,13 @@ router.get('/:id', autenticar, async (req, res) => {
       .populate('particularidadesSetor.atualizadoPor', 'nome').lean();
     if (!cliente) return res.status(404).json({ erro: 'Cliente não encontrado.' });
 
+    // Setores que o cliente já teve (removidos "daqui pra frente") continuam na aba dele, só pra consulta
+    const atribuidos = new Set((cliente.setores || []).map(s => String(s._id)));
+    const idsHistoricos = (cliente.vigenciaDemanda || []).filter(v => v.periodos?.length && !atribuidos.has(String(v.setor))).map(v => v.setor);
+    const setoresHistoricos = idsHistoricos.length
+      ? await Setor.find({ _id: { $in: idsHistoricos }, empresa: req.usuario.empresa._id }).select('nome cor responsavel').lean()
+      : [];
+
     // Buscar onboardings vinculados ao CNPJ do cliente
     const cnpjLimpo = cliente.cnpj?.replace(/\D/g, '');
     const onboardings = cnpjLimpo
@@ -157,7 +165,7 @@ router.get('/:id', autenticar, async (req, res) => {
           .lean()
       : [];
 
-    res.json({ ...cliente, onboardings });
+    res.json({ ...cliente, onboardings, setoresHistoricos });
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao buscar cliente.' });
   }
@@ -167,6 +175,8 @@ router.get('/:id', autenticar, async (req, res) => {
 router.post('/', autenticar, temPermissao('gerenciarClientes'), validar(clienteCreateSchema), async (req, res) => {
   const { razaoSocial, cnpj, regime, porte, servicosContratados } = req.body;
   delete req.body.vigenciaDemanda; // vigência só o servidor grava
+  const comecaEm = req.body.demandaComecaEm || null; // "A demanda começa em" (opcional): em branco = desde sempre
+  if (comecaEm && !V.mesValido(comecaEm)) return res.status(400).json({ erro: 'Mês de início da demanda inválido.' });
   if (!razaoSocial?.trim()) return res.status(400).json({ erro: 'Razão social é obrigatória.' });
   const tipoPessoa = tipoPessoaDoDocumento(cnpj);
   // Clientes criados via onboarding (origem: 'onboarding') não exigem todos os campos.
@@ -196,7 +206,9 @@ router.post('/', autenticar, temPermissao('gerenciarClientes'), validar(clienteC
       empresa: req.usuario.empresa._id,
       criadoPor: req.usuario._id,
     });
-    garantirVigenciaPadrao(cliente); // setores escolhidos no cadastro entram com demanda desde sempre (Spec A)
+    // Setores escolhidos no cadastro: demanda desde sempre (ou a partir de "A demanda começa em"). Cliente criado
+    // pelo onboarding nasce sem vigência: ela só abre quando o onboarding conclui.
+    cliente.vigenciaDemanda = viaOnboarding ? [] : ciclos.entradasAoAdicionarSetores([], cliente.setores.map(String), { comecaEm, mesAtual: V.mesAtualBrasilia() });
     await cliente.save();
     registrarLog({ empresa: req.usuario.empresa._id, usuario: req.usuario._id, tipo: 'cliente_criado', categoria: 'cliente', descricao: 'Cadastrou o cliente ' + razaoSocial.trim(), meta: { nome: razaoSocial } });
     res.status(201).json(cliente);
@@ -208,7 +220,7 @@ router.post('/', autenticar, temPermissao('gerenciarClientes'), validar(clienteC
 // PUT /api/clientes/:id
 router.put('/:id', autenticar, temPermissao('gerenciarClientes'), validar(clienteUpdateSchema), async (req, res) => {
   try {
-    const { empresa, criadoPor, _id, criadoEm, modoVigenciaRegime, vigenciaDemanda, ...dados } = req.body;
+    const { empresa, criadoPor, _id, criadoEm, modoVigenciaRegime, vigenciaDemanda, mesVigencia, demandaComecaEm, ...dados } = req.body;
     if (dados.cnpj !== undefined) dados.tipoPessoa = tipoPessoaDoDocumento(dados.cnpj);
 
     const cliente = await Cliente.findOne({ _id: req.params.id, empresa: req.usuario.empresa._id });
@@ -244,16 +256,47 @@ router.put('/:id', autenticar, temPermissao('gerenciarClientes'), validar(client
     // Por aqui só dá pra ADICIONAR setor: tirar um setor já atribuído (que apaga a Demanda dele pro
     // cliente) só pela rota DELETE /:id/setores/:setorId, que exige confirmação de escopo. Sem isso,
     // uma lista de setores incompleta removia o setor na hora e deixava os lançamentos órfãos.
+    let setoresNovos = [];
     if (dados.setores !== undefined) {
       const atuais = cliente.setores.map(s => s.toString());
       const novos = dados.setores.map(s => String(s._id || s)).filter(id => !atuais.includes(id));
+      setoresNovos = novos;
       dados.setores = [...cliente.setores, ...novos];
     }
 
+    // Vigência da demanda (Spec B): inativar fecha os períodos abertos; reativar abre período novo nos setores
+    // atribuídos; setor adicionado abre período (desde sempre, se nunca teve; senão a partir do mês escolhido).
+    // O mês da ação é o mês atual (Brasília), a menos que o usuário escolha outro.
+    const statusAntes = cliente.status;
+    const inativando = dados.status === 'inativo' && statusAntes !== 'inativo';
+    const reativando = statusAntes === 'inativo' && dados.status !== undefined && dados.status !== 'inativo';
+    const mesAcao = mesVigencia || V.mesAtualBrasilia();
+    if ((inativando || reativando) && !V.mesDentroDaJanela(mesAcao)) {
+      return res.status(400).json({ erro: 'Mês inválido: escolha entre 12 meses atrás e 12 meses à frente.' });
+    }
+    if (demandaComecaEm && !V.mesValido(demandaComecaEm)) return res.status(400).json({ erro: 'Mês de início da demanda inválido.' });
+
     Object.assign(cliente, dados);
-    // Setor novo, ou cliente reativado sem vigência: entra com demanda desde sempre (Spec A)
-    garantirVigenciaPadrao(cliente);
+
+    const eventosVigencia = [];
+    let entradas = V.copiarEntradas(cliente);
+    if (inativando) {
+      entradas = V.fecharPeriodosAbertos(entradas, mesAcao);
+      eventosVigencia.push(`Cliente inativado a partir de ${ciclos.nomeMes(mesAcao)}: demandas até ${ciclos.nomeMes(V.somarMeses(mesAcao, -1))} continuam no histórico`);
+    } else if (reativando) {
+      for (const setorId of cliente.setores.map(String)) entradas = V.abrirPeriodo(entradas, setorId, mesAcao).entradas;
+      eventosVigencia.push(`Cliente reativado: demandas voltam a partir de ${ciclos.nomeMes(mesAcao)}`);
+    }
+    if (setoresNovos.length && cliente.status !== 'inativo') {
+      entradas = ciclos.entradasAoAdicionarSetores(entradas, setoresNovos, { comecaEm: demandaComecaEm || null, mesAtual: V.mesAtualBrasilia() });
+      eventosVigencia.push(`Setor(es) adicionado(s)${demandaComecaEm ? `: demanda começa em ${ciclos.nomeMes(demandaComecaEm)}` : ''}`);
+    }
+    if (eventosVigencia.length) cliente.vigenciaDemanda = entradas;
     await cliente.save();
+    eventosVigencia.forEach(ev => ciclos.logVigencia({
+      empresa: req.usuario.empresa._id, usuario: req.usuario._id, descricao: `${ev} — ${cliente.razaoSocial}`,
+      meta: { clienteId: cliente._id, mes: mesAcao },
+    }));
     registrarLog({ empresa: req.usuario.empresa._id, usuario: req.usuario._id, tipo: 'cliente_editado', categoria: 'cliente', descricao: 'Editou o cliente ' + cliente.razaoSocial });
     res.json(cliente);
   } catch (err) {
@@ -261,11 +304,24 @@ router.put('/:id', autenticar, temPermissao('gerenciarClientes'), validar(client
   }
 });
 
-// DELETE /api/clientes/:id — exclusão permanente. Só é permitida com o cliente já inativo,
-// pra evitar apagar por engano um cliente que ainda está ativo na carteira.
+// GET /api/clientes/:id/impacto-exclusao — o que a exclusão permanente vai apagar (números pro diálogo de confirmação)
+router.get('/:id/impacto-exclusao', autenticar, temPermissao('gerenciarClientes'), async (req, res) => {
+  try {
+    const cliente = await Cliente.findOne({ _id: req.params.id, empresa: req.usuario.empresa._id }).select('cnpj setores').lean();
+    if (!cliente) return res.status(404).json({ erro: 'Cliente não encontrado.' });
+    res.json(await ciclos.contarImpactoExclusao(req.usuario.empresa._id, cliente));
+  } catch (err) {
+    res.status(500).json({ erro: 'Erro ao calcular o que será apagado.' });
+  }
+});
+
+// DELETE /api/clientes/:id — exclusão permanente. Só é permitida com o cliente já inativo, sem onboarding em
+// andamento, pra evitar apagar por engano um cliente que ainda está ativo na carteira. Apaga TUDO ligado ao cliente
+// (demandas, documentos e arquivos, onboardings, controles de retiradas), tudo ou nada: o banco confirma primeiro,
+// os arquivos saem do armazenamento depois. As linhas do histórico do sistema ficam (provam quem excluiu).
 router.delete('/:id', autenticar, temPermissao('gerenciarClientes'), async (req, res) => {
   try {
-    const cliente = await Cliente.findOne({ _id: req.params.id, empresa: req.usuario.empresa._id });
+    const cliente = await Cliente.findOne({ _id: req.params.id, empresa: req.usuario.empresa._id }).select('razaoSocial status').lean();
     if (!cliente) return res.status(404).json({ erro: 'Cliente não encontrado.' });
     if (cliente.status !== 'inativo') {
       return res.status(403).json({ erro: 'Só é possível excluir um cliente depois de inativá-lo.' });
@@ -277,47 +333,78 @@ router.delete('/:id', autenticar, temPermissao('gerenciarClientes'), async (req,
       return res.status(403).json({ erro: 'Este cliente ainda está em onboarding. Conclua ou cancele a implantação antes de excluir.' });
     }
 
-    await cliente.deleteOne();
-    registrarLog({ empresa: req.usuario.empresa._id, usuario: req.usuario._id, tipo: 'cliente_excluido', categoria: 'cliente', descricao: 'Excluiu permanentemente o cliente ' + cliente.razaoSocial });
-    res.json({ mensagem: 'Cliente removido.' });
+    let r;
+    try {
+      r = await ciclos.excluirClienteCompleto({ empresaId: req.usuario.empresa._id, clienteId: cliente._id, usuarioId: req.usuario._id });
+    } catch (err) {
+      console.error('Erro ao excluir cliente (nada foi apagado):', err);
+      return res.status(500).json({ erro: 'Não foi possível excluir o cliente. Nada foi apagado — tente de novo.' });
+    }
+    registrarLog({
+      empresa: req.usuario.empresa._id, usuario: req.usuario._id, tipo: 'cliente_excluido', categoria: 'cliente',
+      descricao: 'Excluiu permanentemente o cliente ' + r.nomeCliente, meta: { clienteId: cliente._id, apagado: r.contagem, arquivosPendentes: r.arquivosPendentes },
+    });
+    res.json({ mensagem: 'Cliente removido.', arquivosPendentes: r.arquivosPendentes });
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao remover cliente.' });
   }
 });
 
-// DELETE /api/clientes/:id/setores/:setorId?escopo=frente|todas — tira o cliente da Demanda de um setor.
-// 'frente': só remove de Cliente.setores (some da Demanda daqui pra frente) — lançamentos, documentos
-// e configSetores ficam intocados no banco, pro caso do setor voltar a ser atribuído depois.
-// 'todas': além disso apaga de vez os lançamentos, os documentos (registro + arquivo no R2) e o
-// configSetores (bancos, campos adicionais, situação) desse cliente/setor.
+// GET /api/clientes/:id/setores/:setorId/impacto — o que "Remover tudo" vai apagar (números pro diálogo)
+router.get('/:id/setores/:setorId/impacto', autenticar, temPermissao('gerenciarClientes'), async (req, res) => {
+  try {
+    const cliente = await Cliente.exists({ _id: req.params.id, empresa: req.usuario.empresa._id });
+    if (!cliente) return res.status(404).json({ erro: 'Cliente não encontrado.' });
+    res.json(await ciclos.contarImpactoSetor(req.usuario.empresa._id, req.params.id, req.params.setorId));
+  } catch (err) {
+    res.status(500).json({ erro: 'Erro ao calcular o que será apagado.' });
+  }
+});
+
+// DELETE /api/clientes/:id/setores/:setorId?escopo=frente|todas[&mes=AAAA-MM] — tira o setor do cliente.
+// 'frente': fecha a vigência do setor (fim = mês anterior ao escolhido; padrão: mês atual) e tira o setor da lista.
+// Nada é apagado: lançamentos, documentos, configurações e particularidades ficam guardados, os meses anteriores
+// seguem visíveis (somente leitura) e, se o setor voltar, o que foi guardado volta a ser usado.
+// 'todas': apaga de vez, tudo ou nada (ver ciclosCliente.removerSetorTudo): vigência, lançamentos, documentos
+// (registro + arquivo), configurações e particularidades. O setor, se voltar, nasce limpo.
 router.delete('/:id/setores/:setorId', autenticar, temPermissao('gerenciarClientes'), async (req, res) => {
   try {
     const { escopo } = req.query;
     if (!['frente', 'todas'].includes(escopo)) return res.status(400).json({ erro: 'Escopo inválido.' });
 
-    const cliente = await Cliente.findOne({ _id: req.params.id, empresa: req.usuario.empresa._id });
+    const cliente = await Cliente.findOne({ _id: req.params.id, empresa: req.usuario.empresa._id }).select('razaoSocial setores vigenciaDemanda').lean();
     if (!cliente) return res.status(404).json({ erro: 'Cliente não encontrado.' });
     const setor = await Setor.findOne({ _id: req.params.setorId, empresa: req.usuario.empresa._id }).select('nome').lean();
     if (!setor) return res.status(404).json({ erro: 'Setor não encontrado.' });
-    const setorNome = normalizarNome(setor.nome);
+    const empresa = req.usuario.empresa._id;
 
-    cliente.setores = cliente.setores.filter(s => s.toString() !== req.params.setorId);
-    removerVigenciaDoSetor(cliente, req.params.setorId); // sem o setor, a demanda some (Spec A: igual a antes)
-
-    if (escopo === 'todas') {
-      const { apagarArquivo } = require('../services/storage');
-      const docs = await Documento.find({ empresa: req.usuario.empresa._id, cliente: cliente._id, tipo: 'demanda', setor: req.params.setorId });
-      for (const doc of docs) {
-        try { await apagarArquivo(doc.chave); } catch (err) { console.error(`⚠️ Falha ao apagar ${doc.chave} no R2:`, err.message); }
-        await doc.deleteOne();
-      }
-      await LancamentoSetor.deleteMany({ empresa: req.usuario.empresa._id, cliente: cliente._id, setor: req.params.setorId });
-      if (cliente.configSetores?.[setorNome]) { delete cliente.configSetores[setorNome]; cliente.markModified('configSetores'); }
+    if (escopo === 'frente') {
+      const mes = req.query.mes || V.mesAtualBrasilia();
+      if (!V.mesDentroDaJanela(mes)) return res.status(400).json({ erro: 'Mês inválido: escolha entre 12 meses atrás e 12 meses à frente.' });
+      const { fimVigencia } = await ciclos.removerSetorDaquiPraFrente({ empresaId: empresa, cliente, setorId: setor._id, mes });
+      registrarLog({ empresa, usuario: req.usuario._id, tipo: 'cliente_editado', categoria: 'cliente', descricao: `Removeu ${cliente.razaoSocial} do setor ${setor.nome} (daqui pra frente)` });
+      ciclos.logVigencia({
+        empresa, usuario: req.usuario._id,
+        descricao: `Setor ${setor.nome} removido de ${cliente.razaoSocial} a partir de ${ciclos.nomeMes(mes)}: demandas até ${ciclos.nomeMes(fimVigencia)} continuam no histórico`,
+        meta: { clienteId: cliente._id, evento: 'setor_removido_frente', setor: setor._id, aPartirDe: mes },
+      });
+      return res.json({ mensagem: 'Setor removido daqui pra frente.', fimVigencia });
     }
 
-    await cliente.save();
-    registrarLog({ empresa: req.usuario.empresa._id, usuario: req.usuario._id, tipo: 'cliente_editado', categoria: 'cliente', descricao: `Removeu ${cliente.razaoSocial} do setor ${setor.nome} (${escopo === 'todas' ? 'excluindo histórico' : 'mantendo histórico'})` });
-    res.json(cliente);
+    let r;
+    try {
+      r = await ciclos.removerSetorTudo({ empresaId: empresa, clienteId: cliente._id, setorId: setor._id, usuarioId: req.usuario._id });
+    } catch (err) {
+      if (err.status) return res.status(err.status).json({ erro: err.message });
+      console.error('Erro ao remover tudo do setor (nada foi apagado):', err);
+      return res.status(500).json({ erro: 'Não foi possível remover o setor. Nada foi apagado — tente de novo.' });
+    }
+    registrarLog({
+      empresa, usuario: req.usuario._id, tipo: 'cliente_editado', categoria: 'cliente',
+      descricao: `Removeu ${cliente.razaoSocial} do setor ${setor.nome} e apagou todo o histórico (${r.lancamentos} lançamento(s), ${r.documentos} documento(s))`,
+      meta: { clienteId: cliente._id, setor: setor._id, lancamentos: r.lancamentos, documentos: r.documentos, arquivosPendentes: r.arquivosPendentes },
+    });
+    res.json({ mensagem: 'Setor removido e histórico apagado.', lancamentos: r.lancamentos, documentos: r.documentos, arquivosPendentes: r.arquivosPendentes });
   } catch (err) {
     console.error(err);
     res.status(500).json({ erro: 'Erro ao remover setor do cliente.' });
@@ -369,6 +456,48 @@ const garantirConfigSetor = (cliente, setorNome) => {
   return cliente.configSetores[setorNome];
 };
 
+// Situação da competência diante da vigência do setor (Spec B): fora da vigência / setor removido ficam só leitura.
+const situacaoDaVigencia = (cliente, setorId, competencia) => {
+  const periodos = V.periodosDoSetor(cliente, setorId);
+  const foraDaVigencia = !periodos.some(p => V.periodoCobre(p, competencia));
+  const setorAtribuido = (cliente.setores || []).some(s => String(s._id || s) === String(setorId));
+  return { foraDaVigencia, setorAtribuido, bloqueadoPelaVigencia: foraDaVigencia || !setorAtribuido };
+};
+
+// PATCH /api/clientes/:id/vigencia/:setorId — ajuste manual da vigência do setor (válvula de escape).
+// Titular e responsável designado do setor (mesma regra de quem muda a configuração do setor — nenhuma permissão nova)
+// ajustam o INÍCIO do primeiro período e o FIM do último. Body: { inicio, fim } em AAAA-MM; null = desde sempre / em aberto.
+router.patch('/:id/vigencia/:setorId', autenticar, async (req, res) => {
+  try {
+    const cliente = await Cliente.findOne({ _id: req.params.id, empresa: req.usuario.empresa._id }).select('razaoSocial status vigenciaDemanda').lean();
+    if (!cliente) return res.status(404).json({ erro: 'Cliente não encontrado.' });
+    const setor = await Setor.findOne({ _id: req.params.setorId, empresa: req.usuario.empresa._id }).select('nome').lean();
+    if (!setor) return res.status(404).json({ erro: 'Setor não encontrado.' });
+    if (!(await podeMudarConfigSetor(req.usuario, req.params.setorId))) {
+      return res.status(403).json({ erro: 'Só o titular ou o responsável do setor pode ajustar a vigência da demanda.' });
+    }
+    const { inicio, fim } = req.body || {};
+    const entradas = V.copiarEntradas(cliente);
+    const antes = JSON.stringify(V.periodosDoSetor({ vigenciaDemanda: entradas }, setor._id));
+    const ultimo = await V.ultimaCompetenciaComLancamento(cliente._id, setor._id);
+    const r = V.ajustarVigencia(entradas, setor._id, { inicio, fim }, ultimo);
+    if (r.erro) return res.status(400).json({ erro: r.erro });
+    if (cliente.status === 'inativo' && V.periodosDoSetor({ vigenciaDemanda: r.entradas }, setor._id).some(p => !p.fim)) {
+      return res.status(400).json({ erro: 'Cliente inativo: reative o cliente para reabrir a vigência.' });
+    }
+    await Cliente.updateOne({ _id: cliente._id }, { $set: { vigenciaDemanda: r.entradas } });
+    const depois = V.periodosDoSetor({ vigenciaDemanda: r.entradas }, setor._id);
+    ciclos.logVigencia({
+      empresa: req.usuario.empresa._id, usuario: req.usuario._id,
+      descricao: `Ajustou a vigência de ${setor.nome} de ${cliente.razaoSocial}`,
+      meta: { clienteId: cliente._id, evento: 'vigencia_ajustada', setor: setor._id, antes: JSON.parse(antes), depois },
+    });
+    res.json({ periodos: depois });
+  } catch (err) {
+    res.status(500).json({ erro: 'Erro ao ajustar a vigência.' });
+  }
+});
+
 // GET /api/clientes/:id/lancamentos/:setorId — lista os lançamentos já salvos (pra montar as pastas de ano/mês)
 router.get('/:id/lancamentos/:setorId', autenticar, async (req, res) => {
   try {
@@ -409,7 +538,9 @@ router.get('/:id/lancamentos/:setorId/:competencia', autenticar, async (req, res
     res.json({
       ...base,
       preenchido: !!lancamento,
-      podeEditar: podeEditarCompetencia(req.usuario, req.params.setorId, competencia, cliente.status !== 'inativo', setorNome, !!lancamento, setor?.responsavel),
+      podeEditar: !situacaoDaVigencia(cliente, req.params.setorId, competencia).bloqueadoPelaVigencia
+        && podeEditarCompetencia(req.usuario, req.params.setorId, competencia, cliente.status !== 'inativo', setorNome, !!lancamento, setor?.responsavel),
+      ...situacaoDaVigencia(cliente, req.params.setorId, competencia),
       regimeResolvido: resolverPorVigencia(cliente.historicoRegime, competencia, cliente.regime),
       situacaoResolvida: resolverPorVigencia(cliente.configSetores?.[setorNome]?.historicoSituacao, competencia, cliente.configSetores?.[setorNome]?.situacao),
     });
@@ -433,6 +564,11 @@ router.post('/:id/lancamentos/:setorId/:competencia', autenticar, async (req, re
     const jaExiste = await LancamentoSetor.exists({
       cliente: req.params.id, setor: req.params.setorId, competencia, empresa: req.usuario.empresa._id,
     });
+
+    // Mês fora da vigência da demanda, ou setor já removido do cliente: só leitura, ninguém preenche
+    const vig = situacaoDaVigencia(cliente, req.params.setorId, competencia);
+    if (vig.foraDaVigencia) return res.status(403).json({ erro: 'Este mês está fora da vigência da demanda deste setor — não dá pra preencher.' });
+    if (!vig.setorAtribuido) return res.status(403).json({ erro: 'Este setor foi removido do cliente — somente leitura.' });
 
     if (!podeEditarCompetencia(req.usuario, req.params.setorId, competencia, cliente.status !== 'inativo', setorNome, !!jaExiste, setor?.responsavel)) {
       const temAcesso = req.usuario.cargo === 'admin' || req.usuario.setores?.some(s => (s._id || s).toString() === req.params.setorId);
@@ -786,6 +922,7 @@ router.post('/importar', autenticar, temPermissao('gerenciarClientes'), async (r
             continue;
           }
         }
+        const comecaEm = V.mesValido(c.demandaComecaEm) ? c.demandaComecaEm : null;
         const novo = new Cliente({
           ...c,
           tipoPessoa,
@@ -797,7 +934,8 @@ router.post('/importar', autenticar, temPermissao('gerenciarClientes'), async (r
           socios: c.socios || [],
           vigenciaDemanda: [], // vigência só o servidor grava
         });
-        garantirVigenciaPadrao(novo);
+        // Setores vindos da planilha: demanda desde sempre (ou a partir de "A demanda começa em"); inativo entra sem período
+        if (novo.status !== 'inativo') novo.vigenciaDemanda = ciclos.entradasAoAdicionarSetores([], novo.setores.map(String), { comecaEm, mesAtual: V.mesAtualBrasilia() });
         await novo.save();
         resultados.importados++;
       } catch (err) {

@@ -9,7 +9,8 @@ import AbaDocumentos from './AbaDocumentos'
 import ListaDocumentos from './ListaDocumentos'
 import { useAuth } from '../contexts/AuthContext'
 import * as XLSX from 'xlsx'
-import { regraDoSetorPermite, pastaVisivel } from '../utils/vigenciaDemanda'
+import { regraDoSetorPermite, competenciaNaVigencia } from '../utils/vigenciaDemanda'
+import { ModalInativar, ModalReativar, ModalRemoverSetor, ModalExcluirCliente, VigenciaSetor } from './ModaisVigencia'
 
 // ── Máscaras ──
 const mascaraCNPJ = (v) => v.replace(/\D/g,'').slice(0,14)
@@ -462,6 +463,7 @@ function FormCliente({ cliente, fechar, onSalvo }) {
   const [pedindoVigenciaRegime, setPedindoVigenciaRegime] = useState(false)
   const [setoresSalvos, setSetoresSalvos] = useState(() => cliente?._id ? (cliente.setores || []).map(st => st._id || st) : [])
   const [confirmandoRemoverSetor, setConfirmandoRemoverSetor] = useState(null) // setor | null
+  const [demandaComecaEm, setDemandaComecaEm] = useState('') // "A demanda começa em" dos setores novos (vazio = desde sempre)
 
   const [form, setForm] = useState({
     razaoSocial: cliente?.razaoSocial || '',
@@ -517,15 +519,17 @@ function FormCliente({ cliente, fechar, onSalvo }) {
   // desmarcar aqui e salvar removia na hora, sem aviso, deixando os lançamentos órfãos no banco.
   const setoresAtribuidos = setoresList.filter(st => setoresSalvos.includes(st._id))
   const setoresDisponiveis = setoresList.filter(st => !setoresSalvos.includes(st._id))
+  const temSetorNovo = form.setores.some(id => !setoresSalvos.includes(id))
 
-  const removerSetor = async (escopo) => {
+  const removerSetor = async (escopo, mes) => {
     const setor = confirmandoRemoverSetor
-    setConfirmandoRemoverSetor(null)
     try {
-      await api.delete(`/clientes/${cliente._id}/setores/${setor._id}?escopo=${escopo}`)
+      const r = await api.delete(`/clientes/${cliente._id}/setores/${setor._id}?escopo=${escopo}${escopo === 'frente' ? `&mes=${mes}` : ''}`)
+      setConfirmandoRemoverSetor(null)
       setSetoresSalvos(ss => ss.filter(id => id !== setor._id))
       setForm(f => ({ ...f, setores: f.setores.filter(id => id !== setor._id) }))
       mostrar(escopo === 'todas' ? 'Setor removido e histórico apagado.' : 'Setor removido daqui pra frente.', 'sucesso')
+      if (r.data?.arquivosPendentes) mostrar(`${r.data.arquivosPendentes} arquivo(s) não saíram do armazenamento e ficaram registrados no Histórico para limpeza manual.`, 'aviso')
       onSalvo()
     } catch (e) { mostrar(e.response?.data?.erro || 'Erro ao remover setor.', 'erro') }
   }
@@ -609,6 +613,7 @@ function FormCliente({ cliente, fechar, onSalvo }) {
       ...form,
       socios: form.socios.filter(s=>s.nome.trim()),
       ...(modoVigenciaRegime ? { modoVigenciaRegime } : {}),
+      ...(demandaComecaEm && temSetorNovo ? { demandaComecaEm } : {}),
     }
     try {
       if (cliente?._id) { await api.put(`/clientes/${cliente._id}`, payload); mostrar('Cliente atualizado!','sucesso') }
@@ -789,6 +794,13 @@ function FormCliente({ cliente, fechar, onSalvo }) {
                 )
               })}
             </div>
+            {temSetorNovo && (
+              <div style={{ display:'flex', alignItems:'center', gap:'10px', flexWrap:'wrap', marginTop:'12px', fontSize:'0.82rem', color:'var(--texto-apagado)', fontFamily:'var(--fonte-corpo)' }}>
+                <span>A demanda começa em (opcional):</span>
+                <input type="month" value={demandaComecaEm} onChange={e=>setDemandaComecaEm(e.target.value)} style={{ ...s.inp, width:'auto', colorScheme:'dark' }} />
+                <span style={{ fontSize:'0.75rem' }}>{demandaComecaEm ? '' : 'Em branco: desde sempre (setor que já foi do cliente antes volta a partir do mês atual).'}</span>
+              </div>
+            )}
           </Secao>
         )}
 
@@ -893,16 +905,8 @@ function FormCliente({ cliente, fechar, onSalvo }) {
       </div>
 
       {confirmandoRemoverSetor && (
-        <ModalConfirmacao
-          perigo
-          titulo={`Remover ${confirmandoRemoverSetor.nome} deste cliente?`}
-          mensagem="Escolha o que fazer com o histórico já lançado. Em 'Remover tudo', todos os lançamentos e documentos desse setor pra esse cliente são apagados e não dá pra desfazer."
-          onCancelar={()=>setConfirmandoRemoverSetor(null)}
-          acoes={[
-            { texto: 'Remover daqui pra frente', onClick: () => removerSetor('frente') },
-            { texto: 'Remover tudo (apaga histórico)', perigo: true, onClick: () => removerSetor('todas') },
-          ]}
-        />
+        <ModalRemoverSetor clienteId={cliente._id} setor={confirmandoRemoverSetor}
+          onConfirmar={removerSetor} onCancelar={()=>setConfirmandoRemoverSetor(null)} />
       )}
 
       {pedindoVigenciaRegime && (
@@ -985,6 +989,7 @@ function TelaDetalhe({ clienteId, voltar, onAtualizado, abaInicial = 'info', set
   const [editando, setEditando] = useState(false)
   const [confirmInativar, setConfirmInativar] = useState(false)
   const [confirmExcluir, setConfirmExcluir] = useState(false)
+  const [confirmReativar, setConfirmReativar] = useState(false)
   const [cienteExclusao, setCienteExclusao] = useState(false)
   const [excluindo, setExcluindo] = useState(false)
   const [mudandoStatus, setMudandoStatus] = useState(false)
@@ -1003,7 +1008,9 @@ function TelaDetalhe({ clienteId, voltar, onAtualizado, abaInicial = 'info', set
 
   // Barra de setores (topo): só entra quem o usuário tem acesso E que tem Demanda configurada
   // (setor sem Demanda, tipo Legalização, não aparece ali — mas continua na aba "Setores" e conta pra "Informações")
-  const setoresClienteValidos = dados?.setores?.filter(s=>s.nome) || []
+  // Setor removido "daqui pra frente" continua na barra (só consulta), enquanto tiver vigência no histórico
+  const setoresClienteValidos = [...(dados?.setores?.filter(s=>s.nome) || []), ...(dados?.setoresHistoricos || [])]
+  const setorEhHistorico = (setor) => !!setor && !(dados?.setores || []).some(s => (s._id || s) === setor._id)
   const setoresBarra = setoresClienteValidos.filter(s => setorTemDemanda(s))
 
   const clicarSetor = (setor) => {
@@ -1040,31 +1047,33 @@ function TelaDetalhe({ clienteId, voltar, onAtualizado, abaInicial = 'info', set
     if (setor) { setSetorAtivo(setor); setorInicialAplicado.current = true }
   }, [dados, setorInicial])
 
-  const inativar = async () => {
+  // Inativar/reativar levam o mês escolhido no diálogo (padrão: mês atual) — é ele que fecha/abre a vigência da demanda
+  const inativar = async (mes) => {
     setMudandoStatus(true)
     try {
-      await api.put(`/clientes/${clienteId}`, { status: 'inativo' })
+      await api.put(`/clientes/${clienteId}`, { status: 'inativo', mesVigencia: mes })
       mostrar('Cliente inativado.', 'aviso')
       buscar(); onAtualizado()
     } catch (err) { mostrar(err.response?.data?.erro || 'Erro ao inativar.', 'erro') }
     finally { setMudandoStatus(false); setConfirmInativar(false) }
   }
 
-  const reativar = async () => {
+  const reativar = async (mes) => {
     setMudandoStatus(true)
     try {
-      await api.put(`/clientes/${clienteId}`, { status: 'ativo' })
+      await api.put(`/clientes/${clienteId}`, { status: 'ativo', mesVigencia: mes })
       mostrar('Cliente reativado!', 'sucesso')
       buscar(); onAtualizado()
-    } catch { mostrar('Erro ao reativar.', 'erro') }
-    finally { setMudandoStatus(false) }
+    } catch (err) { mostrar(err.response?.data?.erro || 'Erro ao reativar.', 'erro') }
+    finally { setMudandoStatus(false); setConfirmReativar(false) }
   }
 
   const excluir = async () => {
     setExcluindo(true)
     try {
-      await api.delete(`/clientes/${clienteId}`)
+      const r = await api.delete(`/clientes/${clienteId}`)
       mostrar('Cliente excluído permanentemente.', 'aviso')
+      if (r.data?.arquivosPendentes) mostrar(`${r.data.arquivosPendentes} arquivo(s) não saíram do armazenamento e ficaram registrados no Histórico para limpeza manual.`, 'aviso')
       onAtualizado(); voltar()
     } catch (err) {
       mostrar(err.response?.data?.erro || 'Erro ao excluir.', 'erro')
@@ -1103,7 +1112,7 @@ function TelaDetalhe({ clienteId, voltar, onAtualizado, abaInicial = 'info', set
                 <button onClick={()=>setEditando(true)} style={{ ...s.btnAcao, display:'flex', alignItems:'center', gap:'5px' }}><Icone.Edit size={13}/>Editar</button>
               )}
               {dados.status==='inativo' ? (<>
-                <button onClick={reativar} disabled={mudandoStatus} style={{ ...s.btnAcao, color:'var(--verde)', borderColor:'rgba(0,177,65,0.3)', display:'flex', alignItems:'center', gap:'5px' }}><Icone.CheckCircle size={13}/>{mudandoStatus?'Reativando...':'Reativar'}</button>
+                <button onClick={()=>setConfirmReativar(true)} disabled={mudandoStatus} style={{ ...s.btnAcao, color:'var(--verde)', borderColor:'rgba(0,177,65,0.3)', display:'flex', alignItems:'center', gap:'5px' }}><Icone.CheckCircle size={13}/>{mudandoStatus?'Reativando...':'Reativar'}</button>
                 <button onClick={()=>setConfirmExcluir(true)} disabled={mudandoStatus} style={{ ...s.btnAcao, color:'#f87171', borderColor:'rgba(248,113,113,0.3)', display:'flex', alignItems:'center', gap:'5px' }}><Icone.Trash size={13}/>Excluir da carteira</button>
               </>) : (
                 <button onClick={()=>setConfirmInativar(true)} style={{ ...s.btnAcao, color:'#f87171', borderColor:'rgba(248,113,113,0.3)', display:'flex', alignItems:'center', gap:'5px' }}><Icone.X size={13}/>Inativar</button>
@@ -1208,8 +1217,13 @@ function TelaDetalhe({ clienteId, voltar, onAtualizado, abaInicial = 'info', set
         <AbaDocumentos clienteId={clienteId} setores={dados.setores}/>
       )}
 
+      {setorAtivo&&['particularidades','demanda','historico'].includes(aba)&&(
+        <VigenciaSetor cliente={dados} setor={setorAtivo} mostrar={mostrar} onAtualizado={buscar}
+          podeAjustar={usuario?.cargo==='admin' || (!!setorAtivo.responsavel && (setorAtivo.responsavel._id || setorAtivo.responsavel) === usuario?.id)} />
+      )}
+
       {aba==='particularidades'&&setorAtivo&&(
-        <AbaParticularidades key={setorAtivo._id} clienteId={clienteId} setor={setorAtivo} clienteAtivo={dados.status!=='inativo'}
+        <AbaParticularidades key={setorAtivo._id} clienteId={clienteId} setor={setorAtivo} clienteAtivo={dados.status!=='inativo' && !setorEhHistorico(setorAtivo)}
           particularidades={(dados.particularidadesSetor||[]).filter(p=>p.setor===setorAtivo._id)}
           onSalvo={buscar}/>
       )}
@@ -1229,43 +1243,17 @@ function TelaDetalhe({ clienteId, voltar, onAtualizado, abaInicial = 'info', set
 
       {editando&&<div style={{ position:'fixed', inset:0, background:'var(--fundo)', zIndex:9999, padding:'32px', overflowY:'auto' }}><FormCliente cliente={dados} fechar={()=>setEditando(false)} onSalvo={()=>{buscar();onAtualizado()}} /></div>}
 
-      {confirmInativar&&createPortal(
-        <div style={s.overlay} onClick={()=>setConfirmInativar(false)}>
-          <div style={{ ...s.modalPeq }} onClick={e=>e.stopPropagation()}>
-            <div style={s.modalTopo}><p style={s.modalTit}>Inativar cliente</p><button style={s.btnX} onClick={()=>setConfirmInativar(false)}>✕</button></div>
-            <div style={{ padding:'20px 24px' }}>
-              <p style={{ fontSize:'0.875rem', color:'var(--texto)', margin:'0 0 12px', fontFamily:'var(--fonte-corpo)' }}>Tem certeza que deseja inativar <strong>{nomeCliente}</strong>?</p>
-              <p style={{ fontSize:'0.8rem', color:'var(--texto-apagado)', background:'var(--input)', border:'1px solid var(--borda)', borderRadius:'8px', padding:'10px 12px', margin:0, fontFamily:'var(--fonte-corpo)', display:'flex', alignItems:'flex-start', gap:'8px' }}><Icone.AlertTriangle size={14} style={{flexShrink:0,marginTop:'1px'}}/> O cadastro e o histórico do cliente permanecem preservados. A reativação pode ser feita a qualquer momento; enquanto o cliente estiver inativo, a edição dos dados ficará bloqueada.</p>
-            </div>
-            <div style={s.modalRodape}>
-              <button style={s.btnCanc} onClick={()=>setConfirmInativar(false)}>Cancelar</button>
-              <button style={{ ...s.btnSalv, background:'rgba(248,113,113,0.15)', border:'1px solid rgba(248,113,113,0.3)', color:'#f87171' }} onClick={inativar} disabled={mudandoStatus}>{mudandoStatus?'Inativando...':'Inativar'}</button>
-            </div>
-          </div>
-        </div>, document.body
+      {confirmInativar&&(
+        <ModalInativar nome={nomeCliente} carregando={mudandoStatus} onConfirmar={inativar} onCancelar={()=>setConfirmInativar(false)} />
       )}
 
-      {confirmExcluir&&createPortal(
-        <div style={s.overlay} onClick={()=>{setConfirmExcluir(false);setCienteExclusao(false)}}>
-          <div style={{ ...s.modalPeq }} onClick={e=>e.stopPropagation()}>
-            <div style={s.modalTopo}><p style={s.modalTit}>Excluir cliente</p><button style={s.btnX} onClick={()=>{setConfirmExcluir(false);setCienteExclusao(false)}}>✕</button></div>
-            <div style={{ padding:'20px 24px' }}>
-              <p style={{ fontSize:'0.875rem', color:'var(--texto)', margin:'0 0 12px', fontFamily:'var(--fonte-corpo)' }}>Tem certeza que deseja excluir <strong>{nomeCliente}</strong> da carteira?</p>
-              <div style={{ background:'rgba(248,113,113,0.08)', border:'1px solid rgba(248,113,113,0.25)', borderRadius:'8px', padding:'10px 12px', margin:'0 0 14px' }}>
-                <p style={{ fontSize:'0.8rem', color:'#f87171', fontWeight:'700', margin:'0 0 4px', fontFamily:'var(--fonte-corpo)', display:'flex', alignItems:'center', gap:'8px' }}><Icone.AlertTriangle size={14} style={{flexShrink:0}}/> Essa ação é permanente.</p>
-                <p style={{ fontSize:'0.8rem', color:'#f87171', margin:0, fontFamily:'var(--fonte-corpo)', lineHeight:'1.4' }}>Todo o cadastro, histórico e lançamentos deste cliente serão apagados e não há como desfazer.</p>
-              </div>
-              <label style={{ display:'flex', alignItems:'flex-start', gap:'8px', cursor:'pointer', fontSize:'0.8rem', color:'var(--texto-apagado)', fontFamily:'var(--fonte-corpo)' }}>
-                <input type="checkbox" checked={cienteExclusao} onChange={e=>setCienteExclusao(e.target.checked)} style={{ marginTop:'2px', accentColor:'#f87171', width:'15px', height:'15px', flexShrink:0, cursor:'pointer' }} />
-                Estou ciente de que essa exclusão é permanente e não pode ser desfeita.
-              </label>
-            </div>
-            <div style={s.modalRodape}>
-              <button style={s.btnCanc} onClick={()=>{setConfirmExcluir(false);setCienteExclusao(false)}}>Cancelar</button>
-              <button style={{ ...s.btnSalv, background:'rgba(248,113,113,0.15)', border:'1px solid rgba(248,113,113,0.3)', color:'#f87171', opacity: cienteExclusao?1:0.5 }} onClick={excluir} disabled={excluindo||!cienteExclusao}>{excluindo?'Excluindo...':'Excluir permanentemente'}</button>
-            </div>
-          </div>
-        </div>, document.body
+      {confirmReativar&&(
+        <ModalReativar nome={nomeCliente} carregando={mudandoStatus} onConfirmar={reativar} onCancelar={()=>setConfirmReativar(false)} />
+      )}
+
+      {confirmExcluir&&(
+        <ModalExcluirCliente clienteId={clienteId} nome={nomeCliente} carregando={excluindo} onConfirmar={excluir}
+          onCancelar={()=>{setConfirmExcluir(false);setCienteExclusao(false)}} />
       )}
     </div>
   )
@@ -1792,7 +1780,7 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
           )}
         </div>
         <p style={{ fontSize:'0.8rem', color:'var(--texto-apagado)', margin:0, textAlign:'right' }}>
-          {!podeEditar && 'Somente leitura'}
+          {!podeEditar && (lancamento?.foraDaVigencia ? 'Fora da vigência' : lancamento?.setorAtribuido === false ? 'Setor removido · somente leitura' : 'Somente leitura')}
           {lancamento?.preenchidoPor?.nome && `${!podeEditar ? ' · ' : ''}Preenchido por ${lancamento.preenchidoPor.nome}`}
         </p>
       </div>
@@ -2135,8 +2123,8 @@ function AbaHistorico({ clienteId, setor, cliente, clienteRegime, configSetor, o
   // Nível 2 — meses do ano selecionado
   if (anoSelecionado) {
     const ultimoMes = anoSelecionado < anoTeto ? 12 : (anoSelecionado === anoTeto ? mesTetoNum : 0)
-    // Mês sem demanda (e sem lançamento salvo) não ganha pasta — quem decide é a regra única de vigência
-    const mesVisivel = (competencia) => pastaVisivel({ cliente, setor, competencia, temLancamento: preenchidos.has(competencia) })
+    // Mês fora da vigência continua com pasta, identificado como "Fora da vigência" (não dá pra preencher)
+    const naVigencia = (competencia) => competenciaNaVigencia(cliente, setor._id, competencia)
     return (
       <div>
         <button onClick={()=>setAnoSelecionado(null)} style={btnVoltar}><Icone.ChevronLeft size={14}/> Anos</button>
@@ -2144,13 +2132,14 @@ function AbaHistorico({ clienteId, setor, cliente, clienteRegime, configSetor, o
           {MESES_LABEL.slice(0, ultimoMes).map((label, i) => {
             const mm = String(i+1).padStart(2,'0')
             const competencia = `${anoSelecionado}-${mm}`
-            if (!mesVisivel(competencia)) return null
+            const fora = !naVigencia(competencia)
             const preenchido = preenchidos.has(competencia)
             return (
-              <button key={competencia} onClick={()=>setMesSelecionado(competencia)} style={btnPasta}>
+              <button key={competencia} onClick={()=>setMesSelecionado(competencia)} style={fora ? { ...btnPasta, opacity:0.55 } : btnPasta}>
                 <Icone.FolderOpen size={22} style={{ color: preenchido?'var(--verde)':'var(--texto-apagado)' }}/>
                 <span>{label}</span>
                 {preenchido && <span style={{ display:'flex', alignItems:'center', gap:'3px', fontSize:'0.65rem', color:'var(--verde)', fontWeight:'700' }}><Icone.Check size={10}/> Preenchido</span>}
+                {fora && <span style={{ fontSize:'0.65rem', color:'var(--texto-apagado)', fontWeight:'700' }}>Fora da vigência</span>}
               </button>
             )
           })}
@@ -2161,13 +2150,7 @@ function AbaHistorico({ clienteId, setor, cliente, clienteRegime, configSetor, o
 
   // Nível 1 — anos
   const anos = []
-  for (let a = INICIO_DEMANDA_ANO; a <= Math.max(anoAtual, anoTeto); a++) {
-    const ultimoMesDoAno = a < anoTeto ? 12 : (a === anoTeto ? mesTetoNum : 0)
-    const temPasta = Array.from({ length: ultimoMesDoAno }, (_, i) => `${a}-${String(i+1).padStart(2,'0')}`)
-      .some(c => pastaVisivel({ cliente, setor, competencia: c, temLancamento: preenchidos.has(c) }))
-    // Ano sem nenhum mês visível some, exceto o ano atual (que a aba sempre mostrou, mesmo vazio)
-    if (temPasta || a === anoAtual) anos.push(a)
-  }
+  for (let a = INICIO_DEMANDA_ANO; a <= Math.max(anoAtual, anoTeto); a++) anos.push(a)
 
   return (
     <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(140px,1fr))', gap:'12px' }}>

@@ -28,6 +28,8 @@ const CATEGORIAS = {
   documento_restaurado:        'documento', // volta da lixeira (antigo documento_reativado)
   documento_excluido_permanente: 'documento',
   documento_bloqueado:         'documento', // arquivo barrado pela segurança básica de arquivos (nunca grava o conteúdo)
+  arquivos_limpeza_pendente:   'documento', // arquivo que não saiu do R2 numa exclusão: lista as chaves pra limpeza manual
+  vigencia_alterada:           'cliente',   // vigência de demanda: onboarding concluído, inativar/reativar, setor removido, ajuste manual
   retiradas_controle_criado:             'contabil',
   retiradas_controle_inativado:           'contabil',
   retiradas_controle_reativado:           'contabil',

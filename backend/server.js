@@ -25,7 +25,8 @@ const leadRoutes = require('./routes/lead');
 const documentoRoutes = require('./routes/documento');
 const retiradasRoutes = require('./routes/retiradas');
 const ConfiguracaoSistema = require('./models/ConfiguracaoSistema');
-const { entradaDesdeSempre, entradasQueFaltam, migrarVigencia } = require('./services/vigenciaDemanda');
+const { migrarVigenciaDemanda } = require('./services/vigenciaDemanda');
+const ciclosCliente = require('./services/ciclosCliente');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -381,7 +382,7 @@ mongoose.connect(process.env.MONGODB_URI)
       if (atualizados > 0) console.log(`✅ Migração: ${atualizados} cliente(s) marcado(s) como origem onboarding.`);
 
       // Migração: criar clientes a partir de onboardings existentes
-      const implantacoes = await Implantacao.find({}).select('nomeCliente cnpj empresa criadoPor etapas');
+      const implantacoes = await Implantacao.find({}).select('nomeCliente cnpj empresa criadoPor etapas status inicioServicos concluidaEm');
       let criados = 0;
       for (const imp of implantacoes) {
         const cnpjLimpo = imp.cnpj?.replace(/\D/g, '') || '';
@@ -409,7 +410,8 @@ mongoose.connect(process.env.MONGODB_URI)
             porte: '',
             regime: '',
             setores: setoresIds,
-            vigenciaDemanda: setoresIds.map(entradaDesdeSempre), // Spec A: igual a antes
+            // Onboarding em andamento: sem demanda até concluir. Já concluído: a partir do início dos serviços (Spec B)
+            vigenciaDemanda: imp.status === 'concluida' ? ciclosCliente.entradasAoConcluir([], setoresIds, ciclosCliente.mesDeInicioDaImplantacao(imp)).entradas : [],
             origem: 'onboarding',
             servicosContratados: [],
             socios: [],
@@ -423,11 +425,7 @@ mongoose.connect(process.env.MONGODB_URI)
           const setoresAtuais = existe.setores?.map(s => s.toString()) || [];
           const novoSetores = [...new Set([...setoresAtuais, ...setoresIds])];
           if (novoSetores.length > setoresAtuais.length) {
-            const faltam = entradasQueFaltam({ status: existe.status, setores: novoSetores, vigenciaDemanda: existe.vigenciaDemanda });
-            await Cliente.updateOne({ _id: existe._id }, {
-              $set: { setores: novoSetores },
-              ...(faltam.length ? { $push: { vigenciaDemanda: { $each: faltam } } } : {}),
-            });
+            await Cliente.updateOne({ _id: existe._id }, { $set: { setores: novoSetores } });
           }
         }
       }
@@ -651,13 +649,19 @@ mongoose.connect(process.env.MONGODB_URI)
       console.error('⚠️ Erro na migração de etapas do CRM:', err.message);
     }
 
-    // ── Migração: vigência da demanda por cliente e setor (Spec A — REGRAS_DEMANDA.md) ──
-    // Ativo/encerramento ganha "desde sempre, em aberto" em cada setor atribuído; inativo fica sem
-    // período. Idempotente (só grava onde ainda não há vigência) e só soma: não altera setores,
-    // lançamentos, documentos nem status. Roda por último pra pegar também o que as migrações acima criaram.
+    // ── Migração: vigência da demanda por cliente e setor (Spec A + B — REGRAS_DEMANDA.md) ──
+    // Cliente ainda não migrado (sem o campo vigenciaDemanda): ativo ganha "desde sempre" nos setores (menos nos de um
+    // onboarding em andamento); inativo ganha vigência até o último lançamento. Também tira a vigência "desde sempre" do
+    // cliente que nasceu de um onboarding ainda em andamento e fecha em lançamento o inativo antigo sem vigência.
+    // Idempotente; não altera setores, lançamentos, documentos nem status. Roda por último pra pegar também o que as
+    // migrações acima criaram. Simulação: node scripts/migrarVigenciaDemanda.js
     try {
-      const m = await migrarVigencia();
-      if (m.desdeSempre > 0) console.log(`✅ Migração: vigência de demanda gravada em ${m.desdeSempre} par(es) cliente/setor (${m.clientesAtualizados} cliente(s)).`);
+      const m = await migrarVigenciaDemanda();
+      const partes = [];
+      if (m.m1Clientes) partes.push(`${m.m1Clientes} cliente(s) migrado(s) (${m.m1DesdeSempre} desde sempre, ${m.m1SemPeriodoOnboarding} sem período por onboarding em andamento, ${m.m1InativosComPeriodo} inativo(s) até o último lançamento, ${m.m1InativosSemPeriodo} inativo(s) sem período)`);
+      if (m.m2Ajustados) partes.push(`${m.m2Ajustados} cliente(s) de onboarding em andamento sem demanda até concluir`);
+      if (m.m3ComPeriodo) partes.push(`${m.m3ComPeriodo} setor(es) de cliente inativo antigo com vigência até o último lançamento`);
+      if (partes.length) console.log(`✅ Migração: vigência de demanda — ${partes.join('; ')}.`);
     } catch (err) {
       console.error('⚠️ Erro na migração da vigência de demanda:', err.message);
     }

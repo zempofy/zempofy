@@ -1,4 +1,6 @@
 // Comparativo antes × depois da vigência de demanda (Spec A, seção 6 — REGRAS_DEMANDA.md).
+// ⚠️ Serve pra conferir o Spec A (que não muda nada visível). Depois do Spec B as diferenças são ESPERADAS:
+// inativo passa a aparecer nos meses antes da inativação e cliente de onboarding em andamento some até concluir.
 // SÓ LEITURA: nunca grava nada. Rode DEPOIS da migração (node scripts/migrarVigenciaDemanda.js --aplicar,
 // ou simplesmente depois de subir o servidor uma vez).
 //
