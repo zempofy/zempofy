@@ -61,6 +61,8 @@ function baixarModelo() {
   XLSX.writeFile(wb, 'modelo_importacao_clientes.xlsx')
 }
 
+const TAMANHO_MAX_PLANILHA = 5 * 1024 * 1024 // 5 MB
+
 export default function ImportarClientes({ fechar, onImportado }) {
   const [etapa, setEtapa] = useState('upload') // upload | preview | enriquecendo | resultado
   const [clientes, setClientes] = useState([])
@@ -72,6 +74,10 @@ export default function ImportarClientes({ fechar, onImportado }) {
   const { mostrar } = useToast()
 
   const processarArquivo = (file) => {
+    // A planilha é lida inteira no navegador: um teto de tamanho evita travar a tela com arquivo enorme (ou malicioso)
+    if (file.size > TAMANHO_MAX_PLANILHA) {
+      return mostrar('Planilha grande demais: o limite é de 5 MB. Divida em partes menores e importe uma de cada vez.', 'aviso')
+    }
     const reader = new FileReader()
     reader.onload = (e) => {
       try {

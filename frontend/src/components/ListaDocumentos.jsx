@@ -94,12 +94,21 @@ const ListaDocumentos = forwardRef(function ListaDocumentos({ clienteId, tipo, s
     }
   }
 
+  // O servidor manda o nome seguro (acentos certos, extensão do tipo real) no Content-Disposition
+  const nomeDoCabecalho = (cabecalho, padrao) => {
+    if (!cabecalho) return padrao
+    const utf8 = cabecalho.match(/filename\*=UTF-8''([^;]+)/i)
+    if (utf8) { try { return decodeURIComponent(utf8[1]) } catch { /* cai no nome simples */ } }
+    const simples = cabecalho.match(/filename="([^"]*)"/i)
+    return simples ? simples[1] : padrao
+  }
+
   const baixar = async (doc) => {
     try {
       const res = await api.get(`/documentos/${doc._id}/download`, { responseType: 'blob' })
       const url = window.URL.createObjectURL(new Blob([res.data]))
       const a = document.createElement('a')
-      a.href = url; a.download = doc.nomeOriginal
+      a.href = url; a.download = nomeDoCabecalho(res.headers['content-disposition'], doc.nomeOriginal)
       document.body.appendChild(a); a.click(); a.remove()
       window.URL.revokeObjectURL(url)
     } catch { mostrar('Erro ao baixar documento.', 'erro') }

@@ -61,6 +61,8 @@ app.use(cors({
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'x-admin-key'],
+  // O navegador só deixa o frontend ler este cabeçalho se for exposto — é dele que vem o nome seguro do download
+  exposedHeaders: ['Content-Disposition'],
 }));
 
 app.use(express.json({ limit: '10mb' }));

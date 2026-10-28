@@ -17,7 +17,7 @@ const logSchema = new mongoose.Schema({
       'membro_adicionado', 'membro_removido', 'membro_reativado', 'membro_excluido_permanente',
       'membro_convite_reenviado', 'membro_senha_resetada',
       'tarefa_concluida',
-      'documento_enviado', 'documento_excluido', 'documento_restaurado', 'documento_excluido_permanente',
+      'documento_enviado', 'documento_excluido', 'documento_restaurado', 'documento_excluido_permanente', 'documento_bloqueado',
       'retiradas_controle_criado', 'retiradas_controle_inativado', 'retiradas_controle_reativado',
       'retiradas_controle_excluido_permanente', 'retiradas_socios_atualizados', 'retirada_lancada',
       'apuracao_trimestre_atualizada',

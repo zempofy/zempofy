@@ -7,23 +7,25 @@ const Documento = require('../models/Documento');
 const Cliente = require('../models/Cliente');
 const Setor = require('../models/Setor');
 const { subirArquivo, buscarArquivo, apagarArquivo } = require('../services/storage');
+const { validarArquivo, nomeParaDownload, repararCodificacao, TIPOS } = require('../services/validarArquivo');
+const limiteEnvios = require('../services/limiteEnvios');
 
 const router = express.Router();
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 16 * 1024 * 1024 } });
 
-// ── Tipos aceitos ──
-// CSV não tem magic bytes confiáveis (é texto puro) — validado por extensão + mimetype declarado.
-const TIPOS_ACEITOS = [
-  'application/pdf',
-  'image/jpeg',
-  'image/png',
-  'application/vnd.ms-excel', // xls
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // xlsx
-  'application/msword', // doc
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // docx
-];
-const MIME_CSV = ['text/csv', 'application/vnd.ms-excel'];
+// Tipo, extensão, conteúdo (PDF/imagem/Office/CSV) e nome de cada arquivo são conferidos em
+// services/validarArquivo.js (Spec C — segurança básica de arquivos). O tipo real é sempre o do conteúdo.
+
+// Limite de arquivos por usuário por minuto (mais rígido que o limite geral da API). Antes de ler o corpo do
+// envio, já recusa quem estourou — evita receber 16 MB à toa; a contagem de verdade é feita depois, por arquivo.
+const limitarEnvios = (req, res, next) => {
+  if (limiteEnvios.usado(req.usuario._id) >= limiteEnvios.maximo()) {
+    res.setHeader('Retry-After', '30');
+    return res.status(429).json({ erro: limiteEnvios.MENSAGEM });
+  }
+  next();
+};
 
 // Sanitiza o nome original pra usar na chave do bucket — sem acento, espaço vira _, só [a-zA-Z0-9._-]
 const sanitizarNome = (nome) => nome
@@ -88,7 +90,7 @@ async function purgarExpirados(empresaId) {
 
 // POST /api/documentos — aceita de 1 a 10 arquivos por requisição (campo 'arquivos'), processados
 // em sequência; um arquivo inválido não derruba os demais, retorna um array de resultados por arquivo.
-router.post('/', autenticar, upload.array('arquivos', 10), async (req, res) => {
+router.post('/', autenticar, limitarEnvios, upload.array('arquivos', 10), async (req, res) => {
   try {
     const { clienteId, tipo, setorId, competencia } = req.body;
     if (!req.files || req.files.length === 0) return res.status(400).json({ erro: 'Nenhum arquivo enviado.' });
@@ -105,27 +107,35 @@ router.post('/', autenticar, upload.array('arquivos', 10), async (req, res) => {
       return res.status(403).json({ erro: 'Sem permissão para enviar documentos aqui.' });
     }
 
+    // Limite por usuário: conta os arquivos recebidos (bons ou ruins — quem manda lixo em massa também estoura)
+    const reserva = limiteEnvios.consumir(req.usuario._id, req.files.length);
+    if (!reserva.permitido) {
+      res.setHeader('Retry-After', String(reserva.esperarSeg));
+      return res.status(429).json({ erro: limiteEnvios.MENSAGEM });
+    }
+
     const resultados = [];
     for (const arquivo of req.files) {
+      const nomeParaMostrar = repararCodificacao(arquivo.originalname); // o multer entrega o nome em latin1 (acentos quebrados)
       try {
-        // Validação por tipo real do arquivo (magic bytes) — nunca confiar só na extensão/mimetype declarado
-        const nomeMin = arquivo.originalname.toLowerCase();
-        const ehCsvDeclarado = nomeMin.endsWith('.csv') && MIME_CSV.includes(arquivo.mimetype);
-        let tipoConteudoReal = arquivo.mimetype;
-
-        if (!ehCsvDeclarado) {
-          const { fileTypeFromBuffer } = await import('file-type');
-          const detectado = await fileTypeFromBuffer(arquivo.buffer);
-          if (!detectado || !TIPOS_ACEITOS.includes(detectado.mime)) {
-            resultados.push({ nomeOriginal: arquivo.originalname, sucesso: false, erro: 'Tipo de arquivo não permitido. Aceitos: PDF, imagem (JPG/PNG), planilha (XLS/XLSX/CSV) e Word (DOC/DOCX).' });
-            continue;
-          }
-          tipoConteudoReal = detectado.mime;
-        } else {
-          tipoConteudoReal = 'text/csv';
+        // Segurança básica: nome, tipo real pelo conteúdo, extensão, conteúdo ativo/macro/sobra no fim. Um arquivo
+        // barrado não derruba os outros do mesmo envio.
+        const validacao = await validarArquivo({ nomeOriginal: arquivo.originalname, buffer: arquivo.buffer, mimetype: arquivo.mimetype });
+        if (!validacao.ok) {
+          resultados.push({ nomeOriginal: nomeParaMostrar, sucesso: false, erro: validacao.motivo });
+          // Registro no histórico: quem tentou, o nome, o motivo e a data. NUNCA o conteúdo do arquivo.
+          const nomeLog = nomeParaMostrar.replace(/[\u0000-\u001F\u007F-\u009F]/g, '?').slice(0, 200);
+          registrarLog({
+            empresa: req.usuario.empresa._id, usuario: req.usuario._id, tipo: 'documento_bloqueado',
+            descricao: `Tentou enviar o arquivo ${nomeLog}, bloqueado por segurança: ${validacao.motivoCurto}`,
+            meta: { nomeOriginal: nomeLog, motivo: validacao.motivoCurto, codigo: validacao.codigo, tamanho: arquivo.size },
+          });
+          continue;
         }
+        const tipoConteudoReal = validacao.mime;
+        const nomeOriginal = validacao.nome; // já limpo (acentos certos, sem caminho nem caracteres de controle)
 
-        const dadosDoc = { tipo, setor: tipo === 'demanda' ? setorId : null, competencia: tipo === 'demanda' ? competencia : null, nomeOriginal: arquivo.originalname };
+        const dadosDoc = { tipo, setor: tipo === 'demanda' ? setorId : null, competencia: tipo === 'demanda' ? competencia : null, nomeOriginal };
         const chave = montarChave(req.usuario.empresa._id, clienteId, dadosDoc);
         await subirArquivo(chave, arquivo.buffer, tipoConteudoReal);
 
@@ -135,19 +145,19 @@ router.post('/', autenticar, upload.array('arquivos', 10), async (req, res) => {
           tipo,
           setor: dadosDoc.setor,
           competencia: dadosDoc.competencia,
-          nomeOriginal: arquivo.originalname,
+          nomeOriginal,
           chave,
           tipoConteudo: tipoConteudoReal,
           tamanho: arquivo.size,
           enviadoPor: req.usuario._id,
         });
 
-        registrarLog({ empresa: req.usuario.empresa._id, usuario: req.usuario._id, tipo: 'documento_enviado', descricao: `Enviou o documento ${arquivo.originalname}`, meta: { nomeOriginal: arquivo.originalname } });
+        registrarLog({ empresa: req.usuario.empresa._id, usuario: req.usuario._id, tipo: 'documento_enviado', descricao: `Enviou o documento ${nomeOriginal}`, meta: { nomeOriginal } });
 
         const populado = await Documento.findById(documento._id).populate('enviadoPor', 'nome').lean();
-        resultados.push({ nomeOriginal: arquivo.originalname, sucesso: true, documento: populado });
+        resultados.push({ nomeOriginal, sucesso: true, documento: populado });
       } catch (erroArquivo) {
-        resultados.push({ nomeOriginal: arquivo.originalname, sucesso: false, erro: 'Erro ao enviar documento.' });
+        resultados.push({ nomeOriginal: nomeParaMostrar, sucesso: false, erro: 'Erro ao enviar documento.' });
       }
     }
 
@@ -281,8 +291,13 @@ router.get('/:id/download', autenticar, async (req, res) => {
     if (!(await podeVerOuEnviar(req.usuario, documento))) return res.status(403).json({ erro: 'Sem permissão para ver este documento.' });
 
     const buffer = await buscarArquivo(documento.chave);
-    res.setHeader('Content-Type', documento.tipoConteudo);
-    res.setHeader('Content-Disposition', `attachment; filename="${documento.nomeOriginal.replace(/"/g, '')}"`);
+    // Sempre baixar (nunca abrir no navegador), com o tipo VERIFICADO no envio (nunca o declarado pelo usuário) e
+    // sem o navegador "adivinhar" outro tipo. O nome vai seguro: sem aspas/quebras que quebrem o cabeçalho, com
+    // acentos certos (filename*) e com a extensão do tipo real — vale também pros documentos enviados antes desta regra.
+    const mime = TIPOS[documento.tipoConteudo] ? documento.tipoConteudo : 'application/octet-stream';
+    res.setHeader('Content-Type', mime);
+    res.setHeader('Content-Disposition', nomeParaDownload(documento.nomeOriginal, mime).cabecalho);
+    res.setHeader('X-Content-Type-Options', 'nosniff');
     res.send(buffer);
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao baixar documento.' });

@@ -27,7 +27,8 @@ const CATEGORIAS = {
   documento_excluido:          'documento', // move pra lixeira (antigo documento_inativado)
   documento_restaurado:        'documento', // volta da lixeira (antigo documento_reativado)
   documento_excluido_permanente: 'documento',
-  retiradas_controle_criado:              'contabil',
+  documento_bloqueado:         'documento', // arquivo barrado pela segurança básica de arquivos (nunca grava o conteúdo)
+  retiradas_controle_criado:             'contabil',
   retiradas_controle_inativado:           'contabil',
   retiradas_controle_reativado:           'contabil',
   retiradas_controle_excluido_permanente: 'contabil',
