@@ -61,6 +61,16 @@ const clienteSchema = new mongoose.Schema({
     situacao: { type: String, enum: ['regular', 'irregular', 'a_vencer'], default: 'regular' },
   }],
 
+  // Vigência da demanda por setor (REGRAS_DEMANDA.md) — por setor, uma lista de períodos em
+  // competência "AAAA-MM": inicio null = desde sempre, fim null = em aberto, fim inclusivo.
+  // Setor sem período não tem demanda em mês nenhum. Quem decide "existe demanda?" é só
+  // services/vigenciaDemanda.js — nunca ler isto direto nas telas/rotas.
+  vigenciaDemanda: [{
+    setor: { type: mongoose.Schema.Types.ObjectId, ref: 'Setor', required: true },
+    periodos: [{ inicio: { type: String, default: null }, fim: { type: String, default: null }, _id: false }],
+    _id: false,
+  }],
+
   // Observações internas
   setores: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Setor' }],
   origem: { type: String, enum: ['manual', 'onboarding'], default: 'manual' },
