@@ -139,6 +139,20 @@ router.get('/demandas/:setorId/:competencia', autenticar, async (req, res) => {
   }
 });
 
+// GET /api/clientes/por-cnpj/:cnpj — o cliente desse CNPJ já existe na carteira do escritório? Usado pelo modal de
+// novo onboarding pra decidir se pede porte e regime tributário (Spec F).
+router.get('/por-cnpj/:cnpj', autenticar, async (req, res) => {
+  try {
+    const digitos = String(req.params.cnpj).replace(/\D/g, '');
+    if (digitos.length !== 14 && digitos.length !== 11) return res.status(400).json({ erro: 'CNPJ inválido.' });
+    const cliente = await Cliente.findOne({ empresa: req.usuario.empresa._id, cnpj: cnpjRegexTolerante(digitos) })
+      .select('razaoSocial porte regime tipoPessoa').lean();
+    res.json(cliente ? { existe: true, cliente } : { existe: false });
+  } catch (err) {
+    res.status(500).json({ erro: 'Erro ao consultar o CNPJ.' });
+  }
+});
+
 // GET /api/clientes/:id
 router.get('/:id', autenticar, async (req, res) => {
   try {
