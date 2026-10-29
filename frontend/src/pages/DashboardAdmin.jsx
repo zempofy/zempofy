@@ -1079,6 +1079,7 @@ function PaginaHistorico() {
       cliente_criado:              { icone: <Icone.Plus size={14} />,       cor: '#fbbf24', bg: 'rgba(251,191,36,0.12)' },
       cliente_editado:             { icone: <Icone.Edit size={14} />,       cor: '#fbbf24', bg: 'rgba(251,191,36,0.12)' },
       cliente_excluido:            { icone: <Icone.Trash size={14} />,      cor: '#f87171', bg: 'rgba(248,113,113,0.12)' },
+      vigencia_alterada:           { icone: <Icone.Calendar size={14} />,   cor: '#60a5fa', bg: 'rgba(96,165,250,0.12)' },
       membro_adicionado:           { icone: <Icone.Users size={14} />,      cor: '#a78bfa', bg: 'rgba(167,139,250,0.12)' },
       membro_removido:             { icone: <Icone.Users size={14} />,      cor: '#f87171', bg: 'rgba(248,113,113,0.12)' },
       tarefa_concluida:            { icone: <Icone.CheckCircle size={14} />, cor: '#00b141', bg: 'rgba(0,177,65,0.12)' },

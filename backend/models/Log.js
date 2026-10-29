@@ -13,7 +13,7 @@ const logSchema = new mongoose.Schema({
       'implantacao_criada', 'implantacao_excluida', 'implantacao_etapa_concluida',
       'modelo_criado', 'modelo_editado', 'modelo_excluido', 'modelo_reativado', 'modelo_excluido_permanente',
       'atividade_criada', 'atividade_editada', 'atividade_excluida',
-      'cliente_criado', 'cliente_editado', 'cliente_excluido', 'clientes_importados',
+      'cliente_criado', 'cliente_editado', 'cliente_excluido', 'clientes_importados', 'vigencia_alterada',
       'membro_adicionado', 'membro_removido', 'membro_reativado', 'membro_excluido_permanente',
       'membro_convite_reenviado', 'membro_senha_resetada',
       'tarefa_concluida',

@@ -25,6 +25,8 @@ const leadRoutes = require('./routes/lead');
 const documentoRoutes = require('./routes/documento');
 const retiradasRoutes = require('./routes/retiradas');
 const ConfiguracaoSistema = require('./models/ConfiguracaoSistema');
+const { migrarVigencia } = require('./services/vigenciaDemanda');
+const { entradasAoConcluir, mesDeInicioDaImplantacao } = require('./services/vigenciaOnboarding');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -378,7 +380,7 @@ mongoose.connect(process.env.MONGODB_URI)
       if (atualizados > 0) console.log(`✅ Migração: ${atualizados} cliente(s) marcado(s) como origem onboarding.`);
 
       // Migração: criar clientes a partir de onboardings existentes
-      const implantacoes = await Implantacao.find({}).select('nomeCliente cnpj empresa criadoPor etapas');
+      const implantacoes = await Implantacao.find({}).select('nomeCliente cnpj empresa criadoPor etapas status inicioServicos concluidaEm');
       let criados = 0;
       for (const imp of implantacoes) {
         const cnpjLimpo = imp.cnpj?.replace(/\D/g, '') || '';
@@ -406,6 +408,8 @@ mongoose.connect(process.env.MONGODB_URI)
             porte: '',
             regime: '',
             setores: setoresIds,
+            // Onboarding em andamento: sem demanda até concluir. Já concluído: a partir do início dos serviços (Spec B)
+            vigenciaDemanda: imp.status === 'concluida' ? entradasAoConcluir([], setoresIds, mesDeInicioDaImplantacao(imp)).entradas : [],
             origem: 'onboarding',
             servicosContratados: [],
             socios: [],
@@ -641,6 +645,18 @@ mongoose.connect(process.env.MONGODB_URI)
       if (semHistorico.modifiedCount > 0) console.log(`✅ Migração: histórico de etapas inicial criado em ${semHistorico.modifiedCount} lead(s).`);
     } catch (err) {
       console.error('⚠️ Erro na migração de etapas do CRM:', err.message);
+    }
+
+    // ── Migração: vigência da demanda por cliente e setor (Spec A + onboarding do Spec B — REGRAS_DEMANDA.md) ──
+    // Ativo/encerramento ganha "desde sempre, em aberto" em cada setor atribuído, menos nos setores de um onboarding em
+    // andamento (só abrem quando ele conclui); inativo fica sem período. Idempotente; não altera setores, lançamentos,
+    // documentos nem status. Roda por último pra pegar também o que as migrações acima criaram.
+    try {
+      const m = await migrarVigencia();
+      if (m.desdeSempre > 0) console.log(`✅ Migração: vigência de demanda gravada em ${m.desdeSempre} par(es) cliente/setor (${m.clientesAtualizados} cliente(s)).`);
+      if (m.onboardingAjustados > 0) console.log(`✅ Migração: ${m.onboardingAjustados} cliente(s) de onboarding em andamento sem demanda até concluir.`);
+    } catch (err) {
+      console.error('⚠️ Erro na migração da vigência de demanda:', err.message);
     }
 
     app.listen(PORT, () => console.log(`🚀 Servidor rodando na porta ${PORT}`));

@@ -9,6 +9,7 @@ import AbaDocumentos from './AbaDocumentos'
 import ListaDocumentos from './ListaDocumentos'
 import { useAuth } from '../contexts/AuthContext'
 import * as XLSX from 'xlsx'
+import { regraDoSetorPermite, pastaVisivel } from '../utils/vigenciaDemanda'
 
 // ── Máscaras ──
 const mascaraCNPJ = (v) => v.replace(/\D/g,'').slice(0,14)
@@ -995,8 +996,8 @@ function TelaDetalhe({ clienteId, voltar, onAtualizado, abaInicial = 'info', set
   // Só tem acesso à Demanda/Histórico do setor quem está naquele setor (ou é titular) — e o setor precisa ter escopo fechado (CONFIG_DEMANDA)
   const setorTemDemanda = (setor) => {
     if (!CONFIG_DEMANDA[normalizarNome(setor?.nome||'')]) return false
-    // Fiscal: cliente sem regime, ou com regime "outro", não gera Demanda (Spec 25) — DP e Contábil ficam de fora dessa regra
-    if (normalizarNome(setor?.nome||'') === 'fiscal' && (!dados?.regime || dados.regime === 'outro')) return false
+    // Regra adicional do setor (Fiscal: sem regime, ou "outro", não gera Demanda — Spec 25) vem da regra única de vigência
+    if (!regraDoSetorPermite(dados || {}, setor?.nome)) return false
     return usuario?.cargo === 'admin' || usuario?.setores?.some(s => (s._id || s).toString() === setor._id)
   }
 
@@ -1221,7 +1222,7 @@ function TelaDetalhe({ clienteId, voltar, onAtualizado, abaInicial = 'info', set
       )}
 
       {aba==='historico'&&setorAtivo&&(
-        <AbaHistorico key={setorAtivo._id} clienteId={clienteId} setor={setorAtivo} clienteRegime={dados.regime}
+        <AbaHistorico key={setorAtivo._id} clienteId={clienteId} setor={setorAtivo} cliente={dados} clienteRegime={dados.regime}
           configSetor={dados.configSetores?.[normalizarNome(setorAtivo.nome)]}
           onAtualizado={buscar}/>
       )}
@@ -2086,7 +2087,7 @@ function AbaDemanda({ clienteId, setor, clienteRegime, configSetor, onAtualizado
 }
 
 // ── Histórico: pastas de ano → mês → dados daquele mês ──
-function AbaHistorico({ clienteId, setor, clienteRegime, configSetor, onAtualizado }) {
+function AbaHistorico({ clienteId, setor, cliente, clienteRegime, configSetor, onAtualizado }) {
   const { mostrar } = useToast()
   const [carregando, setCarregando] = useState(true)
   const [lancamentos, setLancamentos] = useState([])
@@ -2134,6 +2135,8 @@ function AbaHistorico({ clienteId, setor, clienteRegime, configSetor, onAtualiza
   // Nível 2 — meses do ano selecionado
   if (anoSelecionado) {
     const ultimoMes = anoSelecionado < anoTeto ? 12 : (anoSelecionado === anoTeto ? mesTetoNum : 0)
+    // Mês sem demanda (e sem lançamento salvo) não ganha pasta — quem decide é a regra única de vigência
+    const mesVisivel = (competencia) => pastaVisivel({ cliente, setor, competencia, temLancamento: preenchidos.has(competencia) })
     return (
       <div>
         <button onClick={()=>setAnoSelecionado(null)} style={btnVoltar}><Icone.ChevronLeft size={14}/> Anos</button>
@@ -2141,6 +2144,7 @@ function AbaHistorico({ clienteId, setor, clienteRegime, configSetor, onAtualiza
           {MESES_LABEL.slice(0, ultimoMes).map((label, i) => {
             const mm = String(i+1).padStart(2,'0')
             const competencia = `${anoSelecionado}-${mm}`
+            if (!mesVisivel(competencia)) return null
             const preenchido = preenchidos.has(competencia)
             return (
               <button key={competencia} onClick={()=>setMesSelecionado(competencia)} style={btnPasta}>
@@ -2157,7 +2161,13 @@ function AbaHistorico({ clienteId, setor, clienteRegime, configSetor, onAtualiza
 
   // Nível 1 — anos
   const anos = []
-  for (let a = INICIO_DEMANDA_ANO; a <= Math.max(anoAtual, anoTeto); a++) anos.push(a)
+  for (let a = INICIO_DEMANDA_ANO; a <= Math.max(anoAtual, anoTeto); a++) {
+    const ultimoMesDoAno = a < anoTeto ? 12 : (a === anoTeto ? mesTetoNum : 0)
+    const temPasta = Array.from({ length: ultimoMesDoAno }, (_, i) => `${a}-${String(i+1).padStart(2,'0')}`)
+      .some(c => pastaVisivel({ cliente, setor, competencia: c, temLancamento: preenchidos.has(c) }))
+    // Ano sem nenhum mês visível some, exceto o ano atual (que a aba sempre mostrou, mesmo vazio)
+    if (temPasta || a === anoAtual) anos.push(a)
+  }
 
   return (
     <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(140px,1fr))', gap:'12px' }}>
