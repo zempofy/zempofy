@@ -11,6 +11,7 @@ const { enviarOnboardingCriado, enviarEtapaDesbloqueada } = require('../services
 const { pularEtapasVaziasEmCadeia } = require('../services/implantacao');
 const Cliente = require('../models/Cliente');
 const { abrirVigenciaAoConcluir } = require('../services/vigenciaOnboarding');
+const { competenciaAtual } = require('../services/historicoVigencia');
 const { alterarAtividade, ErroAtividade, MENSAGENS } = require('../services/atividadeOnboarding');
 const { implantacaoCreateSchema, validar } = require('../validacao');
 
@@ -94,12 +95,42 @@ router.get('/:id', autenticar, async (req, res) => {
   }
 });
 
+// ── Spec F: porte e regime tributário obrigatórios no cliente que o onboarding cria/vincula ──
+// Sem regime o Fiscal não gera demanda, e o cliente sumia das Demandas do Fiscal sem aviso. Vale pra cliente novo e
+// pra cliente existente que ainda está sem porte e/ou regime; quem já tem os dois não é alterado. Mesmas listas do
+// cadastro de cliente (models/Cliente.js). Pessoa física (CPF) não tem porte, como no cadastro.
+const PORTES_VALIDOS = ['mei', 'me', 'epp', 'grande'];
+const REGIMES_VALIDOS = ['simples_nacional', 'lucro_presumido', 'lucro_real', 'mei', 'pessoa_fisica', 'outro'];
+
+// Devolve { erro } ou { gravar: { porte?, regime? } } com o que precisa ser gravado no cadastro do cliente.
+const resolverPorteRegime = async ({ empresa, cnpj, porte, regime }) => {
+  const digitos = (cnpj || '').replace(/\D/g, '');
+  if (!digitos) return { gravar: {} }; // onboarding sem CNPJ não gera cliente
+  if (porte && !PORTES_VALIDOS.includes(porte)) return { erro: 'Porte inválido.' };
+  if (regime && !REGIMES_VALIDOS.includes(regime)) return { erro: 'Regime tributário inválido.' };
+  const existente = await Cliente.findOne({ empresa, cnpj: { $regex: digitos.split('').join('[.\\-/]*') } }).select('porte regime tipoPessoa').lean();
+  const fisica = existente ? existente.tipoPessoa === 'fisica' : digitos.length === 11;
+  const faltaPorte = !fisica && !existente?.porte && !porte;
+  const faltaRegime = !existente?.regime && !regime;
+  if (faltaPorte && faltaRegime) return { erro: 'Informe o porte e o regime tributário do cliente.' };
+  if (faltaPorte) return { erro: 'Informe o porte.' };
+  if (faltaRegime) return { erro: 'Informe o regime tributário.' };
+  const gravar = {};
+  if (!fisica && !existente?.porte) gravar.porte = porte;
+  if (!existente?.regime) gravar.regime = regime;
+  return { gravar };
+};
+
 // POST /api/implantacoes - Cria nova implantação e gera tarefas reais para cada colaborador
 router.post('/', autenticar, temPermissao('criarImplantacoes'), validar(implantacaoCreateSchema), async (req, res) => {
   const { nomeCliente, cnpj, modeloId, inicioServicos, clienteId } = req.body;
   if (!nomeCliente?.trim()) return res.status(400).json({ erro: 'Nome do cliente é obrigatório.' });
   if (!inicioServicos) return res.status(400).json({ erro: 'Data de início dos serviços é obrigatória.' });
   try {
+    // Checado antes de criar qualquer coisa (implantação, tarefas ou cliente): recusou, nada fica pela metade
+    const fiscal = await resolverPorteRegime({ empresa: req.usuario.empresa._id, cnpj, porte: req.body.porte, regime: req.body.regime });
+    if (fiscal.erro) return res.status(400).json({ erro: fiscal.erro });
+
     let etapas = [];
 
     if (modeloId) {
@@ -191,8 +222,11 @@ router.post('/', autenticar, temPermissao('criarImplantacoes'), validar(implanta
           empresa: req.usuario.empresa._id,
           criadoPor: req.usuario._id,
           status: 'ativo',
-          porte: '',
-          regime: '',
+          tipoPessoa: cnpjLimpo.length === 11 ? 'fisica' : 'juridica',
+          porte: fiscal.gravar.porte || '',
+          regime: fiscal.gravar.regime || '',
+          // Histórico do regime igual ao de um cliente cadastrado manualmente com aquele regime (POST /clientes)
+          historicoRegime: fiscal.gravar.regime ? [{ valor: fiscal.gravar.regime, vigenteDesde: competenciaAtual() }] : [],
           setores: setoresIds,
           // Sem vigência: enquanto o onboarding está em andamento os setores dele não geram demanda. A vigência
           // abre quando o onboarding é concluído (models/Implantacao.js → vigenciaOnboarding.abrirVigenciaAoConcluir).
@@ -208,10 +242,16 @@ router.post('/', autenticar, temPermissao('criarImplantacoes'), validar(implanta
         // Atualizar setores do cliente existente
         const setoresAtuais = clienteExistente.setores?.map(s => s.toString()) || [];
         const novoSetores = [...new Set([...setoresAtuais, ...setoresIds])];
-        // Setor novo entra na lista sem vigência (só abre ao concluir o onboarding); os que o cliente já tinha seguem como estão
-        if (novoSetores.length > setoresAtuais.length) {
-          await Cliente.updateOne({ _id: clienteExistente._id }, { $set: { setores: novoSetores } });
+        // Setor novo entra na lista sem vigência (só abre ao concluir o onboarding); os que o cliente já tinha seguem como estão.
+        // Porte/regime informados no onboarding só preenchem o que o cadastro ainda não tinha (Spec F).
+        const atualizar = {};
+        if (novoSetores.length > setoresAtuais.length) atualizar.setores = novoSetores;
+        if (fiscal.gravar.porte) atualizar.porte = fiscal.gravar.porte;
+        if (fiscal.gravar.regime) {
+          atualizar.regime = fiscal.gravar.regime;
+          if (!clienteExistente.historicoRegime?.length) atualizar.historicoRegime = [{ valor: fiscal.gravar.regime, vigenteDesde: competenciaAtual() }];
         }
+        if (Object.keys(atualizar).length) await Cliente.updateOne({ _id: clienteExistente._id }, { $set: atualizar });
       }
 
       // Garante que a implantação fica ligada ao cliente de verdade, mesmo quando ele foi

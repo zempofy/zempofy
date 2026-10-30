@@ -4,6 +4,7 @@ import api from '../services/api'
 import Icone from './Icones'
 import { useToast } from './Toast'
 import { useAuth } from '../contexts/AuthContext'
+import { REGIMES, PORTES } from './Clientes'
 
 // Dicas da bolinha da atividade (as mesmas frases que o servidor devolve quando recusa — Spec E)
 const DICA_RESPONSAVEL = 'Só o responsável pela atividade pode concluí-la.'
@@ -413,9 +414,25 @@ const dataParaISO = (v) => {
   return `${nums.slice(4)}-${nums.slice(2,4)}-${nums.slice(0,2)}`
 }
 
+// Porte que a consulta de CNPJ da Receita (BrasilAPI) devolve → valor do cadastro (mesmo mapa do formulário de cliente)
+const porteDaReceita = (texto) => {
+  const p = (texto || '').toUpperCase()
+  if (p.includes('MEI')) return 'mei'
+  if (p.includes('MICRO')) return 'me'
+  if (p.includes('PEQUENO')) return 'epp'
+  if (p.includes('MÉDIO') || p.includes('MEDIO') || p.includes('GRANDE')) return 'grande'
+  return ''
+}
+
 function ModalNovaImplantacao({ fechar, onCriado, nomeInicial = '', clienteId = null, cnpjInicial = '' }) {
   const [nomeCliente, setNomeCliente] = useState(nomeInicial)
   const [cnpj, setCnpj] = useState(cnpjInicial)
+  // Spec F: porte e regime tributário só aparecem (obrigatórios) quando o cliente desse CNPJ é novo ou está sem eles
+  const [porte, setPorte] = useState('')
+  const [regime, setRegime] = useState('')
+  const [consulta, setConsulta] = useState({ estado: 'ocioso' }) // ocioso | carregando | pronto | erro
+  const [errosCampo, setErrosCampo] = useState({})
+  const ultimaConsulta = useRef('')
   const [modeloId, setModeloId] = useState('')
   const [modelos, setModelos] = useState([])
   const [inicioServicos, setInicioServicos] = useState('')  // formato DD/MM/AAAA
@@ -428,14 +445,64 @@ function ModalNovaImplantacao({ fechar, onCriado, nomeInicial = '', clienteId = 
     api.get('/modelos-onboarding').then(r => setModelos(r.data)).catch(() => {})
   }, [])
 
+  // CNPJ completo → o cliente já existe na carteira? Ajusta os campos na hora (e ignora respostas de um CNPJ antigo)
+  const digitosCnpj = cnpj.replace(/\D/g, '')
+  useEffect(() => {
+    ultimaConsulta.current = digitosCnpj
+    setErrosCampo({})
+    if (digitosCnpj.length !== 14) { setConsulta({ estado: 'ocioso' }); setPorte(''); setRegime(''); return }
+    setConsulta({ estado: 'carregando' })
+    api.get(`/clientes/por-cnpj/${digitosCnpj}`).then(async r => {
+      if (ultimaConsulta.current !== digitosCnpj) return
+      const c = r.data.cliente
+      // Cliente com porte MEI e sem regime: regime MEI, como o cadastro de cliente faz
+      setPorte(c?.porte || ''); setRegime(c?.regime || (c?.porte === 'mei' ? 'mei' : ''))
+      setConsulta({ estado: 'pronto', existe: r.data.existe, cliente: c })
+      // Cliente novo: o porte vem da consulta de CNPJ da Receita (o usuário pode trocar). O regime nunca é preenchido sozinho.
+      if (!r.data.existe) {
+        try {
+          const rf = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${digitosCnpj}`)
+          if (!rf.ok || ultimaConsulta.current !== digitosCnpj) return
+          const p = porteDaReceita((await rf.json()).porte)
+          if (p && p !== 'mei') setPorte(atual => atual || p)
+        } catch { /* sem a consulta da Receita o usuário escolhe o porte */ }
+      }
+    }).catch(() => {
+      // Sem a resposta, pede os dois: o servidor só grava o que o cadastro ainda não tinha
+      if (ultimaConsulta.current === digitosCnpj) setConsulta({ estado: 'erro' })
+    })
+  }, [digitosCnpj])
+
+  const pronta = consulta.estado === 'pronto' || consulta.estado === 'erro'
+  const pedePorte = pronta && !consulta.cliente?.porte
+  const pedeRegime = pronta && !consulta.cliente?.regime
+  // Igual ao cadastro de cliente: porte MEI → regime MEI
+  const regimeEhMei = porte === 'mei'
+
+  const escolherPorte = (p) => {
+    setPorte(p)
+    if (p === 'mei') setRegime('mei')
+    else if (regime === 'mei') setRegime('')
+    setErrosCampo(e => ({ ...e, porte: '', regime: p === 'mei' ? '' : e.regime }))
+  }
+
   const criar = async () => {
     if (!nomeCliente.trim()) return setErro('Nome do cliente é obrigatório.')
     if (!cnpj.trim()) return setErro('CNPJ é obrigatório.')
     const inicioISO = dataParaISO(inicioServicos)
     if (!inicioISO) return setErro('Data de início dos serviços é obrigatória (DD/MM/AAAA).')
+    if (consulta.estado === 'carregando') return
+    const erros = {}
+    if (pedePorte && !porte) erros.porte = 'Informe o porte.'
+    if (pedeRegime && !regime) erros.regime = 'Informe o regime tributário.'
+    setErrosCampo(erros)
+    if (Object.keys(erros).length) return setErro('')
     setCarregando(true); setErro('')
     try {
-      await api.post('/implantacoes', { nomeCliente, cnpj, modeloId: modeloId || undefined, inicioServicos: inicioISO, clienteId: clienteId || undefined })
+      await api.post('/implantacoes', {
+        nomeCliente, cnpj, modeloId: modeloId || undefined, inicioServicos: inicioISO, clienteId: clienteId || undefined,
+        ...(pedePorte ? { porte } : {}), ...(pedeRegime ? { regime } : {}),
+      })
       toast('Implantação criada!', 'sucesso')
       onCriado(); fechar()
     } catch (err) {
@@ -468,7 +535,36 @@ function ModalNovaImplantacao({ fechar, onCriado, nomeInicial = '', clienteId = 
                 setCnpj(v)
               }}
               placeholder="00.000.000/0000-00" maxLength={18} />
+            {consulta.estado === 'carregando' && <span style={s.dicaCampo}>Verificando se o cliente já existe...</span>}
           </div>
+          {pedePorte && (
+            <div style={s.campo}>
+              <label style={s.label}>Porte *</label>
+              <select style={{ ...s.input, colorScheme: 'dark', ...(errosCampo.porte ? s.inputErro : {}) }} value={porte} onChange={e => escolherPorte(e.target.value)}>
+                <option value="">Selecione</option>
+                {PORTES.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+              </select>
+              {errosCampo.porte && <span style={s.erroCampo}>{errosCampo.porte}</span>}
+            </div>
+          )}
+          {pedeRegime && (
+            <div style={s.campo}>
+              <label style={s.label}>Regime tributário *</label>
+              {regimeEhMei ? (
+                <div style={{ ...s.input, color: 'var(--texto-apagado)' }}>MEI</div>
+              ) : (
+                <select style={{ ...s.input, colorScheme: 'dark', ...(errosCampo.regime ? s.inputErro : {}) }} value={regime}
+                  onChange={e => { setRegime(e.target.value); setErrosCampo(er => ({ ...er, regime: '' })) }}>
+                  <option value="">Selecione</option>
+                  {REGIMES.filter(r => r.value !== 'mei' && r.value !== 'pessoa_fisica').map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+                </select>
+              )}
+              {errosCampo.regime && <span style={s.erroCampo}>{errosCampo.regime}</span>}
+              {regime === 'outro'
+                ? <span style={s.avisoCampo}>Com regime 'Outro' o cliente não terá demanda no Fiscal.</span>
+                : <span style={s.dicaCampo}>Define o formulário do Fiscal. Sem regime, o cliente não aparece nas Demandas do Fiscal.</span>}
+            </div>
+          )}
           <div style={s.campo}>
             <label style={s.label}>Modelo de onboarding</label>
             <select style={s.input} value={modeloId} onChange={e => setModeloId(e.target.value)}>
@@ -489,7 +585,7 @@ function ModalNovaImplantacao({ fechar, onCriado, nomeInicial = '', clienteId = 
         </div>
         <div style={s.modalRodape}>
           <button style={s.btnCancelar} onClick={fechar}>Cancelar</button>
-          <button style={s.btnSalvar} onClick={criar} disabled={carregando}>
+          <button style={{ ...s.btnSalvar, ...(consulta.estado === 'carregando' ? { opacity: 0.6, cursor: 'default' } : {}) }} onClick={criar} disabled={carregando || consulta.estado === 'carregando'}>
             {carregando ? 'Criando...' : 'Criar implantação'}
           </button>
         </div>
@@ -873,7 +969,7 @@ const s = {
   vazioBox: { textAlign: 'center', marginTop: '60px' },
   // Modal
   overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' },
-  modal: { background: 'var(--sidebar)', border: '1px solid var(--borda)', borderRadius: '20px', width: '100%', maxWidth: '440px', boxShadow: '0 24px 64px rgba(0,0,0,0.6)' },
+  modal: { background: 'var(--sidebar)', border: '1px solid var(--borda)', borderRadius: '20px', width: '100%', maxWidth: '440px', maxHeight: 'calc(100vh - 40px)', overflowY: 'auto', boxShadow: '0 24px 64px rgba(0,0,0,0.6)' },
   modalTopo: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px', borderBottom: '1px solid var(--borda)' },
   modalTitulo: { fontWeight: '700', fontSize: '1rem', color: 'var(--texto)', fontFamily: 'var(--fonte-corpo)' },
   btnX: { background: 'none', border: '1px solid var(--borda)', borderRadius: '6px', color: 'var(--texto-apagado)', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', cursor: 'pointer' },
@@ -884,4 +980,8 @@ const s = {
   btnCancelar: { background: 'none', border: '1px solid var(--borda)', borderRadius: '10px', color: 'var(--texto-apagado)', padding: '10px 20px', fontFamily: 'var(--fonte-corpo)', fontWeight: '500', fontSize: '0.875rem', cursor: 'pointer' },
   btnSalvar: { background: 'linear-gradient(135deg, var(--verde), var(--verde-escuro))', color: '#fff', border: 'none', borderRadius: '10px', padding: '10px 20px', fontFamily: 'var(--fonte-corpo)', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer' },
   erro: { color: '#FCA5A5', fontSize: '0.8rem', background: 'rgba(239,68,68,0.1)', padding: '8px 12px', borderRadius: '8px' },
+  inputErro: { borderColor: '#f87171' },
+  erroCampo: { fontSize: '0.75rem', color: '#f87171', fontFamily: 'var(--fonte-corpo)', marginTop: '-2px' },
+  avisoCampo: { fontSize: '0.75rem', color: '#fbbf24', fontFamily: 'var(--fonte-corpo)', marginTop: '-2px', lineHeight: 1.4 },
+  dicaCampo: { fontSize: '0.75rem', color: 'var(--texto-apagado)', fontFamily: 'var(--fonte-corpo)', marginTop: '-2px', lineHeight: 1.4 },
 }
