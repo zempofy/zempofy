@@ -70,6 +70,27 @@ const entradasAoAdicionarSetores = (entradas, setorIds, { comecaEm = null, mesAt
   return atual;
 };
 
+// ── Meses com dado salvo que saem da vigência (Spec D, seção 3) ──
+// Competências com lançamento ou documento de demanda (fora da lixeira) que estão dentro da vigência em `antes` e
+// ficam fora em `depois`. Usado pelo aviso dos diálogos (POST /clientes/:id/vigencia/simular) e pelo histórico,
+// sempre com as mesmas listas de entradas que a ação de verdade grava.
+const mesesComDadosQueSaem = async ({ empresaId, clienteId, antes, depois, setorIds = null }) => {
+  const filtro = { empresa: empresaId, cliente: clienteId, ...(setorIds ? { setor: { $in: setorIds } } : {}) };
+  const [lancamentos, documentos] = await Promise.all([
+    LancamentoSetor.find(filtro).select('setor competencia').lean(),
+    Documento.find({ ...filtro, tipo: 'demanda', excluido: { $ne: true } }).select('setor competencia').lean(),
+  ]);
+  const cobre = (entradas, setor, competencia) => V.periodosDoSetor({ vigenciaDemanda: entradas }, setor).some(p => V.periodoCobre(p, competencia));
+  const meses = new Set();
+  for (const d of [...lancamentos, ...documentos]) {
+    if (d.competencia && cobre(antes, d.setor, d.competencia) && !cobre(depois, d.setor, d.competencia)) meses.add(d.competencia);
+  }
+  return [...meses].sort();
+};
+
+const textoMesesForaDaVigencia = (meses) =>
+  meses.length ? `. Meses com dados salvos que ficaram fora da vigência: ${meses.map(nomeMes).join(', ')}` : '';
+
 // ── Arquivos no armazenamento (R2): sempre DEPOIS de o banco confirmar; falha vira registro de limpeza manual ──
 const apagarArquivosDoArmazenamento = async (chaves, { empresa, usuario, descricao }) => {
   if (!chaves.length) return { apagados: 0, pendentes: [] };
@@ -232,7 +253,7 @@ const excluirClienteCompleto = async ({ empresaId, clienteId, usuarioId, simular
 };
 
 module.exports = {
-  nomeMes, logVigencia, entradasAoConcluir, mesDeInicioDaImplantacao, abrirVigenciaAoConcluir, entradasAoAdicionarSetores,
+  nomeMes, logVigencia, mesesComDadosQueSaem, textoMesesForaDaVigencia, entradasAoConcluir, mesDeInicioDaImplantacao, abrirVigenciaAoConcluir, entradasAoAdicionarSetores,
   apagarArquivosDoArmazenamento, contarImpactoSetor, removerSetorTudo, removerSetorDaquiPraFrente,
   buscarVinculosDoCliente, contarImpactoExclusao, excluirClienteCompleto,
 };

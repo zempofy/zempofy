@@ -199,11 +199,10 @@ teste('ajustar início do primeiro período e fim do último; valida início > f
   assert.ok(V.ajustarVigencia(e, FISCAL.id, { fim: '2026-01' }).erro);
   assert.ok(V.ajustarVigencia(e, FISCAL.id, { inicio: '2026-13' }).erro);
 });
-teste('o fim não pode ser anterior ao último lançamento salvo', () => {
+teste('fim antes de meses com lançamento NÃO bloqueia mais (Spec D: avisa e pede confirmação)', () => {
   const e = [entrada(FISCAL, { inicio: '2026-03', fim: null })];
-  assert.ok(V.ajustarVigencia(e, FISCAL.id, { fim: '2026-06' }, '2026-08').erro.includes('2026-08'));
-  assert.ok(!V.ajustarVigencia(e, FISCAL.id, { fim: '2026-08' }, '2026-08').erro);
-  assert.ok(!V.ajustarVigencia(e, FISCAL.id, { fim: null }, '2026-08').erro);
+  igual(V.ajustarVigencia(e, FISCAL.id, { fim: '2026-06' }).entradas[0].periodos, [{ inicio: '2026-03', fim: '2026-06' }]);
+  assert.ok(!V.ajustarVigencia(e, FISCAL.id, { fim: null }).erro);
 });
 teste('vários períodos: ajusta só o início do primeiro e o fim do último; setor sem vigência dá erro', () => {
   const e = [entrada(FISCAL, { inicio: '2026-01', fim: '2026-03' }, { inicio: '2026-08', fim: '2026-10' })];

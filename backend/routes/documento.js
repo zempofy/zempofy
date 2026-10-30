@@ -9,6 +9,7 @@ const Setor = require('../models/Setor');
 const { subirArquivo, buscarArquivo, apagarArquivo } = require('../services/storage');
 const { validarArquivo, nomeParaDownload, repararCodificacao, TIPOS } = require('../services/validarArquivo');
 const limiteEnvios = require('../services/limiteEnvios');
+const V = require('../services/vigenciaDemanda');
 
 const router = express.Router();
 
@@ -100,11 +101,22 @@ router.post('/', autenticar, limitarEnvios, upload.array('arquivos', 10), async 
       if (!/^\d{4}-\d{2}$/.test(competencia || '')) return res.status(400).json({ erro: 'Competência inválida.' });
     }
 
-    const cliente = await Cliente.findOne({ _id: clienteId, empresa: req.usuario.empresa._id }).select('_id').lean();
+    const cliente = await Cliente.findOne({ _id: clienteId, empresa: req.usuario.empresa._id }).select('_id setores vigenciaDemanda').lean();
     if (!cliente) return res.status(404).json({ erro: 'Cliente não encontrado.' });
 
     if (!(await podeGerenciar(req.usuario, { tipo, setor: setorId }))) {
       return res.status(403).json({ erro: 'Sem permissão para enviar documentos aqui.' });
+    }
+
+    // Documento de demanda só entra em mês dentro da vigência do setor (Spec D, seção 2) — vale pro envio inteiro,
+    // já que todos os arquivos do envio são do mesmo mês. Setor removido do cliente: meses antigos só pra consulta (Spec B).
+    if (tipo === 'demanda') {
+      if (!V.periodosDoSetor(cliente, setorId).some(p => V.periodoCobre(p, competencia))) {
+        return res.status(403).json({ erro: 'Este mês está fora da vigência deste setor para este cliente.' });
+      }
+      if (!(cliente.setores || []).some(s => String(s) === String(setorId))) {
+        return res.status(403).json({ erro: 'Este setor foi removido do cliente — somente leitura.' });
+      }
     }
 
     // Limite por usuário: conta os arquivos recebidos (bons ou ruins — quem manda lixo em massa também estoura)

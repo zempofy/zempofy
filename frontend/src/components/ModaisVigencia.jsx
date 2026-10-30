@@ -22,6 +22,9 @@ const st = {
   efeito: { fontSize: '0.82rem', color: 'var(--texto)', background: 'var(--input)', border: '1px solid var(--borda)', borderRadius: '10px', padding: '10px 12px', margin: 0, lineHeight: 1.5 },
   perigo: { fontSize: '0.82rem', color: '#f87171', background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.25)', borderRadius: '10px', padding: '10px 12px', margin: 0, lineHeight: 1.5 },
   select: { background: 'var(--input)', border: '1px solid var(--borda)', borderRadius: '8px', color: 'var(--texto)', padding: '8px 10px', fontSize: '0.86rem', fontFamily: 'var(--fonte-corpo)', colorScheme: 'dark', minWidth: '170px' },
+  // Texto na cor normal do tema (o amarelo puro some no tema claro); só a moldura e o "Atenção" ficam em âmbar
+  atencao: { fontSize: '0.82rem', color: 'var(--texto)', background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.45)', borderRadius: '10px', padding: '10px 12px', margin: 0, lineHeight: 1.5 },
+  atencaoTitulo: { color: '#d97706' },
   rodape: { display: 'flex', gap: '10px', justifyContent: 'flex-end', flexWrap: 'wrap', padding: '0 24px 22px' },
   btnCanc: { padding: '9px 16px', borderRadius: '9px', border: '1px solid var(--borda)', background: 'var(--input)', color: 'var(--texto)', cursor: 'pointer', fontSize: '0.85rem', fontFamily: 'var(--fonte-corpo)' },
   btnVerde: { padding: '9px 16px', borderRadius: '9px', border: 'none', background: 'var(--gradiente-verde)', color: '#fff', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, fontFamily: 'var(--fonte-corpo)' },
@@ -48,23 +51,55 @@ const LinhaMes = ({ rotulo, valor, onChange }) => (
   </label>
 )
 
+// Spec D, seção 3: meses que já têm lançamento ou documento e vão sair da vigência com a ação escolhida.
+// Pergunta ao servidor (POST /clientes/:id/vigencia/simular), que usa as mesmas funções da ação de verdade.
+function useMesesAfetados(clienteId, corpo) {
+  const [meses, setMeses] = useState([])
+  const chave = corpo ? JSON.stringify(corpo) : ''
+  useEffect(() => {
+    if (!clienteId || !corpo) { setMeses([]); return }
+    let vale = true
+    const t = setTimeout(() => {
+      api.post(`/clientes/${clienteId}/vigencia/simular`, corpo)
+        .then(r => { if (vale) setMeses(r.data.meses || []) })
+        .catch(() => { if (vale) setMeses([]) })
+    }, 250)
+    return () => { vale = false; clearTimeout(t) }
+  }, [clienteId, chave])
+  return meses
+}
+
+const MAX_MESES_AVISO = 6
+function AvisoMesesAfetados({ meses, dica = 'Se quiser que algum deles continue, escolha um mês depois deles.' }) {
+  if (!meses.length) return null
+  const mostrados = meses.slice(0, MAX_MESES_AVISO).map(rotuloMes).join(', ')
+  const resto = meses.length - MAX_MESES_AVISO
+  return (
+    <p style={st.atencao}>
+      <strong style={st.atencaoTitulo}>Atenção:</strong> estes meses já têm dados salvos e vão ficar <strong>fora da vigência</strong> (os dados continuam guardados, só para consulta): <strong>{mostrados}{resto > 0 ? ` e mais ${resto} ${resto === 1 ? 'mês' : 'meses'}` : ''}</strong>.<br />{dica}
+    </p>
+  )
+}
+
 const Efeito = ({ mes }) => (
   <p style={st.efeito}>Demandas até <strong>{rotuloMes(mesAnterior(mes))}</strong> continuam no histórico. De <strong>{rotuloMes(mes)}</strong> em diante deixam de existir.</p>
 )
 
-export function ModalInativar({ nome, onConfirmar, onCancelar, carregando }) {
+export function ModalInativar({ clienteId, nome, onConfirmar, onCancelar, carregando }) {
   const [mes, setMes] = useState(mesAtual())
+  const mesesAfetados = useMesesAfetados(clienteId, { acao: 'inativar', mes })
   return (
     <Modal onFechar={onCancelar} maxWidth="480px">
       <div style={st.corpo}>
         <p style={st.titulo}>Inativar {nome}?</p>
         <LinhaMes rotulo="A empresa deixa de ter demandas a partir de:" valor={mes} onChange={setMes} />
         <Efeito mes={mes} />
+        <AvisoMesesAfetados meses={mesesAfetados} />
         <p style={st.apagado}>Nada é apagado. Os meses anteriores ficam só para consulta e o cliente não pode ser editado enquanto estiver inativo.</p>
       </div>
       <div style={st.rodape}>
         <button style={st.btnCanc} onClick={onCancelar}>Cancelar</button>
-        <button style={st.btnPerigo} onClick={() => onConfirmar(mes)} disabled={carregando}>{carregando ? 'Inativando...' : 'Inativar'}</button>
+        <button style={st.btnPerigo} onClick={() => onConfirmar(mes)} disabled={carregando}>{carregando ? 'Inativando...' : mesesAfetados.length ? 'Confirmar mesmo assim' : 'Inativar'}</button>
       </div>
     </Modal>
   )
@@ -95,6 +130,7 @@ export function ModalRemoverSetor({ clienteId, setor, onConfirmar, onCancelar })
   const [impacto, setImpacto] = useState(null)
   const [erroImpacto, setErroImpacto] = useState(false)
   const [enviando, setEnviando] = useState(false)
+  const mesesAfetados = useMesesAfetados(clienteId, escopo === 'frente' ? { acao: 'remover_setor', mes, setorId: setor._id } : null)
 
   useEffect(() => {
     api.get(`/clientes/${clienteId}/setores/${setor._id}/impacto`).then(r => setImpacto(r.data)).catch(() => setErroImpacto(true))
@@ -116,6 +152,7 @@ export function ModalRemoverSetor({ clienteId, setor, onConfirmar, onCancelar })
           {escopo === 'frente' && (<>
             <LinhaMes rotulo="A partir de:" valor={mes} onChange={setMes} />
             <Efeito mes={mes} />
+            <AvisoMesesAfetados meses={mesesAfetados} />
             <p style={st.apagado}>Nada é apagado: lançamentos, documentos, configurações e particularidades ficam guardados e voltam a ser usados se o setor for adicionado de novo.</p>
           </>)}
         </div>
@@ -137,7 +174,7 @@ export function ModalRemoverSetor({ clienteId, setor, onConfirmar, onCancelar })
       <div style={st.rodape}>
         <button style={st.btnCanc} onClick={onCancelar}>Cancelar</button>
         {escopo === 'frente'
-          ? <button style={st.btnVerde} onClick={confirmar} disabled={enviando}>{enviando ? 'Removendo...' : 'Remover daqui pra frente'}</button>
+          ? <button style={st.btnVerde} onClick={confirmar} disabled={enviando}>{enviando ? 'Removendo...' : mesesAfetados.length ? 'Confirmar mesmo assim' : 'Remover daqui pra frente'}</button>
           : <button style={st.btnPerigo} onClick={confirmar} disabled={enviando || !impacto}>{enviando ? 'Apagando...' : 'Remover tudo'}</button>}
       </div>
     </Modal>
@@ -221,6 +258,7 @@ function ModalAjusteVigencia({ cliente, setor, periodos, onSalvo, onCancelar, mo
   const [erro, setErro] = useState('')
   const [salvando, setSalvando] = useState(false)
   const inp = { ...st.select, minWidth: '150px' }
+  const mesesAfetados = useMesesAfetados(cliente._id, { acao: 'ajustar', setorId: setor._id, inicio: desdeSempre ? null : inicio, fim: emAberto ? null : fim })
 
   const salvar = async () => {
     setErro(''); setSalvando(true)
@@ -254,11 +292,12 @@ function ModalAjusteVigencia({ cliente, setor, periodos, onSalvo, onCancelar, mo
             </span>
           </label>
         </div>
+        <AvisoMesesAfetados meses={mesesAfetados} dica="Se quiser que algum deles continue, ajuste a vigência para incluí-los." />
         {erro && <p style={st.perigo}>{erro}</p>}
       </div>
       <div style={st.rodape}>
         <button style={st.btnCanc} onClick={onCancelar}>Cancelar</button>
-        <button style={st.btnVerde} onClick={salvar} disabled={salvando}>{salvando ? 'Salvando...' : 'Salvar'}</button>
+        <button style={st.btnVerde} onClick={salvar} disabled={salvando}>{salvando ? 'Salvando...' : mesesAfetados.length ? 'Confirmar mesmo assim' : 'Salvar'}</button>
       </div>
     </Modal>
   )

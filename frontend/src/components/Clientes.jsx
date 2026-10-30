@@ -464,6 +464,10 @@ function FormCliente({ cliente, fechar, onSalvo }) {
   const [setoresSalvos, setSetoresSalvos] = useState(() => cliente?._id ? (cliente.setores || []).map(st => st._id || st) : [])
   const [confirmandoRemoverSetor, setConfirmandoRemoverSetor] = useState(null) // setor | null
   const [demandaComecaEm, setDemandaComecaEm] = useState('') // "A demanda começa em" dos setores novos (vazio = desde sempre)
+  // Spec D: inativar/reativar pelo campo Status passa pelos mesmos diálogos de mês. O status só muda ao confirmar.
+  const [statusSalvo, setStatusSalvo] = useState(cliente?.status || 'ativo')
+  const [dialogoStatus, setDialogoStatus] = useState(null) // { tipo: 'inativar' | 'reativar', novo } | null
+  const [mudandoStatus, setMudandoStatus] = useState(false)
 
   const [form, setForm] = useState({
     razaoSocial: cliente?.razaoSocial || '',
@@ -520,6 +524,26 @@ function FormCliente({ cliente, fechar, onSalvo }) {
   const setoresAtribuidos = setoresList.filter(st => setoresSalvos.includes(st._id))
   const setoresDisponiveis = setoresList.filter(st => !setoresSalvos.includes(st._id))
   const temSetorNovo = form.setores.some(id => !setoresSalvos.includes(id))
+
+  // Ativo ↔ Encerramento muda direto (não mexe na vigência). Entrar ou sair de Inativo abre o diálogo de mês;
+  // cancelar deixa o campo como estava (o select só muda quando form.status muda).
+  const escolherStatus = (novo) => {
+    if (cliente?._id && novo === 'inativo' && statusSalvo !== 'inativo') return setDialogoStatus({ tipo: 'inativar', novo })
+    if (cliente?._id && statusSalvo === 'inativo' && novo !== 'inativo') return setDialogoStatus({ tipo: 'reativar', novo })
+    set('status', novo)
+  }
+
+  const confirmarStatus = async (mes) => {
+    const { novo } = dialogoStatus
+    setMudandoStatus(true)
+    try {
+      await api.put(`/clientes/${cliente._id}`, { status: novo, mesVigencia: mes })
+      setStatusSalvo(novo); set('status', novo)
+      mostrar(novo === 'inativo' ? 'Cliente inativado.' : 'Cliente reativado!', novo === 'inativo' ? 'aviso' : 'sucesso')
+      onSalvo()
+    } catch (e) { mostrar(e.response?.data?.erro || 'Erro ao mudar o status.', 'erro') }
+    finally { setMudandoStatus(false); setDialogoStatus(null) }
+  }
 
   const removerSetor = async (escopo, mes) => {
     const setor = confirmandoRemoverSetor
@@ -724,7 +748,7 @@ function FormCliente({ cliente, fechar, onSalvo }) {
               )}
             </Campo>
             <Campo label="Status">
-              <select style={s.inp} value={form.status} onChange={e=>set('status',e.target.value)}>
+              <select style={s.inp} value={form.status} onChange={e=>escolherStatus(e.target.value)}>
                 {STATUS_OPTS.map(st=><option key={st.value} value={st.value}>{st.label}</option>)}
               </select>
             </Campo>
@@ -907,6 +931,15 @@ function FormCliente({ cliente, fechar, onSalvo }) {
       {confirmandoRemoverSetor && (
         <ModalRemoverSetor clienteId={cliente._id} setor={confirmandoRemoverSetor}
           onConfirmar={removerSetor} onCancelar={()=>setConfirmandoRemoverSetor(null)} />
+      )}
+
+      {dialogoStatus?.tipo === 'inativar' && (
+        <ModalInativar clienteId={cliente._id} nome={form.razaoSocial || cliente.razaoSocial} carregando={mudandoStatus}
+          onConfirmar={confirmarStatus} onCancelar={()=>setDialogoStatus(null)} />
+      )}
+      {dialogoStatus?.tipo === 'reativar' && (
+        <ModalReativar nome={form.razaoSocial || cliente.razaoSocial} carregando={mudandoStatus}
+          onConfirmar={confirmarStatus} onCancelar={()=>setDialogoStatus(null)} />
       )}
 
       {pedindoVigenciaRegime && (
@@ -1244,7 +1277,7 @@ function TelaDetalhe({ clienteId, voltar, onAtualizado, abaInicial = 'info', set
       {editando&&<div style={{ position:'fixed', inset:0, background:'var(--fundo)', zIndex:9999, padding:'32px', overflowY:'auto' }}><FormCliente cliente={dados} fechar={()=>setEditando(false)} onSalvo={()=>{buscar();onAtualizado()}} /></div>}
 
       {confirmInativar&&(
-        <ModalInativar nome={nomeCliente} carregando={mudandoStatus} onConfirmar={inativar} onCancelar={()=>setConfirmInativar(false)} />
+        <ModalInativar clienteId={clienteId} nome={nomeCliente} carregando={mudandoStatus} onConfirmar={inativar} onCancelar={()=>setConfirmInativar(false)} />
       )}
 
       {confirmReativar&&(
@@ -1911,11 +1944,16 @@ function FormularioCompetencia({ clienteId, setor, clienteRegime, competencia, c
             <p style={{ fontSize:'0.82rem', fontWeight:'700', color:'var(--texto)', margin:0 }}>Documentos desta competência</p>
             <p style={{ fontSize:'0.75rem', color:'var(--texto-apagado)', margin:'2px 0 0' }}>{qtdDocs===null?'—':`${qtdDocs} documento${qtdDocs!==1?'s':''} enviado${qtdDocs!==1?'s':''}`}</p>
           </div>
-          {temAcessoDocs && (
-            <button onClick={()=>listaDocsRef.current?.abrirSeletor()} style={{ ...s.btnAcao, display:'flex', alignItems:'center', gap:'6px' }}>
-              <Icone.Paperclip size={13}/>Carregar documentos
-            </button>
-          )}
+          {temAcessoDocs && (() => {
+            // Spec D: mês fora da vigência (ou setor já removido) não recebe documento novo; os que já estão aqui continuam visíveis
+            const bloqueio = lancamento?.foraDaVigencia ? 'Fora da vigência' : lancamento?.setorAtribuido === false ? 'Setor removido · somente leitura' : null
+            return (
+              <button onClick={()=>!bloqueio && listaDocsRef.current?.abrirSeletor()} disabled={!!bloqueio} title={bloqueio || undefined}
+                style={{ ...s.btnAcao, display:'flex', alignItems:'center', gap:'6px', ...(bloqueio ? { opacity:0.5, cursor:'not-allowed' } : {}) }}>
+                <Icone.Paperclip size={13}/>{bloqueio || 'Carregar documentos'}
+              </button>
+            )
+          })()}
         </div>
         <ListaDocumentos ref={listaDocsRef} clienteId={clienteId} tipo="demanda" setor={setor} competencia={competencia} podeGerenciar={temAcessoDocs} compacto ocultarDropzone onMudanca={buscarQtdDocs}/>
       </div>

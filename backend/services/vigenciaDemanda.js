@@ -114,8 +114,9 @@ const abrirPeriodo = (entradas, setorId, mesInicio) => {
 };
 
 // Ajuste manual (titular / responsável do setor): muda o início do primeiro período e o fim do último.
-// Devolve { erro } ou { entradas }. `ultimoLancamento` = maior competência com lançamento salvo (ou null).
-const ajustarVigencia = (entradas, setorId, { inicio, fim }, ultimoLancamento = null) => {
+// Devolve { erro } ou { entradas }. Fim antes de meses com dado salvo NÃO é erro (Spec D): a tela avisa quais meses
+// ficam fora da vigência e pede confirmação, como no diálogo de inativar.
+const ajustarVigencia = (entradas, setorId, { inicio, fim }) => {
   const idx = entradas.findIndex(v => String(v.setor) === String(setorId));
   if (idx === -1 || !entradas[idx].periodos.length) return { erro: 'Este setor não tem vigência para ajustar.' };
   if (inicio !== null && inicio !== undefined && inicio !== '' && !mesValido(inicio)) return { erro: 'Mês de início inválido.' };
@@ -128,9 +129,7 @@ const ajustarVigencia = (entradas, setorId, { inicio, fim }, ultimoLancamento = 
   if (ordenados.length === 1 && novoInicio && novoFim && novoInicio > novoFim) return { erro: 'O início não pode ser depois do fim.' };
   if (ordenados.length > 1 && novoInicio && ordenados[0].fim && novoInicio > ordenados[0].fim) return { erro: 'O início não pode ser depois do fim do primeiro período.' };
   if (ordenados.length > 1 && novoFim && ultimo.inicio && novoFim < ultimo.inicio) return { erro: 'O fim não pode ser antes do início do último período.' };
-  if (novoFim && ultimoLancamento && novoFim < ultimoLancamento) {
-    return { erro: `Existe lançamento salvo em ${ultimoLancamento}. O fim da vigência não pode ser anterior a esse mês.` };
-  }
+
   primeiro.inicio = novoInicio;
   ultimo.fim = novoFim;
   return { entradas: entradas.map((v, i) => (i === idx ? { setor: v.setor, periodos } : v)) };
